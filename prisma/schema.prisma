@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Settings {
+  id                String @id @default(cuid())
+  siteName          String @default("Beauty Studio")
+  colorPrimary      String @default("#e88ea7")
+  colorSecondary    String @default("#9b4d6e")
+  colorButton       String @default("#e88ea7")
+  fontFamily        String @default("Inter")
+  logoUrl           String?
+  faviconUrl        String?
+  heroBannerUrl     String?
+  whatsappNumber    String?
+  email             String?
+  address           String?
+  // ===== FIELD BARU =====
+  footerContent     Json?   // Rich text untuk footer
+  operatingHours    Json?   // { monday: { open: "09:00", close: "18:00" } }
+  googleMapsEmbedUrl String?
+  socialLinks       Json?   // { instagram: "", facebook: "", tiktok: "", youtube: "" }
+  // ======================
+  gaTrackingId      String?
+  metaTitle         String?
+  metaDescription   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model User {
+  id           String @id @default(cuid())
+  name         String
+  email        String @unique
+  passwordHash String
+  role         String @default("STAFF")
+  isActive     Boolean @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  activityLogs ActivityLog[]
+}
+
+model Category {
+  id         String @id @default(cuid())
+  name       String
+  slug       String @unique
+  sortOrder  Int @default(0)
+  isActive   Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  products   Product[]
+}
+
+model Product {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  description String?
+  price       Float
+  stock       Int @default(0)
+  status      String @default("DRAFT")
+  isFeatured  Boolean @default(false)
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  category    Category @relation(fields: [categoryId], references: [id])
+  promos      PromoProduct[]
+}
+
+model Service {
+  id          String @id @default(cuid())
+  name        String
+  slug        String @unique
+  description String?
+  duration    Int
+  price       Float
+  categoryId  String
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  bookings    Booking[]
+}
+
+model Booking {
+  id           String @id @default(cuid())
+  customerName String
+  whatsapp     String
+  email        String?
+  bookingDate  DateTime
+  bookingTime  String
+  serviceId    String?
+  notes        String?
+  status       String @default("PENDING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  service      Service? @relation(fields: [serviceId], references: [id])
+}
+
+model Testimonial {
+  id              String @id @default(cuid())
+  customerName    String
+  customerPhotoUrl String?
+  rating          Int
+  reviewText      String
+  isPublished     Boolean @default(false)
+  sortOrder       Int @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model BlogPost {
+  id          String @id @default(cuid())
+  title       String
+  slug        String @unique
+  content     String
+  excerpt     String?
+  coverImageUrl String?
+  status      String @default("DRAFT")
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FAQ {
+  id        String @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int @default(0)
+  isActive  Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String @id @default(cuid())
+  name      String
+  email     String
+  whatsapp  String?
+  message   String
+  status    String @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BeforeAfter {
+  id              String @id @default(cuid())
+  title           String
+  category        String
+  beforeImageUrl  String
+  afterImageUrl   String
+  description     String?
+  sortOrder       Int @default(0)
+  isPublished     Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Promo {
+  id            String @id @default(cuid())
+  title         String
+  type          String
+  discountValue Float?
+  discountType  String?
+  startDate     DateTime
+  endDate       DateTime
+  bannerUrl     String?
+  isActive      Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  products      PromoProduct[]
+}
+
+model PromoProduct {
+  id        String @id @default(cuid())
+  promoId   String
+  productId String
+  price     Float?
+  createdAt DateTime @default(now())
+  
+  promo     Promo @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model MediaFile {
+  id          String @id @default(cuid())
+  url         String
+  fileName    String
+  fileType    String
+  sizeBytes   Int
+  folder      String?
+  altText     String?
+  uploadedAt  DateTime @default(now())
+}
+
+model ActivityLog {
+  id         String @id @default(cuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Visitor {
+  id         String @id @default(cuid())
+  page       String
+  visitorId  String
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+}
+
+model PageView {
+  id         String @id @default(cuid())
+  page       String
+  visitorId  String
+  sessionId  String
+  referrer   String?
+  createdAt  DateTime @default(now())
+}
