@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -88,18 +89,25 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-400 disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : 'Sign In'}
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-500 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-400 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Sign In'}
+            </button>
+          </div>
+
+          <div className="text-center text-sm">
+            <Link
+              href="/forgot-password"
+              className="text-pink-500 hover:text-pink-600 font-medium"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </form>
-        
-        <div className="text-center text-xs text-gray-500 mt-4 pt-4 border-t">
-          <p>Demo: <span className="font-medium text-gray-700">admin@beautystudio.com</span> / <span className="font-medium text-gray-700">admin123</span></p>
-        </div>
       </div>
     </div>
   )
