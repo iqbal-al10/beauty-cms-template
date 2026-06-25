@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Play, Youtube, Instagram, Video, Upload } from 'lucide-react'
+import { Plus, Edit, Trash2, Play, Video, Upload, Globe } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Video {
@@ -16,8 +16,8 @@ interface Video {
 }
 
 const SOURCE_TYPES = [
-  { value: 'YOUTUBE', label: 'YouTube', icon: Youtube },
-  { value: 'INSTAGRAM', label: 'Instagram', icon: Instagram },
+  { value: 'YOUTUBE', label: 'YouTube', icon: Play },
+  { value: 'INSTAGRAM', label: 'Instagram', icon: Globe },
   { value: 'TIKTOK', label: 'TikTok', icon: Video },
   { value: 'UPLOAD', label: 'Upload', icon: Upload },
 ]
@@ -180,19 +180,20 @@ export default function VideosPage() {
     return found ? found.label : type
   }
 
+  const getSourceColor = (type: string) => {
+    const colors: Record<string, string> = {
+      YOUTUBE: 'bg-red-100 text-red-700',
+      INSTAGRAM: 'bg-pink-100 text-pink-700',
+      TIKTOK: 'bg-blue-100 text-blue-700',
+      UPLOAD: 'bg-gray-100 text-gray-700',
+    }
+    return colors[type] || 'bg-gray-100 text-gray-700'
+  }
+
   const getEmbedUrl = (url: string, type: string) => {
     if (type === 'YOUTUBE') {
-      // YouTube embed
       const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]
       return videoId ? `https://www.youtube.com/embed/${videoId}` : url
-    }
-    if (type === 'INSTAGRAM') {
-      // Instagram embed
-      return url
-    }
-    if (type === 'TIKTOK') {
-      // TikTok embed
-      return url
     }
     return url
   }
@@ -381,7 +382,7 @@ export default function VideosPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-800">{video.title}</h3>
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 flex items-center gap-1">
+                      <span className={`px-2 py-0.5 text-xs rounded-full flex items-center gap-1 ${getSourceColor(video.sourceType)}`}>
                         {getSourceIcon(video.sourceType)}
                         {getSourceLabel(video.sourceType)}
                       </span>
