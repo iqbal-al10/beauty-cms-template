@@ -23,6 +23,7 @@ import {
   Database,
   BarChart3,
   Video,
+  Star,
 } from 'lucide-react'
 
 interface User {
@@ -108,6 +109,7 @@ export default function AdminLayout({
     { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
     { icon: Database, label: 'Backup', href: '/admin/backup' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
+    { icon: Star, label: 'Reviews', href: '/admin/reviews' },
   ]
 
   const menuItems = allMenuItems.filter(item => {

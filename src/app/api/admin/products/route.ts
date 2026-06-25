@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logUserAction } from '@/middleware/activityLogger'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const all = searchParams.get('all')
+    const select = searchParams.get('select') // Untuk dropdown review
+
+    if (select === 'true') {
+      // Hanya ambil id dan name untuk dropdown
+      const products = await prisma.product.findMany({
+        where: { status: 'PUBLISHED' },
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: { name: 'asc' },
+      })
+      return NextResponse.json(products)
+    }
 
     const products = await prisma.product.findMany({
       where: all === 'true' ? {} : { status: 'PUBLISHED' },
-      include: {
-        category: true,
-      },
+      include: { category: true },
       orderBy: { createdAt: 'desc' },
     })
 
@@ -36,9 +49,13 @@ export async function POST(request: NextRequest) {
         status: status || 'DRAFT',
         categoryId,
       },
-      include: {
-        category: true,
-      },
+      include: { category: true },
+    })
+
+    await logUserAction('CREATE', 'Product', product.id, {
+      name: product.name,
+      price: product.price,
+      status: product.status,
     })
 
     return NextResponse.json(product, { status: 201 })

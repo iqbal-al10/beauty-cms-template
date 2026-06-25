@@ -176,7 +176,7 @@ export default function VideosPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">🎬 Video Content</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Video Content</h1>
         <button
           onClick={() => {
             setEditing(null)
@@ -237,7 +237,7 @@ export default function VideosPage() {
                 value={form.thumbnailUrl}
                 onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://example.com/thumbnail.jpg"
+                placeholder="thumbnail-example"
               />
             </div>
 

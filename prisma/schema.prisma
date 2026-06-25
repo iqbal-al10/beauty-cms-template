@@ -71,6 +71,7 @@ model Product {
   updatedAt   DateTime       @updatedAt
   category    Category       @relation(fields: [categoryId], references: [id])
   promos      PromoProduct[]
+  reviews     Review[]       // ← Relasi ke Review
 }
 
 model Service {
@@ -226,15 +227,28 @@ model PageView {
   createdAt DateTime @default(now())
 }
 
-// ==================== VIDEO CONTENT ====================
 model VideoContent {
   id           String   @id @default(cuid())
   title        String
-  sourceType   String   // UPLOAD, YOUTUBE, INSTAGRAM, TIKTOK
+  sourceType   String
   url          String
   thumbnailUrl String?
   sortOrder    Int      @default(0)
   isPublished  Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// ==================== REVIEW ====================
+model Review {
+  id          String   @id @default(cuid())
+  productId   String
+  customerName String
+  rating      Int      // 1-5
+  comment     String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
