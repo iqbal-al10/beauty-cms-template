@@ -71,7 +71,8 @@ model Product {
   updatedAt   DateTime       @updatedAt
   category    Category       @relation(fields: [categoryId], references: [id])
   promos      PromoProduct[]
-  reviews     Review[]       // ← Relasi ke Review
+  reviews     Review[]
+  tags        ProductTag[]   // Many-to-many dengan Tag
 }
 
 model Service {
@@ -239,16 +240,26 @@ model VideoContent {
   updatedAt    DateTime @updatedAt
 }
 
-// ==================== REVIEW ====================
 model Review {
   id          String   @id @default(cuid())
   productId   String
   customerName String
-  rating      Int      // 1-5
+  rating      Int
   comment     String?
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ==================== PRODUCT TAG ====================
+model ProductTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  color     String?  // Warna badge (opsional)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products  Product[] // Many-to-many dengan Product
 }

@@ -198,7 +198,7 @@ export default function ReviewsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">⭐ Product Reviews</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Product Reviews</h1>
         <button
           onClick={() => {
             setEditing(null)

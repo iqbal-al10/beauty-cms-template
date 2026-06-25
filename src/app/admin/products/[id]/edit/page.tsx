@@ -11,6 +11,12 @@ interface Category {
   name: string
 }
 
+interface Tag {
+  id: string
+  name: string
+  color: string | null
+}
+
 interface Product {
   id: string
   name: string
@@ -20,6 +26,7 @@ interface Product {
   stock: number
   status: string
   categoryId: string
+  tags: Tag[]
 }
 
 export default function EditProductPage() {
@@ -28,6 +35,8 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [form, setForm] = useState<Product>({
     id: '',
     name: '',
@@ -37,11 +46,13 @@ export default function EditProductPage() {
     stock: 0,
     status: 'DRAFT',
     categoryId: '',
+    tags: [],
   })
 
   useEffect(() => {
     fetchProduct()
     fetchCategories()
+    fetchTags()
   }, [])
 
   const fetchProduct = async () => {
@@ -54,6 +65,7 @@ export default function EditProductPage() {
       }
       const data = await res.json()
       setForm(data)
+      setSelectedTagIds(data.tags?.map((t: Tag) => t.id) || [])
     } catch (error) {
       console.error('Error fetching product:', error)
       toast.error('Gagal memuat produk')
@@ -73,11 +85,22 @@ export default function EditProductPage() {
     }
   }
 
+  const fetchTags = async () => {
+    try {
+      const res = await fetch('/api/admin/tags')
+      const data = await res.json()
+      setTags(data)
+    } catch (error) {
+      console.error('Error fetching tags:', error)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      // 1. Update product
       const res = await fetch(`/api/admin/products/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -88,17 +111,24 @@ export default function EditProductPage() {
         }),
       })
 
-      if (res.ok) {
-        toast.success('Produk berhasil diupdate!')
-        router.push('/admin/products')
-        router.refresh()
-      } else {
+      if (!res.ok) {
         const error = await res.json()
-        toast.error(error.error || 'Gagal mengupdate produk')
+        throw new Error(error.error || 'Failed to update product')
       }
-    } catch (error) {
+
+      // 2. Update tags
+      await fetch(`/api/admin/products/${params.id}/tags`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagIds: selectedTagIds }),
+      })
+
+      toast.success('Produk berhasil diupdate!')
+      router.push('/admin/products')
+      router.refresh()
+    } catch (error: any) {
       console.error('Error:', error)
-      toast.error('Error saat mengupdate produk')
+      toast.error(error.message || 'Error saat mengupdate produk')
     } finally {
       setLoading(false)
     }
@@ -131,7 +161,14 @@ export default function EditProductPage() {
             type="text"
             required
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => {
+              const name = e.target.value
+              setForm({
+                ...form,
+                name,
+                slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, ''),
+              })
+            }}
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
           />
         </div>
@@ -207,6 +244,50 @@ export default function EditProductPage() {
               <option value="PUBLISHED">Published</option>
             </select>
           </div>
+        </div>
+
+        {/* ===== TAGS ===== */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Tags</label>
+          <select
+            multiple
+            value={selectedTagIds}
+            onChange={(e) => {
+              const options = Array.from(e.target.selectedOptions, option => option.value)
+              setSelectedTagIds(options)
+            }}
+            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 min-h-[100px]"
+          >
+            {tags.length === 0 ? (
+              <option value="" disabled>Belum ada tag. Buat tag dulu di menu Tags.</option>
+            ) : (
+              tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))
+            )}
+          </select>
+          <p className="text-xs text-gray-400 mt-1">
+            {selectedTagIds.length > 0
+              ? `Terpilih: ${selectedTagIds.length} tag`
+              : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
+          </p>
+          {selectedTagIds.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedTagIds.map((tagId) => {
+                const tag = tags.find(t => t.id === tagId)
+                return tag ? (
+                  <span
+                    key={tag.id}
+                    className={`px-2 py-1 text-xs text-white rounded-full ${tag.color || 'bg-gray-500'}`}
+                  >
+                    {tag.name}
+                  </span>
+                ) : null
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-4 pt-4">
