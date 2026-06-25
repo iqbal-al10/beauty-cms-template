@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Play, Video, Upload, Globe } from 'lucide-react'
+import { Plus, Edit, Trash2, Play, Youtube } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Video {
@@ -15,13 +15,6 @@ interface Video {
   createdAt: string
 }
 
-const SOURCE_TYPES = [
-  { value: 'YOUTUBE', label: 'YouTube', icon: Play },
-  { value: 'INSTAGRAM', label: 'Instagram', icon: Globe },
-  { value: 'TIKTOK', label: 'TikTok', icon: Video },
-  { value: 'UPLOAD', label: 'Upload', icon: Upload },
-]
-
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,7 +22,6 @@ export default function VideosPage() {
   const [editing, setEditing] = useState<Video | null>(null)
   const [form, setForm] = useState({
     title: '',
-    sourceType: 'YOUTUBE',
     url: '',
     thumbnailUrl: '',
     sortOrder: 0,
@@ -112,7 +104,6 @@ export default function VideosPage() {
     setEditing(video)
     setForm({
       title: video.title,
-      sourceType: video.sourceType,
       url: video.url,
       thumbnailUrl: video.thumbnailUrl || '',
       sortOrder: video.sortOrder,
@@ -126,7 +117,6 @@ export default function VideosPage() {
     setEditing(null)
     setForm({
       title: '',
-      sourceType: 'YOUTUBE',
       url: '',
       thumbnailUrl: '',
       sortOrder: 0,
@@ -166,36 +156,13 @@ export default function VideosPage() {
     }
   }
 
-  const getSourceIcon = (type: string) => {
-    const found = SOURCE_TYPES.find(s => s.value === type)
-    if (found) {
-      const Icon = found.icon
-      return <Icon className="w-4 h-4" />
-    }
-    return <Video className="w-4 h-4" />
+  const getEmbedUrl = (url: string) => {
+    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url
   }
 
-  const getSourceLabel = (type: string) => {
-    const found = SOURCE_TYPES.find(s => s.value === type)
-    return found ? found.label : type
-  }
-
-  const getSourceColor = (type: string) => {
-    const colors: Record<string, string> = {
-      YOUTUBE: 'bg-red-100 text-red-700',
-      INSTAGRAM: 'bg-pink-100 text-pink-700',
-      TIKTOK: 'bg-blue-100 text-blue-700',
-      UPLOAD: 'bg-gray-100 text-gray-700',
-    }
-    return colors[type] || 'bg-gray-100 text-gray-700'
-  }
-
-  const getEmbedUrl = (url: string, type: string) => {
-    if (type === 'YOUTUBE') {
-      const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : url
-    }
-    return url
+  const isYouTube = (url: string) => {
+    return url.includes('youtube.com') || url.includes('youtu.be')
   }
 
   if (loading) {
@@ -215,7 +182,6 @@ export default function VideosPage() {
             setEditing(null)
             setForm({
               title: '',
-              sourceType: 'YOUTUBE',
               url: '',
               thumbnailUrl: '',
               sortOrder: videos.length,
@@ -237,46 +203,30 @@ export default function VideosPage() {
             {editing ? 'Edit Video' : 'New Video'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="Video title..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Source Type</label>
-                <select
-                  value={form.sourceType}
-                  onChange={(e) => setForm({ ...form, sourceType: e.target.value })}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                >
-                  {SOURCE_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Title *</label>
+              <input
+                type="text"
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Video title..."
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">URL *</label>
+              <label className="block text-sm font-medium text-gray-700">YouTube URL *</label>
               <input
                 type="text"
                 required
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://www.youtube.com/watch?v=... or https://www.instagram.com/..."
+                placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="text-xs text-gray-400 mt-1">
-                Masukkan URL video dari YouTube, Instagram, atau TikTok
+                Masukkan URL YouTube (contoh: https://www.youtube.com/watch?v=abc123)
               </p>
             </div>
 
@@ -313,26 +263,26 @@ export default function VideosPage() {
             </div>
 
             {/* Preview */}
-            {form.url && (
+            {form.url && isYouTube(form.url) && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-500 mb-2">Preview:</p>
                 <div className="aspect-video bg-black rounded-lg overflow-hidden">
-                  {form.sourceType === 'YOUTUBE' ? (
-                    <iframe
-                      src={getEmbedUrl(form.url, form.sourceType)}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <div className="text-center">
-                        <Play className="w-12 h-12 mx-auto mb-2" />
-                        <p className="text-sm">{getSourceLabel(form.sourceType)} Video</p>
-                        <p className="text-xs text-gray-500 mt-1">{form.url}</p>
-                      </div>
-                    </div>
-                  )}
+                  <iframe
+                    src={getEmbedUrl(form.url)}
+                    className="w-full h-full"
+                    allowFullScreen
+                    loading="lazy"
+                  />
                 </div>
+              </div>
+            )}
+
+            {form.url && !isYouTube(form.url) && (
+              <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                <p className="text-sm text-yellow-700 flex items-center gap-2">
+                  <Youtube className="w-4 h-4" />
+                  URL tidak valid. Masukkan URL YouTube.
+                </p>
               </div>
             )}
 
@@ -370,7 +320,7 @@ export default function VideosPage() {
                       <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
-                        {getSourceIcon(video.sourceType)}
+                        <Youtube className="w-8 h-8 text-red-500" />
                       </div>
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -382,9 +332,9 @@ export default function VideosPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-800">{video.title}</h3>
-                      <span className={`px-2 py-0.5 text-xs rounded-full flex items-center gap-1 ${getSourceColor(video.sourceType)}`}>
-                        {getSourceIcon(video.sourceType)}
-                        {getSourceLabel(video.sourceType)}
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 flex items-center gap-1">
+                        <Youtube className="w-3 h-3" />
+                        YouTube
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 truncate">{video.url}</p>

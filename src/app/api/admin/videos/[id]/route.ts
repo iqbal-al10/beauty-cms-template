@@ -26,7 +26,6 @@ export async function DELETE(
 
     await logUserAction('DELETE', 'VideoContent', id, {
       title: video.title,
-      sourceType: video.sourceType,
     })
 
     return NextResponse.json({ success: true })
@@ -46,13 +45,21 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { title, sourceType, url, thumbnailUrl, sortOrder, isPublished } = body
+    const { title, url, thumbnailUrl, sortOrder, isPublished } = body
+
+    // Validasi URL YouTube
+    const isYoutube = url.includes('youtube.com') || url.includes('youtu.be')
+    if (!isYoutube) {
+      return NextResponse.json(
+        { error: 'Hanya URL YouTube yang didukung' },
+        { status: 400 }
+      )
+    }
 
     const video = await prisma.videoContent.update({
       where: { id },
       data: {
         title,
-        sourceType,
         url,
         thumbnailUrl: thumbnailUrl || null,
         sortOrder: parseInt(sortOrder) || 0,
@@ -62,7 +69,6 @@ export async function PUT(
 
     await logUserAction('UPDATE', 'VideoContent', video.id, {
       title: video.title,
-      sourceType: video.sourceType,
     })
 
     return NextResponse.json(video)

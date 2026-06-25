@@ -17,12 +17,21 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, sourceType, url, thumbnailUrl, sortOrder, isPublished } = body
+    const { title, url, thumbnailUrl, sortOrder, isPublished } = body
+
+    // Validasi URL YouTube
+    const isYoutube = url.includes('youtube.com') || url.includes('youtu.be')
+    if (!isYoutube) {
+      return NextResponse.json(
+        { error: 'Hanya URL YouTube yang didukung' },
+        { status: 400 }
+      )
+    }
 
     const video = await prisma.videoContent.create({
       data: {
         title,
-        sourceType,
+        sourceType: 'YOUTUBE',
         url,
         thumbnailUrl: thumbnailUrl || null,
         sortOrder: parseInt(sortOrder) || 0,
@@ -32,7 +41,6 @@ export async function POST(request: NextRequest) {
 
     await logUserAction('CREATE', 'VideoContent', video.id, {
       title: video.title,
-      sourceType: video.sourceType,
     })
 
     return NextResponse.json(video, { status: 201 })
