@@ -225,3 +225,16 @@ model PageView {
   referrer  String?
   createdAt DateTime @default(now())
 }
+
+// ==================== VIDEO CONTENT ====================
+model VideoContent {
+  id           String   @id @default(cuid())
+  title        String
+  sourceType   String   // UPLOAD, YOUTUBE, INSTAGRAM, TIKTOK
+  url          String
+  thumbnailUrl String?
+  sortOrder    Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
