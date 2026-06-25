@@ -12,15 +12,18 @@ interface Tag {
   createdAt: string
 }
 
-const COLORS = [
-  { value: 'bg-red-500', label: 'Red' },
-  { value: 'bg-blue-500', label: 'Blue' },
-  { value: 'bg-green-500', label: 'Green' },
-  { value: 'bg-yellow-500', label: 'Yellow' },
-  { value: 'bg-purple-500', label: 'Purple' },
-  { value: 'bg-pink-500', label: 'Pink' },
-  { value: 'bg-orange-500', label: 'Orange' },
-  { value: 'bg-teal-500', label: 'Teal' },
+// Preset colors yang sudah tersedia
+const PRESET_COLORS = [
+  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
+  { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
+  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
+  { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
+  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
 export default function TagsPage() {
@@ -32,7 +35,9 @@ export default function TagsPage() {
     name: '',
     slug: '',
     color: 'bg-red-500',
+    customColor: '#EF4444', // Untuk custom color picker
   })
+  const [selectedPreset, setSelectedPreset] = useState('bg-red-500')
 
   useEffect(() => {
     fetchTags()
@@ -65,10 +70,17 @@ export default function TagsPage() {
       const url = editing ? `/api/admin/tags/${editing.id}` : '/api/admin/tags'
       const method = editing ? 'PUT' : 'POST'
 
+      // Kirim color dalam format Tailwind (bg-xxx-500) atau null jika custom
+      const payload = {
+        name: form.name,
+        slug: form.slug,
+        color: form.color || null,
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -108,11 +120,15 @@ export default function TagsPage() {
 
   const handleEdit = (tag: Tag) => {
     setEditing(tag)
+    // Cek apakah warna termasuk preset atau custom
+    const isPreset = PRESET_COLORS.some(p => p.value === tag.color)
     setForm({
       name: tag.name,
       slug: tag.slug,
       color: tag.color || 'bg-red-500',
+      customColor: isPreset ? '#EF4444' : (tag.color || '#EF4444'),
     })
+    setSelectedPreset(isPreset ? tag.color || 'bg-red-500' : '')
     setShowForm(true)
   }
 
@@ -123,7 +139,31 @@ export default function TagsPage() {
       name: '',
       slug: '',
       color: 'bg-red-500',
+      customColor: '#EF4444',
     })
+    setSelectedPreset('bg-red-500')
+  }
+
+  // Handle preset color selection
+  const handlePresetSelect = (colorValue: string, hex: string) => {
+    setSelectedPreset(colorValue)
+    setForm({
+      ...form,
+      color: colorValue,
+      customColor: hex,
+    })
+  }
+
+  // Handle custom color picker
+  const handleCustomColorChange = (hex: string) => {
+    // Simpan custom color sebagai class bg-[color] dengan hex
+    const customClass = `bg-[${hex}]`
+    setForm({
+      ...form,
+      color: customClass,
+      customColor: hex,
+    })
+    setSelectedPreset('') // Reset preset selection
   }
 
   if (loading) {
@@ -134,6 +174,19 @@ export default function TagsPage() {
     )
   }
 
+  // Get current display color
+  const getDisplayColor = () => {
+    if (form.color) {
+      // Jika color adalah class bg-[hex]
+      const hexMatch = form.color.match(/bg-\[(#[0-9a-fA-F]{6})\]/)
+      if (hexMatch) return hexMatch[1]
+      // Jika color adalah preset bg-xxx-500
+      const preset = PRESET_COLORS.find(p => p.value === form.color)
+      if (preset) return preset.hex
+    }
+    return form.customColor || '#EF4444'
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -141,7 +194,8 @@ export default function TagsPage() {
         <button
           onClick={() => {
             setEditing(null)
-            setForm({ name: '', slug: '', color: 'bg-red-500' })
+            setForm({ name: '', slug: '', color: 'bg-red-500', customColor: '#EF4444' })
+            setSelectedPreset('bg-red-500')
             setShowForm(!showForm)
           }}
           className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -190,22 +244,50 @@ export default function TagsPage() {
               </div>
             </div>
 
+            {/* Color Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Color</label>
-              <div className="flex gap-3 mt-2 flex-wrap">
-                {COLORS.map((color) => (
+              <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
+              
+              {/* Preset Colors */}
+              <div className="flex flex-wrap gap-3 mb-3">
+                {PRESET_COLORS.map((color) => (
                   <button
                     key={color.value}
                     type="button"
-                    onClick={() => setForm({ ...form, color: color.value })}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      form.color === color.value
-                        ? 'border-gray-800 scale-110'
+                    onClick={() => handlePresetSelect(color.value, color.hex)}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                      selectedPreset === color.value
+                        ? 'border-gray-800 scale-110 shadow-md'
                         : 'border-gray-300 hover:scale-105'
                     } ${color.value}`}
                     title={color.label}
                   />
                 ))}
+              </div>
+
+              {/* Custom Color Picker */}
+              <div className="flex items-center gap-4 mt-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Custom:</span>
+                  <input
+                    type="color"
+                    value={form.customColor || '#EF4444'}
+                    onChange={(e) => handleCustomColorChange(e.target.value)}
+                    className="w-12 h-12 rounded-lg border border-gray-300 cursor-pointer p-1"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Preview:</span>
+                  <span
+                    className="px-3 py-1 text-xs text-white rounded-full"
+                    style={{ backgroundColor: getDisplayColor() }}
+                  >
+                    {form.name || 'Tag Preview'}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {form.color?.startsWith('bg-[') ? 'Custom color' : 'Preset color'}
+                </span>
               </div>
             </div>
 
@@ -238,12 +320,33 @@ export default function TagsPage() {
               <div key={tag.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {tag.color && (
-                      <span className={`w-4 h-4 rounded-full ${tag.color}`} />
+                    {tag.color ? (
+                      <span
+                        className="w-4 h-4 rounded-full"
+                        style={{
+                          backgroundColor: tag.color.startsWith('bg-[')
+                            ? tag.color.match(/bg-\[(#[0-9a-fA-F]{6})\]/)?.[1] || '#EF4444'
+                            : (PRESET_COLORS.find(p => p.value === tag.color)?.hex || '#EF4444')
+                        }}
+                      />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full bg-gray-400" />
                     )}
                     <span className="font-semibold text-gray-800">{tag.name}</span>
                     <span className="text-sm text-gray-400">•</span>
                     <span className="text-sm text-gray-500">{tag.slug}</span>
+                    {tag.color && (
+                      <span
+                        className="px-2 py-0.5 text-xs text-white rounded-full"
+                        style={{
+                          backgroundColor: tag.color.startsWith('bg-[')
+                            ? tag.color.match(/bg-\[(#[0-9a-fA-F]{6})\]/)?.[1] || '#EF4444'
+                            : (PRESET_COLORS.find(p => p.value === tag.color)?.hex || '#EF4444')
+                        }}
+                      >
+                        {tag.color.startsWith('bg-[') ? 'Custom' : 'Preset'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
