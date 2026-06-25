@@ -23,8 +23,7 @@ import {
   Database,
   BarChart3,
   Video,
-  Star,
-  Tag,
+  Star
 } from 'lucide-react'
 
 interface User {
@@ -111,7 +110,7 @@ export default function AdminLayout({
     { icon: Database, label: 'Backup', href: '/admin/backup' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
     { icon: Star, label: 'Reviews', href: '/admin/reviews' },
-    { icon: Tag, label: 'Tags', href: '/admin/tags' },
+    { icon: Tag, label: 'Tags', href: '/admin/tags' }, // <-- HANYA SATU Tag
   ]
 
   const menuItems = allMenuItems.filter(item => {
@@ -131,7 +130,6 @@ export default function AdminLayout({
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* TOASTER - Pasti muncul di semua halaman admin */}
       <Toaster
         position="top-right"
         toastOptions={{
@@ -157,7 +155,6 @@ export default function AdminLayout({
         }}
       />
 
-      {/* Sidebar */}
       <aside 
         className={`${
           sidebarOpen ? 'w-64' : 'w-16'
@@ -219,7 +216,6 @@ export default function AdminLayout({
         </nav>
       </aside>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 p-4 shrink-0 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-800">
@@ -238,6 +234,9 @@ export default function AdminLayout({
             {pathname?.startsWith('/admin/activity-logs') && 'Activity Log'}
             {pathname?.startsWith('/admin/analytics') && 'Analytics'}
             {pathname?.startsWith('/admin/backup') && 'Backup'}
+            {pathname?.startsWith('/admin/videos') && 'Videos'}
+            {pathname?.startsWith('/admin/reviews') && 'Reviews'}
+            {pathname?.startsWith('/admin/tags') && 'Tags'}
           </h2>
           {user && (
             <div className="flex items-center gap-3 text-sm">
