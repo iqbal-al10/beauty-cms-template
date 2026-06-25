@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Play, Youtube } from 'lucide-react'
+import { Plus, Edit, Trash2, Play, Video } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Video {
@@ -280,7 +280,7 @@ export default function VideosPage() {
             {form.url && !isYouTube(form.url) && (
               <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-sm text-yellow-700 flex items-center gap-2">
-                  <Youtube className="w-4 h-4" />
+                  <Video className="w-4 h-4" />
                   URL tidak valid. Masukkan URL YouTube.
                 </p>
               </div>
@@ -320,7 +320,7 @@ export default function VideosPage() {
                       <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
-                        <Youtube className="w-8 h-8 text-red-500" />
+                        <Video className="w-8 h-8 text-red-500" />
                       </div>
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -333,7 +333,7 @@ export default function VideosPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-800">{video.title}</h3>
                       <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                        <Youtube className="w-3 h-3" />
+                        <Video className="w-3 h-3" />
                         YouTube
                       </span>
                     </div>
