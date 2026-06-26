@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
 import { contactSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
-import { ZodError } from 'zod'
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
       })
 
       return NextResponse.json(contactMessage, { status: 201 })
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.errors.map(e => e.message).join(', ')
+    } catch (error: any) {
+      // Zod error handling
+      if (error.name === 'ZodError') {
+        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
         return NextResponse.json(
           { error: errors },
           { status: 400 }

@@ -4,7 +4,6 @@ import { randomBytes } from 'crypto'
 import { forgotPasswordSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
-import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,9 +61,9 @@ export async function POST(request: NextRequest) {
         message: 'Jika akun terdaftar, link reset telah dikirim.',
         devLink: resetLink,
       })
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.errors.map(e => e.message).join(', ')
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
         return NextResponse.json(
           { error: errors },
           { status: 400 }

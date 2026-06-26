@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { bookingSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
-import { ZodError } from 'zod'
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,9 +103,9 @@ export async function POST(request: NextRequest) {
       })
 
       return NextResponse.json(booking, { status: 201 })
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.errors.map(e => e.message).join(', ')
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
         return NextResponse.json(
           { error: errors },
           { status: 400 }

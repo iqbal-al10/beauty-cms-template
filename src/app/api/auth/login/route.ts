@@ -6,7 +6,6 @@ import { logActivity } from '@/middleware/activityLogger'
 import { loginSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
-import { ZodError } from 'zod'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret'
 
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
       const validated = loginSchema.parse(body)
       const { email, password } = validated
 
-      // 3. Cari user
       const user = await prisma.user.findUnique({
         where: { email },
       })
@@ -47,7 +45,6 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // 4. Verifikasi password
       const isValid = await bcrypt.compare(password, user.passwordHash)
 
       if (!isValid) {
@@ -57,19 +54,16 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // 5. Update last login
       await prisma.user.update({
         where: { id: user.id },
         data: { lastLoginAt: new Date() },
       })
 
-      // 6. Log activity
       await logActivity(user.id, 'LOGIN', 'User', user.id, {
         email: user.email,
         timestamp: new Date().toISOString(),
       })
 
-      // 7. Generate token
       const token = jwt.sign(
         {
           id: user.id,
@@ -98,9 +92,9 @@ export async function POST(request: NextRequest) {
       })
 
       return response
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.errors.map(e => e.message).join(', ')
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
         return NextResponse.json(
           { error: errors },
           { status: 400 }
