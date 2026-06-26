@@ -6,6 +6,7 @@ import { logActivity } from '@/middleware/activityLogger'
 import { loginSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
+import { ZodError } from 'zod'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret'
 
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     // 1. RATE LIMIT
     const ip = (await headers()).get('x-forwarded-for') || 'unknown'
     const key = `login_${ip}`
-    const { success, remaining, resetTime } = rateLimitMemory(key, 5, 5 * 60 * 1000)
+    const { success, resetTime } = rateLimitMemory(key, 5, 5 * 60 * 1000)
 
     if (!success) {
       const resetDate = new Date(resetTime)
@@ -92,9 +93,9 @@ export async function POST(request: NextRequest) {
       })
 
       return response
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const errors = error.errors.map((e) => e.message).join(', ')
         return NextResponse.json(
           { error: errors },
           { status: 400 }

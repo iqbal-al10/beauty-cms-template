@@ -26,6 +26,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
+        // Tampilkan error dari API
         throw new Error(data.error || 'Login failed')
       }
 
@@ -52,7 +53,7 @@ export default function LoginPage() {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg text-sm">
               {error}
             </div>
           )}
