@@ -4,10 +4,11 @@ import { randomBytes } from 'crypto'
 import { forgotPasswordSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
+import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. RATE LIMIT: 3 requests per hour
+    // 1. RATE LIMIT
     const ip = (await headers()).get('x-forwarded-for') || 'unknown'
     const key = `forgot_password_${ip}`
     const { success, resetTime } = rateLimitMemory(key, 3, 60 * 60 * 1000)
@@ -25,52 +26,52 @@ export async function POST(request: NextRequest) {
 
     // 2. ZOD VALIDATION
     const body = await request.json()
-    const validated = forgotPasswordSchema.safeParse(body)
+    
+    try {
+      const validated = forgotPasswordSchema.parse(body)
+      const { email } = validated
 
-    if (!validated.success) {
-      const errors = validated.error.errors.map(e => e.message).join(', ')
-      return NextResponse.json(
-        { error: errors },
-        { status: 400 }
-      )
+      const user = await prisma.user.findUnique({
+        where: { email },
+      })
+
+      if (!user) {
+        return NextResponse.json(
+          { message: 'Jika akun terdaftar, link reset akan dikirim.' },
+          { status: 200 }
+        )
+      }
+
+      const resetToken = randomBytes(32).toString('hex')
+      const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000)
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken,
+          resetTokenExpiry,
+        },
+      })
+
+      const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`
+
+      console.log('📧 RESET LINK:', resetLink)
+      console.log('📧 Untuk: ', email)
+
+      return NextResponse.json({
+        message: 'Jika akun terdaftar, link reset telah dikirim.',
+        devLink: resetLink,
+      })
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const errors = error.errors.map(e => e.message).join(', ')
+        return NextResponse.json(
+          { error: errors },
+          { status: 400 }
+        )
+      }
+      throw error
     }
-
-    const { email } = validated.data
-
-    // 3. Cari user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    })
-
-    if (!user) {
-      return NextResponse.json(
-        { message: 'Jika akun terdaftar, link reset akan dikirim.' },
-        { status: 200 }
-      )
-    }
-
-    // 4. Generate token
-    const resetToken = randomBytes(32).toString('hex')
-    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000)
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetTokenExpiry,
-      },
-    })
-
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`
-
-    // Log untuk development
-    console.log('📧 RESET LINK:', resetLink)
-    console.log('📧 Untuk: ', email)
-
-    return NextResponse.json({
-      message: 'Jika akun terdaftar, link reset telah dikirim.',
-      devLink: resetLink,
-    })
   } catch (error) {
     console.error('Forgot password error:', error)
     return NextResponse.json(

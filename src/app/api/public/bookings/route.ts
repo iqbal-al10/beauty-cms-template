@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { bookingSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
+import { ZodError } from 'zod'
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. RATE LIMIT: 5 bookings per hour per IP
+    // 1. RATE LIMIT
     const ip = (await headers()).get('x-forwarded-for') || 'unknown'
     const key = `booking_${ip}`
     const { success, resetTime } = rateLimitMemory(key, 5, 60 * 60 * 1000)
@@ -67,50 +68,52 @@ export async function POST(request: NextRequest) {
 
     // 2. ZOD VALIDATION
     const body = await request.json()
-    const validated = bookingSchema.safeParse(body)
+    
+    try {
+      const validated = bookingSchema.parse(body)
+      const { customerName, whatsapp, email, bookingDate, bookingTime, serviceId, notes } = validated
 
-    if (!validated.success) {
-      const errors = validated.error.errors.map(e => e.message).join(', ')
-      return NextResponse.json(
-        { error: errors },
-        { status: 400 }
-      )
+      const existing = await prisma.booking.findFirst({
+        where: {
+          bookingDate: new Date(bookingDate),
+          bookingTime,
+          serviceId,
+          status: { in: ['PENDING', 'APPROVED'] },
+        },
+      })
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'Slot sudah dibooking oleh orang lain' },
+          { status: 409 }
+        )
+      }
+
+      const booking = await prisma.booking.create({
+        data: {
+          customerName,
+          whatsapp,
+          email,
+          bookingDate: new Date(bookingDate),
+          bookingTime,
+          serviceId,
+          notes,
+          status: 'PENDING',
+        },
+        include: { service: true },
+      })
+
+      return NextResponse.json(booking, { status: 201 })
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const errors = error.errors.map(e => e.message).join(', ')
+        return NextResponse.json(
+          { error: errors },
+          { status: 400 }
+        )
+      }
+      throw error
     }
-
-    const { customerName, whatsapp, email, bookingDate, bookingTime, serviceId, notes } = validated.data
-
-    // 3. Check if slot is available
-    const existing = await prisma.booking.findFirst({
-      where: {
-        bookingDate: new Date(bookingDate),
-        bookingTime,
-        serviceId,
-        status: { in: ['PENDING', 'APPROVED'] },
-      },
-    })
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'Slot sudah dibooking oleh orang lain' },
-        { status: 409 }
-      )
-    }
-
-    const booking = await prisma.booking.create({
-      data: {
-        customerName,
-        whatsapp,
-        email,
-        bookingDate: new Date(bookingDate),
-        bookingTime,
-        serviceId,
-        notes,
-        status: 'PENDING',
-      },
-      include: { service: true },
-    })
-
-    return NextResponse.json(booking, { status: 201 })
   } catch (error) {
     console.error('Error creating booking:', error)
     return NextResponse.json(
