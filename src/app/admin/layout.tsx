@@ -99,24 +99,24 @@ export default function AdminLayout({
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Package, label: 'Products', href: '/admin/products' },
-    { icon: FolderTree, label: 'Categories', href: '/admin/categories' },
     { icon: ShoppingBag, label: 'Promos', href: '/admin/promos' },        // Icon berbeda untuk Promos
     { icon: Calendar, label: 'Bookings', href: '/admin/bookings' },
     { icon: MessageSquare, label: 'Testimonials', href: '/admin/testimonials' },
+    { icon: FolderTree, label: 'Categories', href: '/admin/categories' },
     { icon: FileText, label: 'Blog', href: '/admin/blog' },
     { icon: FolderOpen, label: 'Blog Categories', href: '/admin/blog-categories' }, // Icon berbeda
     { icon: Hash, label: 'Blog Tags', href: '/admin/blog-tags' },         // Icon berbeda
-    { icon: Images, label: 'Before/After', href: '/admin/before-after' },
     { icon: Tag, label: 'Tags', href: '/admin/tags' },                    // Tag untuk Product Tags
+    { icon: Image, label: 'Media', href: '/admin/media' },
+    { icon: Images, label: 'Before/After', href: '/admin/before-after' },
+    { icon: Video, label: 'Videos', href: '/admin/videos' },
+    { icon: Star, label: 'Reviews', href: '/admin/reviews' },
     { icon: HelpCircle, label: 'FAQ', href: '/admin/faq' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
-    { icon: Image, label: 'Media', href: '/admin/media' },
     { icon: Users, label: 'Users', href: '/admin/users' },
     { icon: Activity, label: 'Activity Log', href: '/admin/activity-logs' },
     { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
     { icon: Database, label: 'Backup', href: '/admin/backup' },
-    { icon: Video, label: 'Videos', href: '/admin/videos' },
-    { icon: Star, label: 'Reviews', href: '/admin/reviews' },
   ]
 
   const menuItems = allMenuItems.filter(item => {

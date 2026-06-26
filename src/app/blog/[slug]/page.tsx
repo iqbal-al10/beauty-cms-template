@@ -2,6 +2,31 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { Calendar } from 'lucide-react'
 
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const post = await prisma.blogPost.findUnique({
+    where: { slug: params.slug },
+  })
+
+  if (!post) return {}
+
+  const settings = await prisma.settings.findUnique({
+    where: { id: 'default' },
+  })
+
+  return {
+    title: post.metaTitle || post.title,
+    description: post.metaDescription || post.excerpt || '',
+    alternates: {
+      canonical: post.canonicalUrl || undefined,
+    },
+    openGraph: {
+      title: post.metaTitle || post.title,
+      description: post.metaDescription || post.excerpt || '',
+      images: [post.ogImageUrl || settings?.defaultOgImage || '/og-image.jpg'],
+    },
+  }
+}
+
 export default async function BlogDetailPage({
   params,
 }: {
@@ -32,7 +57,7 @@ export default async function BlogDetailPage({
     },
     datePublished: post.publishedAt || post.createdAt,
     dateModified: post.updatedAt,
-    image: post.coverImageUrl || '/placeholder-blog.jpg',
+    image: post.ogImageUrl || post.coverImageUrl || '/og-image.jpg',
   }
 
   return (

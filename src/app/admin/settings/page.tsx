@@ -23,6 +23,7 @@ interface Settings {
   gaTrackingId: string
   metaTitle: string
   metaDescription: string
+  defaultOgImage: string
 }
 
 const FONT_OPTIONS = ['Inter', 'Poppins', 'Roboto', 'Open Sans', 'Lato', 'Montserrat']
@@ -47,6 +48,7 @@ export default function SettingsPage() {
     gaTrackingId: '',
     metaTitle: '',
     metaDescription: '',
+    defaultOgImage: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -79,11 +81,12 @@ export default function SettingsPage() {
           gaTrackingId: data.gaTrackingId || '',
           metaTitle: data.metaTitle || '',
           metaDescription: data.metaDescription || '',
+          defaultOgImage: data.defaultOgImage || '',
         })
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
-      toast.error('❌ Gagal memuat pengaturan')
+      toast.error('Gagal memuat pengaturan')
     } finally {
       setLoading(false)
     }
@@ -113,10 +116,10 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Failed to save')
       }
 
-      toast.success('Pengaturan berhasil disimpan!')
+      toast.success('✅ Pengaturan berhasil disimpan!')
     } catch (error: any) {
       console.error('Error saving settings:', error)
-      toast.error('Gagal menyimpan pengaturan')
+      toast.error('❌ Gagal menyimpan pengaturan')
     } finally {
       setSaving(false)
     }
@@ -152,6 +155,7 @@ export default function SettingsPage() {
           gaTrackingId: data.gaTrackingId || '',
           metaTitle: data.metaTitle || '',
           metaDescription: data.metaDescription || '',
+          defaultOgImage: data.defaultOgImage || '',
         })
         toast.success('🔄 Pengaturan direset ke default!')
       }
@@ -173,77 +177,99 @@ export default function SettingsPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Pengaturan Website</h1>
 
-      {/* ===== PREVIEW LED / LAYAR ELEGAN ===== */}
-      <div 
-        className="rounded-xl p-5 mb-6 border border-pink-100 shadow-lg relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(145deg, #ffffff 0%, #fdf2f8 30%, #fce7f3 60%, #f7def2 100%)',
-        }}
-      >
-        {/* Efek kaca/glare tipis */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse at 20% 10%, rgba(255,255,255,0.6) 0%, transparent 70%)',
-          }}
-        ></div>
-        
-        <div className="flex items-center gap-6 flex-wrap relative z-10">
-          {/* Nama Website - Efek LED */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">🏷️ Nama Website:</span>
+      {/* ===== LIVE PREVIEW (SEPERTI YANG ANDA INGINKAN) ===== */}
+      <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+        <div className="bg-gray-100 px-4 py-0.5 border-b border-gray-200 text-xs text-gray-500 font-medium flex items-center gap-2">
+          <span>👁️ Live Preview Tema</span>
+        </div>
+
+        {/* Header / Navbar */}
+        <div className="bg-white px-5 py-1 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Logo - PRIMARY */}
+            <div 
+              className="w-1.5 h-6 rounded-lg shadow-sm" 
+              style={{ backgroundColor: settings.colorPrimary }}
+            ></div>
+            {/* Nama Website - PRIMARY */}
             <span 
-              className="text-xl font-bold tracking-wide"
-              style={{
-                color: settings.colorPrimary,
-                textShadow: `0 0 6px ${settings.colorPrimary}66, 0 0 12px ${settings.colorPrimary}33`,
-              }}
+              className="font-bold tracking-tight text-2xl"
+              style={{ color: settings.colorPrimary }}
             >
-              {settings.siteName}
+              {settings.siteName || "Nama Website"}
             </span>
           </div>
           
-          {/* Primary - Kotak warna */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">Primary:</span>
-            <div 
-              className="w-8 h-8 rounded-lg border border-gray-200 shadow-md"
-              style={{ 
-                backgroundColor: settings.colorPrimary,
-                boxShadow: `0 0 10px ${settings.colorPrimary}40`,
-              }}
-            ></div>
+          <div className="hidden sm:flex gap-3">
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full"></div>
           </div>
+        </div>
 
-          {/* Secondary - Kotak warna */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">Secondary:</span>
-            <div 
-              className="w-8 h-8 rounded-lg border border-gray-200 shadow-md"
-              style={{ 
-                backgroundColor: settings.colorSecondary,
-                boxShadow: `0 0 10px ${settings.colorSecondary}40`,
-              }}
-            ></div>
-          </div>
+        {/* Hero Section */}
+        <div className="p-2 text-center flex flex-col items-center justify-center">
+          {/* Judul - PRIMARY */}
+          <h3 
+            className="text-xl font-bold mb-2"
+            style={{ color: settings.colorPrimary }}
+          >
+            Selamat Datang di {settings.siteName || "Website Kami"}
+          </h3>
 
-          {/* Button - Tombol */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500">Button:</span>
-            <button
-              className="px-5 py-1.5 rounded-lg text-sm font-medium text-white shadow-md transition-all duration-200 hover:scale-105"
-              style={{ 
-                backgroundColor: settings.colorButton,
-                boxShadow: `0 2px 8px ${settings.colorButton}60`,
-              }}
-            >
-              Tombol
-            </button>
+          {/* Deskripsi - SECONDARY */}
+          <p 
+            className="text-sm mb-3 max-w-sm mx-auto"
+            style={{ color: settings.colorSecondary }}
+          >
+            Ini adalah gambaran bagaimana perpaduan warna dan identitas website Anda akan terlihat oleh pengunjung.
+          </p>
+
+          {/* Garis aksen - SECONDARY */}
+          <div 
+            className="w-16 h-0.5 rounded-full mb-3"
+            style={{ backgroundColor: settings.colorSecondary }}
+          ></div>
+
+          {/* Tombol - BUTTON */}
+          <button
+            className="px-6 py-2.5 rounded-full text-white text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-md active:scale-95 flex items-center gap-2"
+            style={{ backgroundColor: settings.colorButton }}
+          >
+            Mulai Sekarang
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+
+          {/* Indikator Warna */}
+          <div className="flex items-center gap-6 mt-3 pt-2 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Primary:</span>
+              <div 
+                className="w-5 h-5 rounded border border-gray-200"
+                style={{ backgroundColor: settings.colorPrimary }}
+              ></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Secondary:</span>
+              <div 
+                className="w-5 h-5 rounded border border-gray-200"
+                style={{ backgroundColor: settings.colorSecondary }}
+              ></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Button:</span>
+              <div 
+                className="w-5 h-5 rounded border border-gray-200"
+                style={{ backgroundColor: settings.colorButton }}
+              ></div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ===== FORM LENGKAP ===== */}
+      {/* ===== FORM SETTINGS ===== */}
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
         {/* Nama Website */}
         <div>
@@ -254,6 +280,7 @@ export default function SettingsPage() {
             onChange={(e) => handleChange('siteName', e.target.value)}
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
           />
+          <p className="text-xs text-gray-400 mt-1">Warna <span className="font-medium">Primary</span> akan mengubah warna nama website</p>
         </div>
 
         {/* Email & WhatsApp */}
@@ -279,7 +306,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Alamat */}
+        {/* Address */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Address</label>
           <input
@@ -291,33 +318,39 @@ export default function SettingsPage() {
         </div>
 
         {/* Warna */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Primary Color</label>
-            <input
-              type="color"
-              value={settings.colorPrimary}
-              onChange={(e) => handleChange('colorPrimary', e.target.value)}
-              className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Secondary Color</label>
-            <input
-              type="color"
-              value={settings.colorSecondary}
-              onChange={(e) => handleChange('colorSecondary', e.target.value)}
-              className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Button Color</label>
-            <input
-              type="color"
-              value={settings.colorButton}
-              onChange={(e) => handleChange('colorButton', e.target.value)}
-              className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
-            />
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="font-semibold text-gray-800 mb-3">🎨 Warna</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Primary</label>
+              <input
+                type="color"
+                value={settings.colorPrimary}
+                onChange={(e) => handleChange('colorPrimary', e.target.value)}
+                className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+              />
+              <p className="text-xs text-gray-400 mt-1">Nama website & judul</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Secondary</label>
+              <input
+                type="color"
+                value={settings.colorSecondary}
+                onChange={(e) => handleChange('colorSecondary', e.target.value)}
+                className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+              />
+              <p className="text-xs text-gray-400 mt-1">Deskripsi & aksen</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Button</label>
+              <input
+                type="color"
+                value={settings.colorButton}
+                onChange={(e) => handleChange('colorButton', e.target.value)}
+                className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+              />
+              <p className="text-xs text-gray-400 mt-1">Tombol CTA</p>
+            </div>
           </div>
         </div>
 
@@ -383,7 +416,7 @@ export default function SettingsPage() {
 
         {/* JSON Fields */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="font-semibold text-gray-800 mb-2">JSON Configuration</h3>
+          <h3 className="font-semibold text-gray-800 mb-2">📋 JSON Configuration</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Footer Content (JSON)</label>
@@ -428,9 +461,27 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* SEO */}
+        {/* SEO Default OG Image */}
         <div className="border-t border-gray-200 pt-4">
-          <h3 className="font-semibold text-gray-800 mb-2">SEO</h3>
+          <h3 className="font-semibold text-gray-800 mb-2">🔍 SEO (Default)</h3>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Default OG Image URL</label>
+            <input
+              type="text"
+              value={settings.defaultOgImage || ''}
+              onChange={(e) => handleChange('defaultOgImage', e.target.value)}
+              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+              placeholder="https://example.com/default-og-image.jpg"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Gambar ini akan digunakan sebagai fallback jika produk/blog tidak memiliki OG Image sendiri.
+            </p>
+          </div>
+        </div>
+
+        {/* GA & SEO */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="font-semibold text-gray-800 mb-2">📊 Google Analytics & SEO</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Meta Title</label>
@@ -439,6 +490,7 @@ export default function SettingsPage() {
                 value={settings.metaTitle}
                 onChange={(e) => handleChange('metaTitle', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Judul untuk SEO"
               />
             </div>
             <div>
@@ -448,6 +500,7 @@ export default function SettingsPage() {
                 value={settings.metaDescription}
                 onChange={(e) => handleChange('metaDescription', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Deskripsi untuk SEO"
               />
             </div>
           </div>
@@ -458,14 +511,14 @@ export default function SettingsPage() {
           <button
             type="submit"
             disabled={saving}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50 transition-colors"
+            className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg font-medium disabled:opacity-50"
           >
             {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg"
           >
             Reset
           </button>

@@ -31,6 +31,10 @@ export default function NewProductPage() {
     stock: '',
     status: 'DRAFT',
     categoryId: '',
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    ogImageUrl: '',
   })
 
   useEffect(() => {
@@ -63,7 +67,6 @@ export default function NewProductPage() {
     setLoading(true)
 
     try {
-      // 1. Create product
       const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,7 +84,6 @@ export default function NewProductPage() {
 
       const product = await res.json()
 
-      // 2. Assign tags if any selected
       if (selectedTagIds.length > 0) {
         await fetch(`/api/admin/products/${product.id}/tags`, {
           method: 'PUT',
@@ -104,16 +106,14 @@ export default function NewProductPage() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/admin/products"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
+        <Link href="/admin/products" className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="text-2xl font-bold text-gray-800">Tambah Produk</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4 max-w-2xl">
+        {/* Nama Produk */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
           <input
@@ -122,11 +122,7 @@ export default function NewProductPage() {
             value={form.name}
             onChange={(e) => {
               const name = e.target.value
-              setForm({
-                ...form,
-                name,
-                slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, ''),
-              })
+              setForm({ ...form, name, slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '') })
             }}
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
           />
@@ -140,7 +136,6 @@ export default function NewProductPage() {
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/ /g, '-') })}
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-            placeholder="nama-produk"
           />
         </div>
 
@@ -164,7 +159,6 @@ export default function NewProductPage() {
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-              placeholder="250000"
             />
           </div>
           <div>
@@ -175,7 +169,6 @@ export default function NewProductPage() {
               value={form.stock}
               onChange={(e) => setForm({ ...form, stock: e.target.value })}
               className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-              placeholder="50"
             />
           </div>
         </div>
@@ -208,7 +201,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
-        {/* ===== TAGS ===== */}
+        {/* Tags */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Tags</label>
           <select
@@ -224,32 +217,72 @@ export default function NewProductPage() {
               <option value="" disabled>Belum ada tag. Buat tag dulu di menu Tags.</option>
             ) : (
               tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
+                <option key={tag.id} value={tag.id}>{tag.name}</option>
               ))
             )}
           </select>
           <p className="text-xs text-gray-400 mt-1">
-            {selectedTagIds.length > 0
-              ? `Terpilih: ${selectedTagIds.length} tag`
-              : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
+            {selectedTagIds.length > 0 ? `Terpilih: ${selectedTagIds.length} tag` : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
           </p>
           {selectedTagIds.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedTagIds.map((tagId) => {
                 const tag = tags.find(t => t.id === tagId)
                 return tag ? (
-                  <span
-                    key={tag.id}
-                    className={`px-2 py-1 text-xs text-white rounded-full ${tag.color || 'bg-gray-500'}`}
-                  >
+                  <span key={tag.id} className={`px-2 py-1 text-xs text-white rounded-full ${tag.color || 'bg-gray-500'}`}>
                     {tag.name}
                   </span>
                 ) : null
               })}
             </div>
           )}
+        </div>
+
+        {/* ===== SEO FIELDS ===== */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 SEO</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Meta Title</label>
+              <input
+                type="text"
+                value={form.metaTitle || ''}
+                onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="SEO title (max 60 chars)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Meta Description</label>
+              <textarea
+                rows={2}
+                value={form.metaDescription || ''}
+                onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="SEO description (max 160 chars)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Canonical URL</label>
+              <input
+                type="text"
+                value={form.canonicalUrl || ''}
+                onChange={(e) => setForm({ ...form, canonicalUrl: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://example.com/canonical-url"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">OG Image URL</label>
+              <input
+                type="text"
+                value={form.ogImageUrl || ''}
+                onChange={(e) => setForm({ ...form, ogImageUrl: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://example.com/og-image.jpg"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 pt-4">
@@ -261,10 +294,7 @@ export default function NewProductPage() {
             <Save className="w-4 h-4" />
             {loading ? 'Menyimpan...' : 'Simpan Produk'}
           </button>
-          <Link
-            href="/admin/products"
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg"
-          >
+          <Link href="/admin/products" className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg">
             Batal
           </Link>
         </div>

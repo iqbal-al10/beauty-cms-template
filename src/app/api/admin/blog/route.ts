@@ -24,7 +24,10 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, slug, content, excerpt, status, publishedAt, categoryId } = body
+    const { 
+      title, slug, content, excerpt, status, publishedAt, categoryId,
+      metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+    } = body
 
     const post = await prisma.blogPost.create({
       data: {
@@ -35,6 +38,10 @@ export async function POST(request: NextRequest) {
         status: status || 'DRAFT',
         publishedAt: publishedAt ? new Date(publishedAt) : null,
         categoryId: categoryId || null,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        canonicalUrl: canonicalUrl || null,
+        ogImageUrl: ogImageUrl || null,
       },
       include: {
         category: true,

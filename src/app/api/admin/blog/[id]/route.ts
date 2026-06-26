@@ -43,7 +43,10 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { title, slug, content, excerpt, status, publishedAt } = body
+    const { 
+      title, slug, content, excerpt, status, publishedAt, categoryId,
+      metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+    } = body
 
     const post = await prisma.blogPost.update({
       where: { id },
@@ -54,6 +57,15 @@ export async function PUT(
         excerpt,
         status,
         publishedAt: publishedAt ? new Date(publishedAt) : null,
+        categoryId: categoryId || null,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        canonicalUrl: canonicalUrl || null,
+        ogImageUrl: ogImageUrl || null,
+      },
+      include: {
+        category: true,
+        tags: true,
       },
     })
 

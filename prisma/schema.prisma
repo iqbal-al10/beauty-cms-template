@@ -27,6 +27,9 @@ model Settings {
   gaTrackingId       String?
   metaTitle          String?
   metaDescription    String?
+  // ===== SEO =====
+  defaultOgImage    String?
+  // ===============
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -58,21 +61,27 @@ model Category {
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  name        String
-  slug        String         @unique
-  description String?
-  price       Float
-  stock       Int            @default(0)
-  status      String         @default("DRAFT")
-  isFeatured  Boolean        @default(false)
-  categoryId  String
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  category    Category       @relation(fields: [categoryId], references: [id])
-  promos      PromoProduct[]
-  reviews     Review[]
-  tags        ProductTag[]
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  description     String?
+  price           Float
+  stock           Int            @default(0)
+  status          String         @default("DRAFT")
+  isFeatured      Boolean        @default(false)
+  categoryId      String
+  // ===== SEO =====
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+  ogImageUrl      String?
+  // ===============
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  category        Category       @relation(fields: [categoryId], references: [id])
+  promos          PromoProduct[]
+  reviews         Review[]
+  tags            ProductTag[]
 }
 
 model Service {
@@ -126,6 +135,12 @@ model BlogPost {
   status        String    @default("DRAFT")
   publishedAt   DateTime?
   categoryId    String?
+  // ===== SEO =====
+  metaTitle     String?
+  metaDescription String?
+  canonicalUrl  String?
+  ogImageUrl    String?
+  // ===============
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -141,7 +156,6 @@ model BlogCategory {
   sortOrder   Int       @default(0)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
   posts       BlogPost[]
 }
 
@@ -151,7 +165,6 @@ model BlogTag {
   slug      String    @unique
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-
   posts     BlogPost[]
 }
 
@@ -285,6 +298,5 @@ model ProductTag {
   color     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   products  Product[]
 }

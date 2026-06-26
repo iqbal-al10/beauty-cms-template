@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logUserAction } from '@/middleware/activityLogger'
 
 export async function GET(
   request: NextRequest,
@@ -36,7 +37,10 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, slug, description, price, stock, status, categoryId } = body
+    const { 
+      name, slug, description, price, stock, status, categoryId,
+      metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+    } = body
 
     const product = await prisma.product.update({
       where: { id },
@@ -48,8 +52,18 @@ export async function PUT(
         stock: parseInt(stock),
         status,
         categoryId,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        canonicalUrl: canonicalUrl || null,
+        ogImageUrl: ogImageUrl || null,
       },
       include: { category: true },
+    })
+
+    await logUserAction('UPDATE', 'Product', product.id, {
+      name: product.name,
+      price: product.price,
+      status: product.status,
     })
 
     return NextResponse.json(product)

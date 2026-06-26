@@ -6,16 +6,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const all = searchParams.get('all')
-    const select = searchParams.get('select') // Untuk dropdown review
+    const select = searchParams.get('select')
 
     if (select === 'true') {
-      // Hanya ambil id dan name untuk dropdown
       const products = await prisma.product.findMany({
         where: { status: 'PUBLISHED' },
-        select: {
-          id: true,
-          name: true,
-        },
+        select: { id: true, name: true },
         orderBy: { name: 'asc' },
       })
       return NextResponse.json(products)
@@ -37,7 +33,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, slug, description, price, stock, status, categoryId } = body
+    const { 
+      name, slug, description, price, stock, status, categoryId,
+      metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+    } = body
 
     const product = await prisma.product.create({
       data: {
@@ -48,6 +47,10 @@ export async function POST(request: NextRequest) {
         stock: parseInt(stock),
         status: status || 'DRAFT',
         categoryId,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        canonicalUrl: canonicalUrl || null,
+        ogImageUrl: ogImageUrl || null,
       },
       include: { category: true },
     })

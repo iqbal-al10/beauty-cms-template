@@ -26,6 +26,10 @@ interface Product {
   stock: number
   status: string
   categoryId: string
+  metaTitle: string | null
+  metaDescription: string | null
+  canonicalUrl: string | null
+  ogImageUrl: string | null
   tags: Tag[]
 }
 
@@ -46,6 +50,10 @@ export default function EditProductPage() {
     stock: 0,
     status: 'DRAFT',
     categoryId: '',
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    ogImageUrl: '',
     tags: [],
   })
 
@@ -100,7 +108,6 @@ export default function EditProductPage() {
     setLoading(true)
 
     try {
-      // 1. Update product
       const res = await fetch(`/api/admin/products/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +123,6 @@ export default function EditProductPage() {
         throw new Error(error.error || 'Failed to update product')
       }
 
-      // 2. Update tags
       await fetch(`/api/admin/products/${params.id}/tags`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -145,16 +151,14 @@ export default function EditProductPage() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <Link
-          href="/admin/products"
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-        >
+        <Link href="/admin/products" className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <h1 className="text-2xl font-bold text-gray-800">Edit Produk</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4 max-w-2xl">
+        {/* Nama Produk */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
           <input
@@ -163,11 +167,7 @@ export default function EditProductPage() {
             value={form.name}
             onChange={(e) => {
               const name = e.target.value
-              setForm({
-                ...form,
-                name,
-                slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, ''),
-              })
+              setForm({ ...form, name, slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '') })
             }}
             className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
           />
@@ -246,7 +246,7 @@ export default function EditProductPage() {
           </div>
         </div>
 
-        {/* ===== TAGS ===== */}
+        {/* Tags */}
         <div>
           <label className="block text-sm font-medium text-gray-700">Tags</label>
           <select
@@ -262,32 +262,72 @@ export default function EditProductPage() {
               <option value="" disabled>Belum ada tag. Buat tag dulu di menu Tags.</option>
             ) : (
               tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
+                <option key={tag.id} value={tag.id}>{tag.name}</option>
               ))
             )}
           </select>
           <p className="text-xs text-gray-400 mt-1">
-            {selectedTagIds.length > 0
-              ? `Terpilih: ${selectedTagIds.length} tag`
-              : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
+            {selectedTagIds.length > 0 ? `Terpilih: ${selectedTagIds.length} tag` : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
           </p>
           {selectedTagIds.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedTagIds.map((tagId) => {
                 const tag = tags.find(t => t.id === tagId)
                 return tag ? (
-                  <span
-                    key={tag.id}
-                    className={`px-2 py-1 text-xs text-white rounded-full ${tag.color || 'bg-gray-500'}`}
-                  >
+                  <span key={tag.id} className={`px-2 py-1 text-xs text-white rounded-full ${tag.color || 'bg-gray-500'}`}>
                     {tag.name}
                   </span>
                 ) : null
               })}
             </div>
           )}
+        </div>
+
+        {/* ===== SEO FIELDS ===== */}
+        <div className="border-t border-gray-200 pt-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 SEO</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Meta Title</label>
+              <input
+                type="text"
+                value={form.metaTitle || ''}
+                onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="SEO title (max 60 chars)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Meta Description</label>
+              <textarea
+                rows={2}
+                value={form.metaDescription || ''}
+                onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="SEO description (max 160 chars)"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Canonical URL</label>
+              <input
+                type="text"
+                value={form.canonicalUrl || ''}
+                onChange={(e) => setForm({ ...form, canonicalUrl: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://example.com/canonical-url"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">OG Image URL</label>
+              <input
+                type="text"
+                value={form.ogImageUrl || ''}
+                onChange={(e) => setForm({ ...form, ogImageUrl: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://example.com/og-image.jpg"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 pt-4">
@@ -299,10 +339,7 @@ export default function EditProductPage() {
             <Save className="w-4 h-4" />
             {loading ? 'Menyimpan...' : 'Update Produk'}
           </button>
-          <Link
-            href="/admin/products"
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg"
-          >
+          <Link href="/admin/products" className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg">
             Batal
           </Link>
         </div>

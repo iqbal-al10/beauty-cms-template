@@ -29,6 +29,10 @@ interface BlogPost {
   categoryId: string | null
   category: Category | null
   tags: Tag[]
+  metaTitle: string | null
+  metaDescription: string | null
+  canonicalUrl: string | null
+  ogImageUrl: string | null
 }
 
 export default function BlogPage() {
@@ -47,6 +51,10 @@ export default function BlogPage() {
     status: 'DRAFT',
     publishedAt: '',
     categoryId: '',
+    metaTitle: '',
+    metaDescription: '',
+    canonicalUrl: '',
+    ogImageUrl: '',
   })
 
   useEffect(() => {
@@ -99,7 +107,6 @@ export default function BlogPage() {
     }
 
     try {
-      // 1. Create/Update blog post
       const url = editing ? `/api/admin/blog/${editing.id}` : '/api/admin/blog'
       const method = editing ? 'PUT' : 'POST'
 
@@ -112,14 +119,6 @@ export default function BlogPage() {
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || 'Failed to save')
-      }
-
-      const post = await res.json()
-
-      // 2. Update tags jika ada
-      if (selectedTagIds.length > 0) {
-        // TODO: Add API to update blog post tags
-        // Untuk sekarang, tags disimpan di database
       }
 
       toast.success(editing ? 'Blog post berhasil diupdate!' : 'Blog post berhasil ditambahkan!')
@@ -163,6 +162,10 @@ export default function BlogPage() {
       status: post.status,
       publishedAt: post.publishedAt ? post.publishedAt.split('T')[0] : '',
       categoryId: post.categoryId || '',
+      metaTitle: post.metaTitle || '',
+      metaDescription: post.metaDescription || '',
+      canonicalUrl: post.canonicalUrl || '',
+      ogImageUrl: post.ogImageUrl || '',
     })
     setSelectedTagIds(post.tags?.map((t: Tag) => t.id) || [])
     setShowForm(true)
@@ -179,6 +182,10 @@ export default function BlogPage() {
       status: 'DRAFT',
       publishedAt: '',
       categoryId: '',
+      metaTitle: '',
+      metaDescription: '',
+      canonicalUrl: '',
+      ogImageUrl: '',
     })
     setSelectedTagIds([])
   }
@@ -234,7 +241,19 @@ export default function BlogPage() {
         <button
           onClick={() => {
             setEditing(null)
-            setForm({ title: '', slug: '', content: '', excerpt: '', status: 'DRAFT', publishedAt: '', categoryId: '' })
+            setForm({ 
+              title: '', 
+              slug: '', 
+              content: '', 
+              excerpt: '', 
+              status: 'DRAFT', 
+              publishedAt: '', 
+              categoryId: '',
+              metaTitle: '',
+              metaDescription: '',
+              canonicalUrl: '',
+              ogImageUrl: '',
+            })
             setSelectedTagIds([])
             setShowForm(!showForm)
           }}
@@ -245,13 +264,14 @@ export default function BlogPage() {
         </button>
       </div>
 
-      {/* Form */}
+      {/* ===== FORM ===== */}
       {showForm && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6 max-h-[80vh] overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4">
             {editing ? 'Edit Post' : 'New Post'}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Title *</label>
               <input
@@ -270,6 +290,8 @@ export default function BlogPage() {
                 placeholder="Judul blog post"
               />
             </div>
+
+            {/* Slug */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Slug *</label>
               <input
@@ -281,6 +303,8 @@ export default function BlogPage() {
                 placeholder="judul-blog-post"
               />
             </div>
+
+            {/* Excerpt */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Excerpt</label>
               <input
@@ -291,6 +315,8 @@ export default function BlogPage() {
                 placeholder="Short summary..."
               />
             </div>
+
+            {/* Content */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Content *</label>
               <textarea
@@ -303,7 +329,7 @@ export default function BlogPage() {
               />
             </div>
 
-            {/* ===== CATEGORY ===== */}
+            {/* Category */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Category</label>
               <select
@@ -318,7 +344,7 @@ export default function BlogPage() {
               </select>
             </div>
 
-            {/* ===== TAGS ===== */}
+            {/* Tags */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Tags</label>
               <select
@@ -360,6 +386,7 @@ export default function BlogPage() {
               )}
             </div>
 
+            {/* Status & Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -383,6 +410,53 @@ export default function BlogPage() {
               </div>
             </div>
 
+            {/* ===== SEO FIELDS ===== */}
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 SEO</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Meta Title</label>
+                  <input
+                    type="text"
+                    value={form.metaTitle || ''}
+                    onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                    placeholder="SEO title (max 60 chars)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Meta Description</label>
+                  <textarea
+                    rows={2}
+                    value={form.metaDescription || ''}
+                    onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
+                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                    placeholder="SEO description (max 160 chars)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Canonical URL</label>
+                  <input
+                    type="text"
+                    value={form.canonicalUrl || ''}
+                    onChange={(e) => setForm({ ...form, canonicalUrl: e.target.value })}
+                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                    placeholder="https://example.com/canonical-url"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">OG Image URL</label>
+                  <input
+                    type="text"
+                    value={form.ogImageUrl || ''}
+                    onChange={(e) => setForm({ ...form, ogImageUrl: e.target.value })}
+                    className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                    placeholder="https://example.com/og-image.jpg"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -402,7 +476,7 @@ export default function BlogPage() {
         </div>
       )}
 
-      {/* List */}
+      {/* ===== LIST ===== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
