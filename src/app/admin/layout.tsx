@@ -23,7 +23,11 @@ import {
   Database,
   BarChart3,
   Video,
-  Star
+  Star,
+  ShoppingBag,
+  FolderOpen,
+  Hash,
+  Tags
 } from 'lucide-react'
 
 interface User {
@@ -96,11 +100,14 @@ export default function AdminLayout({
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Package, label: 'Products', href: '/admin/products' },
     { icon: FolderTree, label: 'Categories', href: '/admin/categories' },
+    { icon: ShoppingBag, label: 'Promos', href: '/admin/promos' },        // Icon berbeda untuk Promos
     { icon: Calendar, label: 'Bookings', href: '/admin/bookings' },
     { icon: MessageSquare, label: 'Testimonials', href: '/admin/testimonials' },
     { icon: FileText, label: 'Blog', href: '/admin/blog' },
+    { icon: FolderOpen, label: 'Blog Categories', href: '/admin/blog-categories' }, // Icon berbeda
+    { icon: Hash, label: 'Blog Tags', href: '/admin/blog-tags' },         // Icon berbeda
     { icon: Images, label: 'Before/After', href: '/admin/before-after' },
-    { icon: Tag, label: 'Promos', href: '/admin/promos' },
+    { icon: Tag, label: 'Tags', href: '/admin/tags' },                    // Tag untuk Product Tags
     { icon: HelpCircle, label: 'FAQ', href: '/admin/faq' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
     { icon: Image, label: 'Media', href: '/admin/media' },
@@ -110,9 +117,6 @@ export default function AdminLayout({
     { icon: Database, label: 'Backup', href: '/admin/backup' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
     { icon: Star, label: 'Reviews', href: '/admin/reviews' },
-    { icon: Tag, label: 'Tags', href: '/admin/tags' },
-    { icon: FolderTree, label: 'Blog Categories', href: '/admin/blog-categories' },
-    { icon: Tag, label: 'Blog Tags', href: '/admin/blog-tags' },
   ]
 
   const menuItems = allMenuItems.filter(item => {
@@ -224,11 +228,14 @@ export default function AdminLayout({
             {pathname === '/admin' && 'Dashboard'}
             {pathname?.startsWith('/admin/products') && 'Products'}
             {pathname?.startsWith('/admin/categories') && 'Categories'}
+            {pathname?.startsWith('/admin/promos') && 'Promos'}
             {pathname?.startsWith('/admin/bookings') && 'Bookings'}
             {pathname?.startsWith('/admin/testimonials') && 'Testimonials'}
             {pathname?.startsWith('/admin/blog') && 'Blog'}
+            {pathname?.startsWith('/admin/blog-categories') && 'Blog Categories'}
+            {pathname?.startsWith('/admin/blog-tags') && 'Blog Tags'}
             {pathname?.startsWith('/admin/before-after') && 'Before/After'}
-            {pathname?.startsWith('/admin/promos') && 'Promos'}
+            {pathname?.startsWith('/admin/tags') && 'Tags'}
             {pathname?.startsWith('/admin/faq') && 'FAQ'}
             {pathname?.startsWith('/admin/settings') && 'Settings'}
             {pathname?.startsWith('/admin/media') && 'Media'}
@@ -238,7 +245,6 @@ export default function AdminLayout({
             {pathname?.startsWith('/admin/backup') && 'Backup'}
             {pathname?.startsWith('/admin/videos') && 'Videos'}
             {pathname?.startsWith('/admin/reviews') && 'Reviews'}
-            {pathname?.startsWith('/admin/tags') && 'Tags'}
           </h2>
           {user && (
             <div className="flex items-center gap-3 text-sm">
