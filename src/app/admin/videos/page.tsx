@@ -55,6 +55,12 @@ export default function VideosPage() {
       return
     }
 
+    const isYoutube = form.url.includes('youtube.com') || form.url.includes('youtu.be')
+    if (!isYoutube) {
+      toast.error('Hanya URL YouTube yang didukung')
+      return
+    }
+
     try {
       const url = editing ? `/api/admin/videos/${editing.id}` : '/api/admin/videos'
       const method = editing ? 'PUT' : 'POST'
@@ -196,7 +202,6 @@ export default function VideosPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -237,7 +242,7 @@ export default function VideosPage() {
                 value={form.thumbnailUrl}
                 onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="thumbnail-example"
+                placeholder="https://example.com/thumbnail.jpg"
               />
             </div>
 
@@ -262,7 +267,6 @@ export default function VideosPage() {
               </div>
             </div>
 
-            {/* Preview */}
             {form.url && isYouTube(form.url) && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-500 mb-2">Preview:</p>
@@ -305,7 +309,6 @@ export default function VideosPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {videos.length === 0 ? (
@@ -314,7 +317,6 @@ export default function VideosPage() {
             videos.map((video) => (
               <div key={video.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4">
-                  {/* Thumbnail */}
                   <div className="w-32 h-20 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0 relative">
                     {video.thumbnailUrl ? (
                       <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
@@ -328,7 +330,6 @@ export default function VideosPage() {
                     </div>
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-800">{video.title}</h3>
@@ -341,7 +342,6 @@ export default function VideosPage() {
                     <p className="text-xs text-gray-400">Sort: {video.sortOrder}</p>
                   </div>
 
-                  {/* Status & Actions */}
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => togglePublish(video.id, video.isPublished, video.title)}

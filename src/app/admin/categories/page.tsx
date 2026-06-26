@@ -26,11 +26,13 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       const res = await fetch('/api/admin/categories')
+      if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
-      setCategories(data)
+      setCategories(data || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
       toast.error('Gagal memuat kategori')
+      setCategories([])
     } finally {
       setLoading(false)
     }
@@ -102,8 +104,7 @@ export default function CategoriesPage() {
     setNewCategory({ name: '', slug: '' })
   }
 
-  // ===== TOGGLE STATUS (SEPERTI DI PRODUCTS & BLOG) =====
-  const toggleStatus = async (id: string, currentStatus: boolean, name: string) => {
+  const toggleActive = async (id: string, currentStatus: boolean, name: string) => {
     try {
       const category = categories.find(c => c.id === id)
       if (!category) return
@@ -142,7 +143,7 @@ export default function CategoriesPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Kategori</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Category</h1>
         <button
           onClick={() => {
             setEditing(null)
@@ -156,7 +157,6 @@ export default function CategoriesPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -204,7 +204,6 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      {/* List Categories */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -246,9 +245,8 @@ export default function CategoriesPage() {
                     {category.slug}
                   </td>
                   <td className="px-6 py-4">
-                    {/* STATUS - BISA DI-TOGGLE SEPERTI DI PRODUCTS & BLOG */}
                     <button
-                      onClick={() => toggleStatus(category.id, category.isActive, category.name)}
+                      onClick={() => toggleActive(category.id, category.isActive, category.name)}
                       className={`px-2 py-1 text-xs rounded-full transition-colors ${
                         category.isActive
                           ? 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -259,18 +257,10 @@ export default function CategoriesPage() {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right space-x-2">
-                    <button
-                      onClick={() => handleEdit(category)}
-                      className="text-yellow-600 hover:text-yellow-800"
-                      title="Edit"
-                    >
+                    <button onClick={() => handleEdit(category)} className="text-yellow-600 hover:text-yellow-800">
                       <Edit className="w-5 h-5 inline" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(category.id, category.name)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Hapus"
-                    >
+                    <button onClick={() => handleDelete(category.id, category.name)} className="text-red-600 hover:text-red-800">
                       <Trash2 className="w-5 h-5 inline" />
                     </button>
                   </td>

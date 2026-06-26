@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Shield, User, UserCheck, UserX, Eye } from 'lucide-react'
+import { Plus, Edit, Trash2, User, UserCheck, UserX } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface User {
@@ -16,7 +16,6 @@ interface User {
 
 const ROLES = ['SUPER_ADMIN', 'ADMIN', 'EDITOR', 'STAFF']
 
-// ROLE_LABELS tanpa emoji (hanya teks)
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Admin',
@@ -24,7 +23,6 @@ const ROLE_LABELS: Record<string, string> = {
   STAFF: 'Staff',
 }
 
-// ROLE_ICONS terpisah
 const ROLE_ICONS: Record<string, string> = {
   SUPER_ADMIN: '🛡️',
   ADMIN: '⚙️',
@@ -284,7 +282,6 @@ export default function UsersPage() {
                     <div className="text-xs text-gray-500">{user.email}</div>
                   </td>
                   <td className="px-6 py-4">
-                    {/* Hanya satu icon + label */}
                     <span className="text-sm">{getRoleDisplay(user.role)}</span>
                   </td>
                   <td className="px-6 py-4">

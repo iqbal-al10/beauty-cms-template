@@ -137,7 +137,6 @@ export default function BeforeAfterPage() {
 
   const togglePublish = async (id: string, currentStatus: boolean, title: string) => {
     try {
-      // Cari item yang akan diupdate
       const item = items.find(i => i.id === id)
       if (!item) {
         toast.error('Item tidak ditemukan')
@@ -146,17 +145,11 @@ export default function BeforeAfterPage() {
 
       const newStatus = !currentStatus
 
-      // Kirim update dengan semua data, bukan hanya status
       const res = await fetch(`/api/admin/before-after/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: item.title,
-          category: item.category,
-          beforeImageUrl: item.beforeImageUrl,
-          afterImageUrl: item.afterImageUrl,
-          description: item.description || '',
-          sortOrder: item.sortOrder,
+          ...item,
           isPublished: newStatus,
         }),
       })
@@ -207,7 +200,6 @@ export default function BeforeAfterPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -282,7 +274,7 @@ export default function BeforeAfterPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Brief description of the treatment..."
+                placeholder="Brief description..."
               />
             </div>
 
@@ -326,7 +318,6 @@ export default function BeforeAfterPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {items.length === 0 ? (
@@ -335,7 +326,6 @@ export default function BeforeAfterPage() {
             items.map((item) => (
               <div key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4">
-                  {/* Preview Images */}
                   <div className="flex gap-2 flex-shrink-0">
                     <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
                       {item.beforeImageUrl ? (
@@ -355,7 +345,6 @@ export default function BeforeAfterPage() {
                     </div>
                   </div>
 
-                  {/* Info */}
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-800">{item.title}</h3>
                     <div className="flex items-center gap-3 text-sm text-gray-500">
@@ -365,7 +354,6 @@ export default function BeforeAfterPage() {
                     </div>
                   </div>
 
-                  {/* Status & Actions */}
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => togglePublish(item.id, item.isPublished, item.title)}
@@ -400,9 +388,7 @@ export default function BeforeAfterPage() {
           )}
         </div>
         <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Total: <span className="font-medium text-gray-700">{items.length}</span> items
-          </p>
+          <p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{items.length}</span> items</p>
         </div>
       </div>
     </div>

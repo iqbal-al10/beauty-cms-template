@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, GripVertical } from 'lucide-react'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface FAQ {
@@ -127,9 +127,7 @@ export default function FAQPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: faq.question,
-          answer: faq.answer,
-          sortOrder: faq.sortOrder,
+          ...faq,
           isActive: newStatus,
         }),
       })
@@ -172,7 +170,6 @@ export default function FAQPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -187,7 +184,7 @@ export default function FAQPage() {
                 value={form.question}
                 onChange={(e) => setForm({ ...form, question: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Pertanyaan yang sering diajukan..."
+                placeholder="Pertanyaan..."
               />
             </div>
             <div>
@@ -198,7 +195,7 @@ export default function FAQPage() {
                 value={form.answer}
                 onChange={(e) => setForm({ ...form, answer: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Jawaban untuk pertanyaan..."
+                placeholder="Jawaban..."
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -221,6 +218,7 @@ export default function FAQPage() {
                 <label className="text-sm text-gray-700">Active</label>
               </div>
             </div>
+
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -240,7 +238,6 @@ export default function FAQPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -256,22 +253,16 @@ export default function FAQPage() {
             <tbody className="divide-y divide-gray-200">
               {faqs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada FAQ
-                  </td>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Belum ada FAQ</td>
                 </tr>
               ) : (
                 faqs.map((faq, index) => (
                   <tr key={faq.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {faq.sortOrder || index + 1}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{faq.sortOrder || index + 1}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{faq.question}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm truncate">
-                      {faq.answer}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-sm truncate">{faq.answer}</td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleActive(faq.id, faq.isActive, faq.question)}
@@ -307,9 +298,7 @@ export default function FAQPage() {
           </table>
         </div>
         <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Total: <span className="font-medium text-gray-700">{faqs.length}</span> FAQs
-          </p>
+          <p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{faqs.length}</span> FAQs</p>
         </div>
       </div>
     </div>

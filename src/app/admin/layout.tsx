@@ -27,7 +27,8 @@ import {
   ShoppingBag,
   FolderOpen,
   Hash,
-  Tags
+  Tags,
+  User
 } from 'lucide-react'
 
 interface User {
@@ -42,6 +43,13 @@ interface SettingsData {
 }
 
 const SUPER_ADMIN_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
+
+const ROLE_COLORS: Record<string, { bg: string; text: string; iconBg: string }> = {
+  SUPER_ADMIN: { bg: 'bg-red-100', text: 'text-red-700', iconBg: 'bg-red-100 text-red-600' },
+  ADMIN: { bg: 'bg-pink-100', text: 'text-pink-700', iconBg: 'bg-pink-100 text-pink-600' },
+  EDITOR: { bg: 'bg-blue-100', text: 'text-blue-700', iconBg: 'bg-blue-100 text-blue-600' },
+  STAFF: { bg: 'bg-purple-100', text: 'text-purple-700', iconBg: 'bg-purple-100 text-purple-600' },
+}
 
 export default function AdminLayout({
   children,
@@ -99,14 +107,14 @@ export default function AdminLayout({
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Package, label: 'Products', href: '/admin/products' },
-    { icon: ShoppingBag, label: 'Promos', href: '/admin/promos' },        // Icon berbeda untuk Promos
+    { icon: ShoppingBag, label: 'Promos', href: '/admin/promos' },
     { icon: Calendar, label: 'Bookings', href: '/admin/bookings' },
     { icon: MessageSquare, label: 'Testimonials', href: '/admin/testimonials' },
     { icon: FolderTree, label: 'Categories', href: '/admin/categories' },
-    { icon: FileText, label: 'Blog', href: '/admin/blog' },
-    { icon: FolderOpen, label: 'Blog Categories', href: '/admin/blog-categories' }, // Icon berbeda
-    { icon: Hash, label: 'Blog Tags', href: '/admin/blog-tags' },         // Icon berbeda
-    { icon: Tag, label: 'Tags', href: '/admin/tags' },                    // Tag untuk Product Tags
+    { icon: FileText, label: 'Blogs', href: '/admin/blog' },
+    { icon: FolderOpen, label: 'Blog Categories', href: '/admin/blog-categories' },
+    { icon: Hash, label: 'Blog Tags', href: '/admin/blog-tags' },
+    { icon: Tag, label: 'Tags', href: '/admin/tags' },
     { icon: Image, label: 'Media', href: '/admin/media' },
     { icon: Images, label: 'Before/After', href: '/admin/before-after' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
@@ -133,6 +141,32 @@ export default function AdminLayout({
   }
 
   const siteName = settings?.siteName || 'Beauty CMS'
+  const roleColor = user?.role ? ROLE_COLORS[user.role] : ROLE_COLORS.STAFF
+
+  // ===== FUNGSI UNTUK GET TITLE HEADER =====
+  const getHeaderTitle = () => {
+    if (pathname === '/admin') return 'Dashboard'
+    if (pathname?.startsWith('/admin/products')) return 'Products'
+    if (pathname?.startsWith('/admin/categories')) return 'Categories'
+    if (pathname?.startsWith('/admin/promos')) return 'Promos'
+    if (pathname?.startsWith('/admin/bookings')) return 'Bookings'
+    if (pathname?.startsWith('/admin/testimonials')) return 'Testimonials'
+    if (pathname === '/admin/blog') return 'Blogs'
+    if (pathname?.startsWith('/admin/blog-categories')) return 'Blog Categories'
+    if (pathname?.startsWith('/admin/blog-tags')) return 'Blog Tags'
+    if (pathname?.startsWith('/admin/before-after')) return 'Before/After'
+    if (pathname?.startsWith('/admin/tags')) return 'Tags'
+    if (pathname?.startsWith('/admin/faq')) return 'FAQ'
+    if (pathname?.startsWith('/admin/settings')) return 'Settings'
+    if (pathname?.startsWith('/admin/media')) return 'Media'
+    if (pathname?.startsWith('/admin/users')) return 'User Management'
+    if (pathname?.startsWith('/admin/activity-logs')) return 'Activity Log'
+    if (pathname?.startsWith('/admin/analytics')) return 'Analytics'
+    if (pathname?.startsWith('/admin/backup')) return 'Backup'
+    if (pathname?.startsWith('/admin/videos')) return 'Videos'
+    if (pathname?.startsWith('/admin/reviews')) return 'Reviews'
+    return 'Dashboard'
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -189,7 +223,16 @@ export default function AdminLayout({
         
         <nav className="p-4 space-y-1">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
+            let isActive = false
+            
+            if (item.href === '/admin') {
+              isActive = pathname === '/admin'
+            } else if (item.href === '/admin/blog') {
+              isActive = pathname === '/admin/blog'
+            } else {
+              isActive = pathname?.startsWith(item.href) || false
+            }
+            
             return (
               <Link
                 key={item.href}
@@ -225,36 +268,15 @@ export default function AdminLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 p-4 shrink-0 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-800">
-            {pathname === '/admin' && 'Dashboard'}
-            {pathname?.startsWith('/admin/products') && 'Products'}
-            {pathname?.startsWith('/admin/categories') && 'Categories'}
-            {pathname?.startsWith('/admin/promos') && 'Promos'}
-            {pathname?.startsWith('/admin/bookings') && 'Bookings'}
-            {pathname?.startsWith('/admin/testimonials') && 'Testimonials'}
-            {pathname?.startsWith('/admin/blog') && 'Blog'}
-            {pathname?.startsWith('/admin/blog-categories') && 'Blog Categories'}
-            {pathname?.startsWith('/admin/blog-tags') && 'Blog Tags'}
-            {pathname?.startsWith('/admin/before-after') && 'Before/After'}
-            {pathname?.startsWith('/admin/tags') && 'Tags'}
-            {pathname?.startsWith('/admin/faq') && 'FAQ'}
-            {pathname?.startsWith('/admin/settings') && 'Settings'}
-            {pathname?.startsWith('/admin/media') && 'Media'}
-            {pathname?.startsWith('/admin/users') && 'User Management'}
-            {pathname?.startsWith('/admin/activity-logs') && 'Activity Log'}
-            {pathname?.startsWith('/admin/analytics') && 'Analytics'}
-            {pathname?.startsWith('/admin/backup') && 'Backup'}
-            {pathname?.startsWith('/admin/videos') && 'Videos'}
-            {pathname?.startsWith('/admin/reviews') && 'Reviews'}
+            {getHeaderTitle()}
           </h2>
+          
           {user && (
             <div className="flex items-center gap-3 text-sm">
-              <span className="text-gray-500">{user.name}</span>
-              <span className={`px-2 py-0.5 text-xs rounded-full ${
-                user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' :
-                user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700' :
-                user.role === 'EDITOR' ? 'bg-green-100 text-green-700' :
-                'bg-gray-100 text-gray-700'
-              }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${roleColor.iconBg}`}>
+                <User className="w-4 h-4" />
+              </div>
+              <span className={`px-2 py-0.5 text-xs rounded-full ${roleColor.bg} ${roleColor.text}`}>
                 {user.role}
               </span>
             </div>

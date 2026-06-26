@@ -55,7 +55,6 @@ export default function ProductsPage() {
     fetchProducts()
   }, [])
 
-  // ===== TOGGLE STATUS (SEPERTI DI BLOG) =====
   const toggleStatus = async (id: string, currentStatus: string, name: string) => {
     try {
       const product = products.find(p => p.id === id)
@@ -173,23 +172,6 @@ export default function ProductsPage() {
     }
   }
 
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedIds([])
-    } else {
-      setSelectedIds(products.map(p => p.id))
-    }
-    setSelectAll(!selectAll)
-  }
-
-  const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(sid => sid !== id))
-    } else {
-      setSelectedIds([...selectedIds, id])
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -216,7 +198,7 @@ export default function ProductsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Produk</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Product</h1>
         <Link
           href="/admin/products/new"
           className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -226,7 +208,6 @@ export default function ProductsPage() {
         </Link>
       </div>
 
-      {/* Bulk Actions */}
       {selectedIds.length > 0 && (
         <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-4 flex items-center gap-4 flex-wrap">
           <span className="text-sm text-pink-700 font-medium">
@@ -271,7 +252,14 @@ export default function ProductsPage() {
                   <input
                     type="checkbox"
                     checked={selectAll}
-                    onChange={toggleSelectAll}
+                    onChange={() => {
+                      if (selectAll) {
+                        setSelectedIds([])
+                      } else {
+                        setSelectedIds(products.map(p => p.id))
+                      }
+                      setSelectAll(!selectAll)
+                    }}
                     className="w-4 h-4 text-pink-500 rounded border-gray-300"
                   />
                 </th>
@@ -309,77 +297,85 @@ export default function ProductsPage() {
                   </td>
                 </tr>
               ) : (
-                products.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(product.id)}
-                        onChange={() => toggleSelect(product.id)}
-                        className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {product.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {product.slug}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {product.category?.name || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      Rp {product.price.toLocaleString('id-ID')}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        product.stock > 10 ? 'bg-green-100 text-green-700' :
-                        product.stock > 0 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {product.stock} unit
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {/* STATUS - BISA DI-TOGGLE SEPERTI BLOG */}
-                      <button
-                        onClick={() => toggleStatus(product.id, product.status, product.name)}
-                        className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                          product.status === 'PUBLISHED'
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {product.status === 'PUBLISHED' ? '✅ Published' : '📝 Draft'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <Link
-                        href={`/admin/products/${product.id}`}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                        title="Lihat detail"
-                      >
-                        <Eye className="w-5 h-5 inline" />
-                      </Link>
-                      <Link
-                        href={`/admin/products/${product.id}/edit`}
-                        className="text-yellow-600 hover:text-yellow-800 transition-colors"
-                        title="Edit produk"
-                      >
-                        <Edit className="w-5 h-5 inline" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(product.id, product.name)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                        title="Hapus produk"
-                      >
-                        <Trash2 className="w-5 h-5 inline" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                products.map((product) => {
+                  const isChecked = selectedIds.includes(product.id)
+                  return (
+                    <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedIds(selectedIds.filter(id => id !== product.id))
+                            } else {
+                              setSelectedIds([...selectedIds, product.id])
+                            }
+                          }}
+                          className="w-4 h-4 text-pink-500 rounded border-gray-300"
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {product.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {product.slug}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {product.category?.name || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        Rp {product.price.toLocaleString('id-ID')}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          product.stock > 10 ? 'bg-green-100 text-green-700' :
+                          product.stock > 0 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {product.stock} unit
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => toggleStatus(product.id, product.status, product.name)}
+                          className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                            product.status === 'PUBLISHED'
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {product.status === 'PUBLISHED' ? '✅ Published' : '📝 Draft'}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2">
+                        <Link
+                          href={`/admin/products/${product.id}`}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Lihat detail"
+                        >
+                          <Eye className="w-5 h-5 inline" />
+                        </Link>
+                        <Link
+                          href={`/admin/products/${product.id}/edit`}
+                          className="text-yellow-600 hover:text-yellow-800 transition-colors"
+                          title="Edit produk"
+                        >
+                          <Edit className="w-5 h-5 inline" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(product.id, product.name)}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Hapus produk"
+                        >
+                          <Trash2 className="w-5 h-5 inline" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

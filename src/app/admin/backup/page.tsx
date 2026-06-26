@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Download, Database, Shield } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function BackupPage() {
   const [loading, setLoading] = useState(false)
@@ -29,8 +30,10 @@ export default function BackupPage() {
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
 
+      toast.success('✅ Backup downloaded successfully!')
       setMessage('✅ Backup downloaded successfully!')
     } catch (error: any) {
+      toast.error(`❌ ${error.message}`)
       setMessage(`❌ ${error.message}`)
     } finally {
       setLoading(false)
@@ -47,7 +50,7 @@ export default function BackupPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-800">Export Database</h2>
             <p className="text-gray-500 text-sm">
-              Download all data as JSON file. This includes all tables and records.
+              Download all data as JSON file. Includes all tables and records.
             </p>
           </div>
         </div>

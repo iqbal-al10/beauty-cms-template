@@ -218,7 +218,6 @@ export default function ReviewsPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -314,7 +313,6 @@ export default function ReviewsPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {reviews.length === 0 ? (
@@ -323,7 +321,6 @@ export default function ReviewsPage() {
             reviews.map((review) => (
               <div key={review.id} className="p-4 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-4">
-                  {/* Rating & Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
                       <div className="flex">{renderStars(review.rating)}</div>
@@ -339,7 +336,6 @@ export default function ReviewsPage() {
                     </p>
                   </div>
 
-                  {/* Status & Actions */}
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => togglePublish(review.id, review.isPublished, review.customerName)}
@@ -374,9 +370,7 @@ export default function ReviewsPage() {
           )}
         </div>
         <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Total: <span className="font-medium text-gray-700">{reviews.length}</span> reviews
-          </p>
+          <p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{reviews.length}</span> reviews</p>
         </div>
       </div>
     </div>

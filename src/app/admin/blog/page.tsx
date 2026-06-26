@@ -237,7 +237,7 @@ export default function BlogPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Blog Posts</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Blog</h1>
         <button
           onClick={() => {
             setEditing(null)

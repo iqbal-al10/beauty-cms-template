@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Search, Filter, User, Clock, Activity, RefreshCw } from 'lucide-react'
+import { User, Clock, Activity, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ActivityLog {
@@ -48,7 +48,6 @@ export default function ActivityLogsPage() {
     MediaFile: '🖼️ Media',
   }
 
-  // ===== FETCH LOGS =====
   const fetchLogs = useCallback(async () => {
     try {
       setLoading(true)
@@ -70,12 +69,10 @@ export default function ActivityLogsPage() {
     }
   }, [filters.action, filters.entityType])
 
-  // ===== AUTO-FETCH SAAT FILTER BERUBAH =====
   useEffect(() => {
     fetchLogs()
-  }, [fetchLogs]) // ← dependency ke fetchLogs yang sudah pakai useCallback
+  }, [fetchLogs])
 
-  // ===== RESET FILTER =====
   const handleReset = () => {
     setFilters({ action: '', entityType: '', userId: '' })
   }
@@ -115,14 +112,12 @@ export default function ActivityLogsPage() {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
         <p className="text-sm text-gray-500">
           Total: <span className="font-semibold text-gray-800">{total}</span> activities
         </p>
       </div>
 
-      {/* Filters - Auto Apply */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4">
         <select
           value={filters.action}
@@ -154,10 +149,7 @@ export default function ActivityLogsPage() {
           <option value="MediaFile">Media</option>
         </select>
 
-        <button
-          onClick={handleReset}
-          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
-        >
+        <button onClick={handleReset} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
           Reset Filters
         </button>
 
@@ -166,7 +158,6 @@ export default function ActivityLogsPage() {
         )}
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">

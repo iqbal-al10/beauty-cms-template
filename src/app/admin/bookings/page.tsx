@@ -13,7 +13,7 @@ interface Booking {
   bookingTime: string
   notes: string | null
   status: string
-  service: { name: string; price: number }
+  service: { name: string; price: number } | null
   createdAt: string
 }
 
@@ -119,10 +119,7 @@ export default function BookingsPage() {
     return (
       <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
         <p className="font-medium">Error: {error}</p>
-        <button 
-          onClick={fetchBookings} 
-          className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-        >
+        <button onClick={fetchBookings} className="mt-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
           Coba Lagi
         </button>
       </div>
@@ -133,7 +130,6 @@ export default function BookingsPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Booking</h1>
 
-      {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4">
         <select
           value={filterStatus}
@@ -155,24 +151,17 @@ export default function BookingsPage() {
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
         />
 
-        <button
-          onClick={() => { setFilterStatus('ALL'); setFilterDate('') }}
-          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
-        >
+        <button onClick={() => { setFilterStatus('ALL'); setFilterDate('') }} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">
           Reset Filter
         </button>
 
-        <button
-          onClick={fetchBookings}
-          className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg flex items-center gap-2"
-        >
+        <button onClick={fetchBookings} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg flex items-center gap-2">
           <RefreshCw className="w-4 h-4" />
           Refresh
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* List Bookings */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="divide-y divide-gray-200">
             {bookings.length === 0 ? (
@@ -204,12 +193,10 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        {/* Booking Detail */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           {selectedBooking ? (
             <div>
               <h3 className="text-lg font-bold text-gray-800 mb-4">Detail Booking</h3>
-              
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
                   <User className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -218,7 +205,6 @@ export default function BookingsPage() {
                     <p className="font-medium">{selectedBooking.customerName}</p>
                   </div>
                 </div>
-
                 <div className="flex items-start gap-2">
                   <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
@@ -228,7 +214,6 @@ export default function BookingsPage() {
                     </a>
                   </div>
                 </div>
-
                 {selectedBooking.email && (
                   <div className="flex items-start gap-2">
                     <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
@@ -238,7 +223,6 @@ export default function BookingsPage() {
                     </div>
                   </div>
                 )}
-
                 <div className="flex items-start gap-2">
                   <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
@@ -249,7 +233,6 @@ export default function BookingsPage() {
                     </p>
                   </div>
                 </div>
-
                 <div className="flex items-start gap-2">
                   <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
@@ -258,14 +241,12 @@ export default function BookingsPage() {
                     <p className="text-sm text-gray-500">Rp {selectedBooking.service?.price?.toLocaleString() || '0'}</p>
                   </div>
                 </div>
-
                 {selectedBooking.notes && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <p className="text-sm text-gray-500">Catatan</p>
                     <p className="text-sm">{selectedBooking.notes}</p>
                   </div>
                 )}
-
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-sm text-gray-500 mb-2">Status</p>
                   <div className="flex flex-wrap gap-2">
@@ -283,7 +264,6 @@ export default function BookingsPage() {
                       </button>
                     ))}
                   </div>
-
                   <a
                     href={`https://wa.me/${selectedBooking.whatsapp}?text=Halo ${selectedBooking.customerName}, booking Anda untuk ${selectedBooking.service?.name || 'service'} pada ${new Date(selectedBooking.bookingDate).toLocaleDateString('id-ID')} pukul ${selectedBooking.bookingTime} telah ${getStatusLabel(selectedBooking.status).toLowerCase()}.`}
                     target="_blank"

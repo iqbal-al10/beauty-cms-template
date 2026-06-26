@@ -81,7 +81,6 @@ export default function AnalyticsPage() {
     value: item.views,
   }))
 
-  // Fungsi label untuk Pie Chart - menggunakan any untuk menghindari TypeScript error
   const renderLabel = (entry: any) => {
     const total = pieData.reduce((sum, item) => sum + item.value, 0)
     const percent = total > 0 ? Math.round((entry.value / total) * 100) : 0
@@ -121,7 +120,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-3">
@@ -163,7 +161,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Line Chart */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Visitors & Page Views Trend</h2>
         <div className="h-80">
@@ -201,7 +198,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Bar Chart + Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Visitors by Day</h2>
@@ -262,7 +258,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Device & Referrer */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Device Types</h2>

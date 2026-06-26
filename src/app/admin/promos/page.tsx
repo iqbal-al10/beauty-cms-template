@@ -192,15 +192,8 @@ export default function PromosPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: promo.title,
-          type: promo.type,
-          discountValue: promo.discountValue,
-          discountType: promo.discountType,
-          startDate: promo.startDate,
-          endDate: promo.endDate,
-          bannerUrl: promo.bannerUrl,
+          ...promo,
           isActive: newStatus,
-          productIds: promo.products.map(p => p.productId),
         }),
       })
 
@@ -269,7 +262,7 @@ export default function PromosPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Promotions</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Promo</h1>
         <button
           onClick={() => {
             setEditing(null)
@@ -293,7 +286,6 @@ export default function PromosPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6 max-h-[80vh] overflow-y-auto">
           <h2 className="text-lg font-semibold mb-4">
@@ -309,7 +301,7 @@ export default function PromosPage() {
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="e.g., Summer Sale 2026"
+                  placeholder="e.g., Summer Sale 2024"
                 />
               </div>
               <div>
@@ -443,7 +435,6 @@ export default function PromosPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {promos.length === 0 ? (

@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Package, Calendar, MessageSquare, FileText } from 'lucide-react'
+import { Package, Calendar, MessageSquare, FileText, Users, Eye, Star } from 'lucide-react'
 
 interface DashboardStats {
   totalProducts: number
   totalBookings: number
   totalTestimonials: number
   totalBlogPosts: number
+  totalUsers: number
+  totalReviews: number
   recentBookings: Array<{
     id: string
     customerName: string
@@ -22,6 +24,8 @@ export default function DashboardPage() {
     totalBookings: 0,
     totalTestimonials: 0,
     totalBlogPosts: 0,
+    totalUsers: 0,
+    totalReviews: 0,
     recentBookings: [],
   })
   const [loading, setLoading] = useState(true)
@@ -50,13 +54,7 @@ export default function DashboardPage() {
     )
   }
 
-  const cards: Array<{
-    title: string
-    value: number
-    icon: React.ComponentType<{ className?: string }>
-    color: string
-    href: string
-  }> = [
+  const cards = [
     { 
       title: 'Total Products', 
       value: stats.totalProducts, 
@@ -85,48 +83,64 @@ export default function DashboardPage() {
       color: 'bg-purple-100 text-purple-600',
       href: '/admin/blog'
     },
+    { 
+      title: 'Users', 
+      value: stats.totalUsers, 
+      icon: Users, 
+      color: 'bg-orange-100 text-orange-600',
+      href: '/admin/users'
+    },
+    { 
+      title: 'Reviews', 
+      value: stats.totalReviews, 
+      icon: Star, 
+      color: 'bg-yellow-100 text-yellow-600',
+      href: '/admin/reviews'
+    },
   ]
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {cards.map((card) => (
           <div
             key={card.title}
-            className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">{card.title}</p>
-                <p className="text-2xl font-bold text-gray-800 mt-1">{card.value}</p>
+                <p className="text-xs text-gray-500">{card.title}</p>
+                <p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p>
               </div>
-              <div className={`${card.color} p-3 rounded-xl`}>
-                <card.icon className="w-6 h-6" />
+              <div className={`${card.color} p-2 rounded-lg`}>
+                <card.icon className="w-4 h-4" />
               </div>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Recent Bookings */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Recent Bookings</h2>
         {stats.recentBookings.length === 0 ? (
-          <p className="text-gray-500">No recent bookings</p>
+          <p className="text-gray-500 text-sm">No recent bookings</p>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y divide-gray-100">
             {stats.recentBookings.map((booking) => (
-              <div key={booking.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div key={booking.id} className="py-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-gray-800">{booking.customerName}</p>
                   <p className="text-sm text-gray-500">
                     {new Date(booking.bookingDate).toLocaleDateString('id-ID')}
                   </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                <span className={`px-2 py-1 text-xs rounded-full ${
                   booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
                   booking.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                  booking.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                   'bg-gray-100 text-gray-700'
                 }`}>
                   {booking.status}

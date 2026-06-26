@@ -175,12 +175,12 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Pengaturan Website</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Setting Management</h1>
 
       {/* ===== LIVE PREVIEW (SEPERTI YANG ANDA INGINKAN) ===== */}
       <div className="bg-gray-50 rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
         <div className="bg-gray-100 px-4 py-0.5 border-b border-gray-200 text-xs text-gray-500 font-medium flex items-center gap-2">
-          <span>👁️ Live Preview Tema</span>
+          <span>👁️ Live Preview Website</span>
         </div>
 
         {/* Header / Navbar */}

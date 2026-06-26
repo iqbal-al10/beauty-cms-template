@@ -27,13 +27,12 @@ export default function MediaPage() {
   const [selectedFolderForUpload, setSelectedFolderForUpload] = useState('')
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
-  const [selectedFolderFilter, setSelectedFolderFilter] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ===== FETCH FILES =====
   const fetchFiles = async () => {
     try {
       const params = new URLSearchParams()
-      if (selectedFolderFilter) params.append('folder', selectedFolderFilter)
       if (search) params.append('search', search)
 
       const res = await fetch(`/api/admin/media?${params}`)
@@ -49,6 +48,7 @@ export default function MediaPage() {
     }
   }
 
+  // ===== FETCH FOLDERS =====
   const fetchFolders = async () => {
     try {
       const res = await fetch('/api/admin/media/folders')
@@ -64,7 +64,7 @@ export default function MediaPage() {
   useEffect(() => {
     fetchFiles()
     fetchFolders()
-  }, [search, selectedFolderFilter])
+  }, [search])
 
   // ===== CREATE FOLDER =====
   const handleCreateFolder = async () => {
@@ -105,24 +105,13 @@ export default function MediaPage() {
         method: 'DELETE',
       })
 
-      // Cek response sebelum parsing JSON
-      const text = await res.text()
-      
-      if (!res.ok) {
-        try {
-          const error = JSON.parse(text)
-          toast.error(error.error || 'Gagal menghapus folder')
-        } catch {
-          toast.error('Gagal menghapus folder')
-        }
-        return
-      }
-
-      toast.success(`Folder "${folderName}" berhasil dihapus!`)
-      fetchFolders()
-      fetchFiles()
-      if (selectedFolderFilter === folderName) {
-        setSelectedFolderFilter('')
+      if (res.ok) {
+        toast.success(`Folder "${folderName}" berhasil dihapus!`)
+        fetchFolders()
+        fetchFiles()
+      } else {
+        const error = await res.json()
+        toast.error(error.error || 'Gagal menghapus folder')
       }
     } catch (error) {
       console.error('Error deleting folder:', error)
@@ -135,6 +124,7 @@ export default function MediaPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
+    // Validasi file
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
       toast.error('Hanya gambar yang diizinkan')
@@ -249,7 +239,6 @@ export default function MediaPage() {
 
   return (
     <div>
-      {/* HEADER */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Media Manager</h1>
         <div className="flex gap-2">
@@ -278,7 +267,7 @@ export default function MediaPage() {
         </div>
       </div>
 
-      {/* NEW FOLDER FORM */}
+      {/* New Folder Form */}
       {showNewFolder && (
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
           <div className="flex gap-2">
@@ -308,7 +297,7 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* UPLOAD MODAL */}
+      {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
@@ -370,7 +359,7 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* PREVIEW MODAL */}
+      {/* Preview Modal */}
       {showPreviewModal && previewImage && (
         <div 
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer"
@@ -399,48 +388,24 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* SEARCH & FILTER */}
+      {/* Search */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div className="flex flex-wrap gap-4">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Cari file atau folder..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-            />
-          </div>
-
-          <select
-            value={selectedFolderFilter}
-            onChange={(e) => setSelectedFolderFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-          >
-            <option value="">Semua Folder</option>
-            {folders.map((f) => (
-              <option key={f} value={f}>📁 {f}</option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => {
-              setSearch('')
-              setSelectedFolderFilter('')
-            }}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
-          >
-            Reset
-          </button>
-
-          {copySuccess && (
-            <span className="text-green-500 text-sm flex items-center">{copySuccess}</span>
-          )}
+        <div className="relative max-w-xs">
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Cari file..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+          />
         </div>
+        {copySuccess && (
+          <span className="text-green-500 text-sm mt-2 inline-block">{copySuccess}</span>
+        )}
       </div>
 
-      {/* FILES GROUPED BY FOLDER */}
+      {/* Files Grouped by Folder */}
       {folderKeys.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-500">
           <p className="text-lg font-medium">Belum ada file</p>
@@ -454,7 +419,6 @@ export default function MediaPage() {
 
             return (
               <div key={folderName} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                {/* JUDUL FOLDER + HAPUS DI KANAN */}
                 <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-800">{displayName}</h2>
                   {folderName !== 'root' && (
@@ -468,7 +432,6 @@ export default function MediaPage() {
                   )}
                 </div>
 
-                {/* CARD FILE */}
                 <div className="p-4">
                   {folderFiles.length === 0 ? (
                     <p className="text-gray-400 text-sm text-center py-4">Tidak ada file di folder ini</p>
@@ -479,7 +442,6 @@ export default function MediaPage() {
                           key={file.id}
                           className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group"
                         >
-                          {/* Thumbnail */}
                           <div 
                             className="aspect-square bg-gray-100 relative cursor-pointer"
                             onClick={() => handlePreview(file.url)}
@@ -503,7 +465,6 @@ export default function MediaPage() {
                             </div>
                           </div>
 
-                          {/* Info */}
                           <div className="p-2">
                             <p className="text-xs font-medium text-gray-800 truncate" title={file.fileName}>
                               {file.fileName}
@@ -512,7 +473,6 @@ export default function MediaPage() {
                             <p className="text-xs text-gray-400 mt-1">{formatDate(file.uploadedAt)}</p>
                           </div>
 
-                          {/* Actions */}
                           <div className="flex border-t border-gray-100">
                             <button
                               onClick={() => handleCopy(file.url)}

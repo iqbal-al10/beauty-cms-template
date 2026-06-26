@@ -126,7 +126,8 @@ export default function TestimonialsPage() {
       })
 
       if (res.ok) {
-        toast.success(`Testimonial dari "${customerName}" ${!currentStatus ? 'dipublikasikan' : 'di-unpublish'}`)
+        const newStatus = !currentStatus
+        toast.success(`Testimonial dari "${customerName}" ${newStatus ? 'dipublikasikan' : 'di-unpublish'}`)
         fetchTestimonials()
       } else {
         toast.error('Gagal mengubah status')
@@ -162,7 +163,6 @@ export default function TestimonialsPage() {
         </button>
       </div>
 
-      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -237,42 +237,27 @@ export default function TestimonialsPage() {
         </div>
       )}
 
-      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rating
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Review
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rating</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Review</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {testimonials.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                    Belum ada testimonial
-                  </td>
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Belum ada testimonial</td>
                 </tr>
               ) : (
                 testimonials.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {t.customerName}
-                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{t.customerName}</td>
                     <td className="px-6 py-4">
                       <div className="flex text-yellow-400">
                         {Array.from({ length: t.rating }).map((_, i) => (
@@ -280,9 +265,7 @@ export default function TestimonialsPage() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {t.reviewText}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">{t.reviewText}</td>
                     <td className="px-6 py-4">
                       <button
                         onClick={() => togglePublish(t.id, t.isPublished, t.customerName)}
@@ -296,18 +279,10 @@ export default function TestimonialsPage() {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
-                      <button
-                        onClick={() => handleEdit(t)}
-                        className="text-yellow-600 hover:text-yellow-800"
-                        title="Edit"
-                      >
+                      <button onClick={() => handleEdit(t)} className="text-yellow-600 hover:text-yellow-800">
                         <Edit className="w-5 h-5 inline" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(t.id, t.customerName)}
-                        className="text-red-600 hover:text-red-800"
-                        title="Hapus"
-                      >
+                      <button onClick={() => handleDelete(t.id, t.customerName)} className="text-red-600 hover:text-red-800">
                         <Trash2 className="w-5 h-5 inline" />
                       </button>
                     </td>
@@ -318,9 +293,7 @@ export default function TestimonialsPage() {
           </table>
         </div>
         <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
-            Total: <span className="font-medium text-gray-700">{testimonials.length}</span> testimonial
-          </p>
+          <p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{testimonials.length}</span> testimonial</p>
         </div>
       </div>
     </div>
