@@ -62,8 +62,9 @@ export async function POST(request: NextRequest) {
         devLink: resetLink,
       })
     } catch (error: any) {
-      if (error.name === 'ZodError') {
-        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
+      // Zod error handling with type assertion
+      if (error.name === 'ZodError' && error.errors) {
+        const errors = error.errors.map((e: any) => e.message).join(', ')
         return NextResponse.json(
           { error: errors },
           { status: 400 }

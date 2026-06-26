@@ -104,8 +104,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(booking, { status: 201 })
     } catch (error: any) {
-      if (error.name === 'ZodError') {
-        const errors = error.errors?.map((e: any) => e.message).join(', ') || 'Validasi gagal'
+      // Zod error handling with type assertion
+      if (error.name === 'ZodError' && error.errors) {
+        const errors = error.errors.map((e: any) => e.message).join(', ')
         return NextResponse.json(
           { error: errors },
           { status: 400 }

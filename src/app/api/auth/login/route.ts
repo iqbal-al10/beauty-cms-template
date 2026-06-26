@@ -6,7 +6,6 @@ import { logActivity } from '@/middleware/activityLogger'
 import { loginSchema } from '@/lib/validations'
 import { rateLimitMemory } from '@/lib/rate-limit-memory'
 import { headers } from 'next/headers'
-import { ZodError } from 'zod'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret'
 
@@ -93,9 +92,10 @@ export async function POST(request: NextRequest) {
       })
 
       return response
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errors = error.errors.map((e) => e.message).join(', ')
+    } catch (error: any) {
+      // Zod error handling with type assertion
+      if (error.name === 'ZodError' && error.errors) {
+        const errors = error.errors.map((e: any) => e.message).join(', ')
         return NextResponse.json(
           { error: errors },
           { status: 400 }
