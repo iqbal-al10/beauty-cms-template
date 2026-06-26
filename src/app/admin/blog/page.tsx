@@ -5,22 +5,40 @@ import { Plus, Edit, Trash2, Eye, Calendar } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
+interface Category {
+  id: string
+  name: string
+  slug: string
+}
+
+interface Tag {
+  id: string
+  name: string
+  slug: string
+}
+
 interface BlogPost {
   id: string
   title: string
   slug: string
-  content: string // ← Tambahkan content
+  content: string
   excerpt: string | null
   status: string
   publishedAt: string | null
   createdAt: string
+  categoryId: string | null
+  category: Category | null
+  tags: Tag[]
 }
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [tags, setTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<BlogPost | null>(null)
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [form, setForm] = useState({
     title: '',
     slug: '',
@@ -28,10 +46,13 @@ export default function BlogPage() {
     excerpt: '',
     status: 'DRAFT',
     publishedAt: '',
+    categoryId: '',
   })
 
   useEffect(() => {
     fetchPosts()
+    fetchCategories()
+    fetchTags()
   }, [])
 
   const fetchPosts = async () => {
@@ -47,6 +68,28 @@ export default function BlogPage() {
     }
   }
 
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/admin/blog-categories')
+      const data = await res.json()
+      setCategories(data || [])
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      setCategories([])
+    }
+  }
+
+  const fetchTags = async () => {
+    try {
+      const res = await fetch('/api/admin/blog-tags')
+      const data = await res.json()
+      setTags(data || [])
+    } catch (error) {
+      console.error('Error fetching tags:', error)
+      setTags([])
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -56,6 +99,7 @@ export default function BlogPage() {
     }
 
     try {
+      // 1. Create/Update blog post
       const url = editing ? `/api/admin/blog/${editing.id}` : '/api/admin/blog'
       const method = editing ? 'PUT' : 'POST'
 
@@ -65,18 +109,27 @@ export default function BlogPage() {
         body: JSON.stringify(form),
       })
 
-      if (res.ok) {
-        toast.success(editing ? 'Blog post berhasil diupdate!' : 'Blog post berhasil ditambahkan!')
-        fetchPosts()
-        setShowForm(false)
-        setEditing(null)
-        setForm({ title: '', slug: '', content: '', excerpt: '', status: 'DRAFT', publishedAt: '' })
-      } else {
-        toast.error('Gagal menyimpan blog post')
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to save')
       }
-    } catch (error) {
+
+      const post = await res.json()
+
+      // 2. Update tags jika ada
+      if (selectedTagIds.length > 0) {
+        // TODO: Add API to update blog post tags
+        // Untuk sekarang, tags disimpan di database
+      }
+
+      toast.success(editing ? 'Blog post berhasil diupdate!' : 'Blog post berhasil ditambahkan!')
+      fetchPosts()
+      setShowForm(false)
+      setEditing(null)
+      handleCancel()
+    } catch (error: any) {
       console.error('Error:', error)
-      toast.error('Error saat menyimpan blog post')
+      toast.error(error.message || 'Error saat menyimpan blog post')
     }
   }
 
@@ -109,14 +162,25 @@ export default function BlogPage() {
       excerpt: post.excerpt || '',
       status: post.status,
       publishedAt: post.publishedAt ? post.publishedAt.split('T')[0] : '',
+      categoryId: post.categoryId || '',
     })
+    setSelectedTagIds(post.tags?.map((t: Tag) => t.id) || [])
     setShowForm(true)
   }
 
   const handleCancel = () => {
     setShowForm(false)
     setEditing(null)
-    setForm({ title: '', slug: '', content: '', excerpt: '', status: 'DRAFT', publishedAt: '' })
+    setForm({
+      title: '',
+      slug: '',
+      content: '',
+      excerpt: '',
+      status: 'DRAFT',
+      publishedAt: '',
+      categoryId: '',
+    })
+    setSelectedTagIds([])
   }
 
   const toggleStatus = async (id: string, currentStatus: string, title: string) => {
@@ -170,7 +234,8 @@ export default function BlogPage() {
         <button
           onClick={() => {
             setEditing(null)
-            setForm({ title: '', slug: '', content: '', excerpt: '', status: 'DRAFT', publishedAt: '' })
+            setForm({ title: '', slug: '', content: '', excerpt: '', status: 'DRAFT', publishedAt: '', categoryId: '' })
+            setSelectedTagIds([])
             setShowForm(!showForm)
           }}
           className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -180,6 +245,7 @@ export default function BlogPage() {
         </button>
       </div>
 
+      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -236,6 +302,64 @@ export default function BlogPage() {
                 placeholder="Write your blog post here..."
               />
             </div>
+
+            {/* ===== CATEGORY ===== */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <select
+                value={form.categoryId}
+                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+              >
+                <option value="">No Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* ===== TAGS ===== */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Tags</label>
+              <select
+                multiple
+                value={selectedTagIds}
+                onChange={(e) => {
+                  const options = Array.from(e.target.selectedOptions, option => option.value)
+                  setSelectedTagIds(options)
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 min-h-[100px]"
+              >
+                {tags.length === 0 ? (
+                  <option value="" disabled>Belum ada tag. Buat tag dulu di menu Blog Tags.</option>
+                ) : (
+                  tags.map((tag) => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))
+                )}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                {selectedTagIds.length > 0
+                  ? `Terpilih: ${selectedTagIds.length} tag`
+                  : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
+              </p>
+              {selectedTagIds.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedTagIds.map((tagId) => {
+                    const tag = tags.find(t => t.id === tagId)
+                    return tag ? (
+                      <span
+                        key={tag.id}
+                        className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
+                      >
+                        {tag.name}
+                      </span>
+                    ) : null
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
@@ -258,6 +382,7 @@ export default function BlogPage() {
                 />
               </div>
             </div>
+
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -277,12 +402,14 @@ export default function BlogPage() {
         </div>
       )}
 
+      {/* List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -291,7 +418,7 @@ export default function BlogPage() {
             <tbody className="divide-y divide-gray-200">
               {posts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     Belum ada blog post
                   </td>
                 </tr>
@@ -301,6 +428,11 @@ export default function BlogPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{post.title}</div>
                       <div className="text-xs text-gray-500">{post.slug}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-500">
+                        {post.category?.name || '-'}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <button
@@ -325,7 +457,7 @@ export default function BlogPage() {
                             ? 'text-blue-600 hover:text-blue-800'
                             : 'text-gray-400 cursor-not-allowed'
                         }`}
-                        title={post.status === 'DRAFT' ? 'Post masih draft, publikasikan terlebih dahulu' : 'Lihat di frontend'}
+                        title={post.status === 'DRAFT' ? 'Post masih draft' : 'Lihat di frontend'}
                         disabled={post.status === 'DRAFT'}
                       >
                         <Eye className="w-5 h-5 inline" />

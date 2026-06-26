@@ -5,10 +5,15 @@ import { logUserAction } from '@/middleware/activityLogger'
 export async function GET() {
   try {
     const posts = await prisma.blogPost.findMany({
+      include: {
+        category: true,
+        tags: true,
+      },
       orderBy: { createdAt: 'desc' },
     })
     return NextResponse.json(posts)
   } catch (error) {
+    console.error('Error fetching blog posts:', error)
     return NextResponse.json(
       { error: 'Failed to fetch blog posts' },
       { status: 500 }
@@ -19,7 +24,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { title, slug, content, excerpt, status, publishedAt } = body
+    const { title, slug, content, excerpt, status, publishedAt, categoryId } = body
 
     const post = await prisma.blogPost.create({
       data: {
@@ -29,6 +34,11 @@ export async function POST(request: NextRequest) {
         excerpt,
         status: status || 'DRAFT',
         publishedAt: publishedAt ? new Date(publishedAt) : null,
+        categoryId: categoryId || null,
+      },
+      include: {
+        category: true,
+        tags: true,
       },
     })
 

@@ -110,7 +110,9 @@ export default function AdminLayout({
     { icon: Database, label: 'Backup', href: '/admin/backup' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
     { icon: Star, label: 'Reviews', href: '/admin/reviews' },
-    { icon: Tag, label: 'Tags', href: '/admin/tags' }, // <-- HANYA SATU Tag
+    { icon: Tag, label: 'Tags', href: '/admin/tags' },
+    { icon: FolderTree, label: 'Blog Categories', href: '/admin/blog-categories' },
+    { icon: Tag, label: 'Blog Tags', href: '/admin/blog-tags' },
   ]
 
   const menuItems = allMenuItems.filter(item => {

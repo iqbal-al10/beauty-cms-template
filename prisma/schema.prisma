@@ -72,7 +72,7 @@ model Product {
   category    Category       @relation(fields: [categoryId], references: [id])
   promos      PromoProduct[]
   reviews     Review[]
-  tags        ProductTag[]   // Many-to-many dengan Tag
+  tags        ProductTag[]
 }
 
 model Service {
@@ -125,8 +125,34 @@ model BlogPost {
   coverImageUrl String?
   status        String    @default("DRAFT")
   publishedAt   DateTime?
+  categoryId    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  category      BlogCategory? @relation(fields: [categoryId], references: [id])
+  tags          BlogTag[]
+}
+
+model BlogCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  posts       BlogPost[]
+}
+
+model BlogTag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  posts     BlogPost[]
 }
 
 model FAQ {
@@ -252,14 +278,13 @@ model Review {
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
-// ==================== PRODUCT TAG ====================
 model ProductTag {
   id        String   @id @default(cuid())
   name      String   @unique
   slug      String   @unique
-  color     String?  // Warna badge (opsional)
+  color     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  products  Product[] // Many-to-many dengan Product
+  products  Product[]
 }
