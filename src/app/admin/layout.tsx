@@ -28,10 +28,13 @@ import {
   FolderOpen,
   Hash,
   Tags,
-  User
+  User,
+  Contact,
+  ExternalLink,
+  Shield
 } from 'lucide-react'
 
-interface User {
+interface UserData {
   id: string
   name: string
   email: string
@@ -40,15 +43,23 @@ interface User {
 
 interface SettingsData {
   siteName: string
+  colorPrimary: string
 }
 
 const SUPER_ADMIN_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; iconBg: string }> = {
   SUPER_ADMIN: { bg: 'bg-red-100', text: 'text-red-700', iconBg: 'bg-red-100 text-red-600' },
-  ADMIN: { bg: 'bg-pink-100', text: 'text-pink-700', iconBg: 'bg-pink-100 text-pink-600' },
+  ADMIN: { bg: 'bg-[#c4367b]/10', text: 'text-[#c4367b]', iconBg: 'bg-[#c4367b]/10 text-[#c4367b]' },
   EDITOR: { bg: 'bg-blue-100', text: 'text-blue-700', iconBg: 'bg-blue-100 text-blue-600' },
   STAFF: { bg: 'bg-purple-100', text: 'text-purple-700', iconBg: 'bg-purple-100 text-purple-600' },
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: '🛡️ Super Admin',
+  ADMIN: '⚙️ Admin',
+  EDITOR: '✍️ Editor',
+  STAFF: '👤 Staff',
 }
 
 export default function AdminLayout({
@@ -59,9 +70,12 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const primaryColor = '#c4367b'
+  const primaryHover = '#e20373'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -119,6 +133,7 @@ export default function AdminLayout({
     { icon: Images, label: 'Before/After', href: '/admin/before-after' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
     { icon: Star, label: 'Reviews', href: '/admin/reviews' },
+    { icon: Contact, label: 'Contact Messages', href: '/admin/contact-messages' },
     { icon: HelpCircle, label: 'FAQ', href: '/admin/faq' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
     { icon: Users, label: 'Users', href: '/admin/users' },
@@ -135,15 +150,15 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }}></div>
       </div>
     )
   }
 
   const siteName = settings?.siteName || 'Beauty CMS'
   const roleColor = user?.role ? ROLE_COLORS[user.role] : ROLE_COLORS.STAFF
+  const roleLabel = user?.role ? ROLE_LABELS[user.role] : 'Staff'
 
-  // ===== FUNGSI UNTUK GET TITLE HEADER =====
   const getHeaderTitle = () => {
     if (pathname === '/admin') return 'Dashboard'
     if (pathname?.startsWith('/admin/products')) return 'Products'
@@ -165,11 +180,19 @@ export default function AdminLayout({
     if (pathname?.startsWith('/admin/backup')) return 'Backup'
     if (pathname?.startsWith('/admin/videos')) return 'Videos'
     if (pathname?.startsWith('/admin/reviews')) return 'Reviews'
+    if (pathname?.startsWith('/admin/contact-messages')) return 'Contact Messages'
     return 'Dashboard'
   }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <style>{`
+        :root {
+          --color-primary: ${primaryColor};
+          --color-primary-hover: ${primaryHover};
+        }
+      `}</style>
+
       <Toaster
         position="top-right"
         toastOptions={{
@@ -197,13 +220,13 @@ export default function AdminLayout({
 
       <aside 
         className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
+          sidebarOpen ? 'w-64' : 'w-20'
         } bg-white border-r border-gray-200 transition-all duration-300 shrink-0 h-full overflow-y-auto`}
       >
         <div className={`p-4 border-b border-gray-200 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {sidebarOpen ? (
             <>
-              <h1 className="text-xl font-bold text-pink-500">{siteName}</h1>
+              <h1 className="text-xl font-bold" style={{ color: primaryColor }}>{siteName}</h1>
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="p-1 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
@@ -239,9 +262,10 @@ export default function AdminLayout({
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm ${
                   isActive 
-                    ? 'bg-pink-500 text-white' 
+                    ? 'text-white' 
                     : 'text-gray-600 hover:bg-gray-100'
                 } ${!sidebarOpen && 'justify-center'}`}
+                style={isActive ? { backgroundColor: primaryColor } : {}}
                 title={!sidebarOpen ? item.label : ''}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
@@ -267,20 +291,37 @@ export default function AdminLayout({
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="bg-white border-b border-gray-200 p-4 shrink-0 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {getHeaderTitle()}
-          </h2>
-          
-          {user && (
-            <div className="flex items-center gap-3 text-sm">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${roleColor.iconBg}`}>
-                <User className="w-4 h-4" />
-              </div>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-gray-800">
+              {getHeaderTitle()}
+            </h2>
+            {user && (
               <span className={`px-2 py-0.5 text-xs rounded-full ${roleColor.bg} ${roleColor.text}`}>
-                {user.role}
+                {roleLabel}
               </span>
-            </div>
-          )}
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Tombol View Site */}
+            <Link
+              href="/"
+              target="_blank"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-gray-100"
+              style={{ color: primaryColor }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              View Site
+            </Link>
+            
+            {user && (
+              <div className="flex items-center gap-3 text-sm">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${roleColor.iconBg}`}>
+                  <User className="w-4 h-4" />
+                </div>
+              </div>
+            )}
+          </div>
         </header>
         
         <main className="flex-1 overflow-y-auto p-6">

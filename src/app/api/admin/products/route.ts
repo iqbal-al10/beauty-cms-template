@@ -1,72 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logUserAction } from '@/middleware/activityLogger'
+import { getServerSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const all = searchParams.get('all')
-    const select = searchParams.get('select')
-
-    if (select === 'true') {
-      const products = await prisma.product.findMany({
-        where: { status: 'PUBLISHED' },
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-      })
-      return NextResponse.json(products)
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const searchParams = request.nextUrl.searchParams
+    const all = searchParams.get('all') === 'true'
+
     const products = await prisma.product.findMany({
-      where: all === 'true' ? {} : { status: 'PUBLISHED' },
-      include: { category: true },
+      include: {
+        category: true,
+        tags: true,
+      },
       orderBy: { createdAt: 'desc' },
+      ...(all ? {} : { take: 20 }),
     })
 
-    return NextResponse.json(products || [])
-  } catch (error: any) {
-    console.error('❌ Error fetching products:', error)
-    return NextResponse.json([], { status: 200 })
+    return NextResponse.json(products)
+  } catch (error) {
+    console.error('Error fetching products:', error)
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
+    console.log('📦 Creating product with body:', body)
+
     const { 
-      name, slug, description, price, stock, status, categoryId,
-      metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+      name, slug, description, price, compareAtPrice, stock, status, 
+      categoryId, metaTitle, metaDescription, canonicalUrl, ogImageUrl 
     } = body
 
     const product = await prisma.product.create({
       data: {
         name,
         slug,
-        description,
+        description: description || '',
         price: parseFloat(price),
-        stock: parseInt(stock),
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
+        stock: parseInt(stock) || 0,
         status: status || 'DRAFT',
         categoryId,
-        metaTitle: metaTitle || null,
-        metaDescription: metaDescription || null,
-        canonicalUrl: canonicalUrl || null,
-        ogImageUrl: ogImageUrl || null,
+        metaTitle: metaTitle || '',
+        metaDescription: metaDescription || '',
+        canonicalUrl: canonicalUrl || '',
+        ogImageUrl: ogImageUrl || '',
       },
-      include: { category: true },
+      include: {
+        category: true,
+        tags: true,
+      },
     })
 
-    await logUserAction('CREATE', 'Product', product.id, {
-      name: product.name,
-      price: product.price,
-      status: product.status,
-    })
-
-    return NextResponse.json(product, { status: 201 })
+    console.log('✅ Product created:', product.id, 'compareAtPrice:', product.compareAtPrice)
+    return NextResponse.json(product)
   } catch (error) {
-    console.error('Error creating product:', error)
-    return NextResponse.json(
-      { error: 'Failed to create product' },
-      { status: 500 }
-    )
+    console.error('❌ Error creating product:', error)
+    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
   }
 }

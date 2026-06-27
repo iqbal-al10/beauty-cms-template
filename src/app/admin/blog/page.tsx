@@ -66,11 +66,13 @@ export default function BlogPage() {
   const fetchPosts = async () => {
     try {
       const res = await fetch('/api/admin/blog')
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      setPosts(data)
+      setPosts(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error fetching posts:', error)
       toast.error('Gagal memuat blog posts')
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -79,8 +81,9 @@ export default function BlogPage() {
   const fetchCategories = async () => {
     try {
       const res = await fetch('/api/admin/blog-categories')
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      setCategories(data || [])
+      setCategories(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching categories:', error)
       setCategories([])
@@ -90,8 +93,9 @@ export default function BlogPage() {
   const fetchTags = async () => {
     try {
       const res = await fetch('/api/admin/blog-tags')
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      setTags(data || [])
+      setTags(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching tags:', error)
       setTags([])
@@ -110,10 +114,20 @@ export default function BlogPage() {
       const url = editing ? `/api/admin/blog/${editing.id}` : '/api/admin/blog'
       const method = editing ? 'PUT' : 'POST'
 
+      // Auto-set publishedAt jika status PUBLISHED dan belum ada publishedAt
+      let publishedAt = form.publishedAt
+      if (form.status === 'PUBLISHED' && !publishedAt) {
+        publishedAt = new Date().toISOString()
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          publishedAt,
+          tagIds: selectedTagIds,
+        }),
       })
 
       if (!res.ok) {
@@ -144,7 +158,8 @@ export default function BlogPage() {
         toast.success(`Blog post "${title}" berhasil dihapus!`)
         setPosts(posts.filter(p => p.id !== id))
       } else {
-        toast.error('Gagal menghapus blog post')
+        const error = await res.json()
+        toast.error(error.error || 'Gagal menghapus blog post')
       }
     } catch (error) {
       console.error('Error:', error)
@@ -193,9 +208,18 @@ export default function BlogPage() {
   const toggleStatus = async (id: string, currentStatus: string, title: string) => {
     try {
       const post = posts.find(p => p.id === id)
-      if (!post) return
+      if (!post) {
+        toast.error('Post tidak ditemukan')
+        return
+      }
 
       const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
+      let publishedAt = post.publishedAt
+      
+      // Jika publish, set publishedAt ke sekarang jika belum ada
+      if (newStatus === 'PUBLISHED' && !publishedAt) {
+        publishedAt = new Date().toISOString()
+      }
 
       const res = await fetch(`/api/admin/blog/${id}`, {
         method: 'PUT',
@@ -203,6 +227,7 @@ export default function BlogPage() {
         body: JSON.stringify({
           ...post,
           status: newStatus,
+          publishedAt,
         }),
       })
 
@@ -210,7 +235,8 @@ export default function BlogPage() {
         toast.success(`Blog post "${title}" ${newStatus === 'PUBLISHED' ? 'dipublikasikan' : 'di-draft'}`)
         fetchPosts()
       } else {
-        toast.error('Gagal mengubah status')
+        const error = await res.json()
+        toast.error(error.error || 'Gagal mengubah status')
       }
     } catch (error) {
       console.error('Error:', error)
@@ -407,6 +433,9 @@ export default function BlogPage() {
                   onChange={(e) => setForm({ ...form, publishedAt: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Jika kosong dan status = Published, akan otomatis diisi hari ini
+                </p>
               </div>
             </div>
 

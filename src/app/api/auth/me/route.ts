@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 export async function GET() {
   try {
     const user = await getCurrentUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -12,14 +12,9 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    })
+    return NextResponse.json(user)
   } catch (error) {
-    console.error('Error fetching user:', error)
+    console.error('Error in /api/auth/me:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

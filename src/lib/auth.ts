@@ -1,83 +1,119 @@
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
 import { cookies } from 'next/headers'
+import { NextRequest } from 'next/server'
+import jwt from 'jsonwebtoken'
+import { prisma } from './prisma'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret'
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh-secret'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
-export interface TokenPayload {
-  id: string
+export interface Session {
+  userId: string
   email: string
-  role: string
   name: string
+  role: string
 }
 
-export function generateTokens(payload: TokenPayload) {
-  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
-  const refreshToken = jwt.sign({ id: payload.id }, JWT_REFRESH_SECRET, { expiresIn: '30d' })
-  return { accessToken, refreshToken }
+export interface TokenPayload {
+  userId: string
+  email: string
+  name: string
+  role: string
+  iat?: number
+  exp?: number
+}
+
+export async function getServerSession(): Promise<Session | null> {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get('token')?.value
+
+    if (!token) return null
+
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return {
+      userId: decoded.userId,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role,
+    }
+  } catch (error) {
+    console.error('Error verifying token:', error)
+    return null
+  }
 }
 
 export function verifyAccessToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload
-  } catch {
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return decoded
+  } catch (error) {
+    console.error('Error verifying access token:', error)
     return null
   }
 }
 
-export function verifyRefreshToken(token: string): { id: string } | null {
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_REFRESH_SECRET) as { id: string }
-  } catch {
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return decoded
+  } catch (error) {
     return null
   }
 }
 
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10)
+export function generateToken(payload: TokenPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' })
 }
 
-export async function comparePassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash)
-}
-
-export async function setAuthCookies(accessToken: string, refreshToken: string) {
-  const cookieStore = await cookies()
-  
-  cookieStore.set('accessToken', accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60,
-    path: '/',
-  })
-  
-  cookieStore.set('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60,
-    path: '/',
-  })
-}
-
-export async function clearAuthCookies() {
-  const cookieStore = await cookies()
-  cookieStore.delete('accessToken')
-  cookieStore.delete('refreshToken')
-  cookieStore.delete('token')
-}
-
-export async function getCurrentUser(): Promise<TokenPayload | null> {
+export async function getCurrentUser(request?: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('accessToken')?.value
-    
-    if (!accessToken) return null
-    return verifyAccessToken(accessToken)
+    let token: string | undefined
+
+    if (request) {
+      token = request.cookies.get('token')?.value
+    } else {
+      const cookieStore = await cookies()
+      token = cookieStore.get('token')?.value
+    }
+
+    if (!token) return null
+
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+    })
+
+    return user
   } catch (error) {
     console.error('Error getting current user:', error)
+    return null
+  }
+}
+
+export async function getSessionFromRequest(request: NextRequest): Promise<Session | null> {
+  try {
+    const token = request.cookies.get('token')?.value
+
+    if (!token) return null
+
+    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload
+    return {
+      userId: decoded.userId,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role,
+    }
+  } catch (error) {
+    console.error('Error verifying token from request:', error)
     return null
   }
 }

@@ -1,87 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { logActivity } from '@/middleware/activityLogger'
-import { loginSchema } from '@/lib/validations'
-import { rateLimitMemory } from '@/lib/rate-limit-memory'
-import { headers } from 'next/headers'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret'
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  console.log('🔐 Login API called')
+  
   try {
-    // 1. RATE LIMIT
-    const ip = (await headers()).get('x-forwarded-for') || 'unknown'
-    const key = `login_${ip}`
-    const { success, resetTime } = rateLimitMemory(key, 5, 5 * 60 * 1000)
+    const { email, password } = await request.json()
+    console.log('📧 Email:', email)
 
-    if (!success) {
-      const resetDate = new Date(resetTime)
+    if (!email || !password) {
+      console.log('❌ Email atau password kosong')
       return NextResponse.json(
-        { 
-          error: 'Terlalu banyak percobaan login. Coba lagi dalam beberapa menit.',
-          resetAt: resetDate.toISOString(),
-        },
-        { status: 429 }
-      )
-    }
-
-    // 2. ZOD VALIDATION
-    const body = await request.json()
-    console.log('📥 Received login request:', body)
-    
-    const result = loginSchema.safeParse(body)
-    
-    if (!result.success) {
-      console.log('❌ Zod validation failed:', result.error)
-      const errors = result.error.issues.map((e) => e.message).join(', ')
-      return NextResponse.json(
-        { error: errors },
+        { error: 'Email dan password wajib diisi' },
         { status: 400 }
       )
     }
 
-    const { email, password } = result.data
-    console.log('✅ Zod validation passed:', { email })
-
+    // Cari user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase() },
     })
 
     if (!user) {
-      console.log('❌ User not found:', email)
+      console.log('❌ User tidak ditemukan:', email)
       return NextResponse.json(
         { error: 'Email atau password salah' },
         { status: 401 }
       )
     }
 
+    console.log('✅ User ditemukan:', user.email, 'Role:', user.role)
+
+    // Cek password
     const isValid = await bcrypt.compare(password, user.passwordHash)
-
     if (!isValid) {
-      console.log('❌ Invalid password for:', email)
+      console.log('❌ Password salah untuk:', email)
       return NextResponse.json(
         { error: 'Email atau password salah' },
         { status: 401 }
       )
     }
 
-    console.log('✅ Login successful:', email)
+    console.log('✅ Password valid untuk:', email)
 
+    // Cek user aktif
+    if (!user.isActive) {
+      console.log('❌ User tidak aktif:', email)
+      return NextResponse.json(
+        { error: 'Akun Anda dinonaktifkan' },
+        { status: 401 }
+      )
+    }
+
+    // Update lastLoginAt
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     })
 
-    await logActivity(user.id, 'LOGIN', 'User', user.id, {
-      email: user.email,
-      timestamp: new Date().toISOString(),
-    })
-
+    // Generate token
     const token = jwt.sign(
       {
-        id: user.id,
+        userId: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -90,27 +74,38 @@ export async function POST(request: NextRequest) {
       { expiresIn: '7d' }
     )
 
-    const { passwordHash, ...userWithoutPassword } = user
+    console.log('✅ Token generated untuk:', email)
 
+    // Response dengan cookie
     const response = NextResponse.json({
       success: true,
-      user: userWithoutPassword,
-      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
     })
 
-    response.cookies.set('accessToken', token, {
+    // Set cookie
+    response.cookies.set({
+      name: 'token',
+      value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60,
       path: '/',
+      maxAge: 60 * 60 * 24 * 7, // 7 hari
     })
+
+    console.log('✅ Cookie set untuk:', email)
+    console.log('🍪 Cookie header:', response.cookies.toString())
 
     return response
   } catch (error) {
-    console.error('❌ Internal server error:', error)
+    console.error('❌ Login error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Terjadi kesalahan saat login' },
       { status: 500 }
     )
   }

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Header from '@/components/layout/Header'
 import { prisma } from '@/lib/prisma'
 import Script from 'next/script'
 
@@ -51,12 +50,8 @@ export default async function RootLayout({
         />
       </head>
       <body className={inter.className} suppressHydrationWarning>
-        <div className="flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-1">
-            {children}
-          </main>
-        </div>
+        {/* HEADER TELAH DIHAPUS DARI SINI - HANYA CHILDREN */}
+        {children}
 
         {gaTrackingId && (
           <>
@@ -96,44 +91,44 @@ export default async function RootLayout({
                     })
                   }).catch(() => {});
                 } catch (e) {}
+
+                if (typeof window !== 'undefined') {
+                  const originalPushState = history.pushState;
+                  const originalReplaceState = history.replaceState;
+
+                  const trackNavigation = function(url) {
+                    try {
+                      const pathname = new URL(url, window.location.origin).pathname;
+                      fetch('/api/public/analytics', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          page: pathname,
+                          referrer: window.location.pathname,
+                        })
+                      }).catch(() => {});
+                    } catch (e) {}
+                  };
+
+                  history.pushState = function() {
+                    originalPushState.apply(this, arguments);
+                    if (arguments[2]) {
+                      trackNavigation(arguments[2]);
+                    }
+                  };
+
+                  history.replaceState = function() {
+                    originalReplaceState.apply(this, arguments);
+                    if (arguments[2]) {
+                      trackNavigation(arguments[2]);
+                    }
+                  };
+
+                  window.addEventListener('popstate', function() {
+                    trackNavigation(window.location.pathname);
+                  });
+                }
               })();
-
-              if (typeof window !== 'undefined') {
-                const originalPushState = history.pushState;
-                const originalReplaceState = history.replaceState;
-
-                const trackNavigation = function(url) {
-                  try {
-                    const pathname = new URL(url, window.location.origin).pathname;
-                    fetch('/api/public/analytics', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        page: pathname,
-                        referrer: window.location.pathname,
-                      })
-                    }).catch(() => {});
-                  } catch (e) {}
-                };
-
-                history.pushState = function() {
-                  originalPushState.apply(this, arguments);
-                  if (arguments[2]) {
-                    trackNavigation(arguments[2]);
-                  }
-                };
-
-                history.replaceState = function() {
-                  originalReplaceState.apply(this, arguments);
-                  if (arguments[2]) {
-                    trackNavigation(arguments[2]);
-                  }
-                };
-
-                window.addEventListener('popstate', function() {
-                  trackNavigation(window.location.pathname);
-                });
-              }
             `,
           }}
         />

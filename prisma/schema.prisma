@@ -10,9 +10,9 @@ datasource db {
 model Settings {
   id                 String   @id @default(cuid())
   siteName           String   @default("Beauty Studio")
-  colorPrimary       String   @default("#e88ea7")
-  colorSecondary     String   @default("#9b4d6e")
-  colorButton        String   @default("#e88ea7")
+  colorPrimary       String   @default("#c4367b")
+  colorSecondary     String   @default("#f5dbe8")
+  colorButton        String   @default("#aa1d68")
   fontFamily         String   @default("Inter")
   logoUrl            String?
   faviconUrl         String?
@@ -27,9 +27,7 @@ model Settings {
   gaTrackingId       String?
   metaTitle          String?
   metaDescription    String?
-  // ===== SEO =====
-  defaultOgImage    String?
-  // ===============
+  defaultOgImage     String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -47,6 +45,8 @@ model User {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   activityLogs     ActivityLog[]
+  stockHistories   StockHistory[]
+  orders           Order[]
 }
 
 model Category {
@@ -66,22 +66,23 @@ model Product {
   slug            String         @unique
   description     String?
   price           Float
+  compareAtPrice  Float?
   stock           Int            @default(0)
   status          String         @default("DRAFT")
   isFeatured      Boolean        @default(false)
   categoryId      String
-  // ===== SEO =====
   metaTitle       String?
   metaDescription String?
   canonicalUrl    String?
   ogImageUrl      String?
-  // ===============
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   category        Category       @relation(fields: [categoryId], references: [id])
   promos          PromoProduct[]
   reviews         Review[]
   tags            ProductTag[]
+  stockHistories  StockHistory[]
+  orders          Order[]
 }
 
 model Service {
@@ -135,15 +136,12 @@ model BlogPost {
   status        String    @default("DRAFT")
   publishedAt   DateTime?
   categoryId    String?
-  // ===== SEO =====
   metaTitle     String?
   metaDescription String?
   canonicalUrl  String?
   ogImageUrl    String?
-  // ===============
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
   category      BlogCategory? @relation(fields: [categoryId], references: [id])
   tags          BlogTag[]
 }
@@ -299,4 +297,39 @@ model ProductTag {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   products  Product[]
+}
+
+model StockHistory {
+  id        String   @id @default(cuid())
+  productId String
+  oldStock  Int
+  newStock  Int
+  change    Int
+  reason    String?
+  note      String?
+  userId    String
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ===== NEW: ORDER MODEL =====
+model Order {
+  id           String   @id @default(cuid())
+  customerName String
+  customerWhatsapp String
+  productId    String
+  productName  String
+  quantity     Int
+  totalPrice   Float
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  note         String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [approvedBy], references: [id])
 }

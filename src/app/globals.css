@@ -1,6 +1,26 @@
 @import "tailwindcss";
 
-/* Custom styles without utility classes */
+/* ===== DEFINE CUSTOM COLORS ===== */
+@theme {
+  /* Warna primary baru */
+  --color-primary: #c4367b;
+  --color-primary-hover: #e20373;
+  --color-secondary: #f5dbe8;
+  
+  /* Override pink-500 dengan warna primary */
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #c4367b;
+  --color-pink-600: #831843;
+  --color-pink-700: #be185d;
+  --color-pink-800: #9d174d;
+  --color-pink-900: #e20373
+}
+
+/* Custom styles */
 body {
   background-color: #f9fafb;
   color: #111827;
@@ -14,4 +34,71 @@ input, textarea, select {
 
 input::placeholder, textarea::placeholder {
   color: #9ca3af;
+}
+
+/* ===== CUSTOM COMPONENT CLASSES ===== */
+@layer components {
+  .btn-primary {
+    background-color: var(--color-pink-500);
+    color: white;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-pink-600);
+  }
+  
+  .link-primary {
+    color: var(--color-pink-500);
+  }
+  .link-primary:hover {
+    color: var(--color-pink-600);
+  }
+  
+  .focus-ring-primary:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-color: var(--color-pink-500);
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes animateIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: animateIn 0.3s ease-out;
+}
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+.slide-in-from-bottom-4 {
+  animation: slideInBottom 0.3s ease-out;
 }
