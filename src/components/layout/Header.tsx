@@ -12,13 +12,6 @@ interface Settings {
   whatsappNumber: string | null
 }
 
-interface User {
-  id: string
-  name: string
-  email: string
-  role: string
-}
-
 interface HeaderProps {
   settings?: Settings | null
 }
@@ -26,30 +19,6 @@ interface HeaderProps {
 export default function Header({ settings }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const primaryColor = '#c4367b'
-  const buttonColor = '#c4367b'
-  const siteName = settings?.siteName || 'Beauty Studio'
-
-  // Cek status login user
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data)
-        }
-      } catch (error) {
-        console.error('Auth check error:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    checkAuth()
-  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -58,6 +27,10 @@ export default function Header({ settings }: HeaderProps) {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const primaryColor = '#c4367b'
+  const buttonColor = '#c4367b'
+  const siteName = settings?.siteName || 'Beauty Studio'
 
   const navItems = [
     { label: 'Home', href: '/' },
@@ -111,36 +84,11 @@ export default function Header({ settings }: HeaderProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="px-3 py-2 text-sm text-gray-600 transition-colors rounded-lg hover:bg-[#f5dbe8]/30"
-              style={{ 
-                '--hover-color': primaryColor,
-              } as React.CSSProperties}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = primaryColor
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = ''
-              }}
+              className="px-3 py-2 text-sm text-gray-600 hover:text-[#c4367b] transition-colors rounded-lg hover:bg-[#f5dbe8]/30"
             >
               {item.label}
             </Link>
           ))}
-
-          {/* TOMBOL DASHBOARD - HANYA JIKA USER LOGIN */}
-          {!loading && user && (
-            <Link
-              href="/admin"
-              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-              style={{
-                backgroundColor: '#f5dbe8',
-                color: primaryColor,
-              }}
-            >
-              ⚙️ Dashboard
-            </Link>
-          )}
-
-          {/* Book Now Button */}
           <Link
             href="/booking"
             className="ml-2 px-5 py-2 rounded-full text-white text-sm font-semibold transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-md active:scale-95"
@@ -175,37 +123,12 @@ export default function Header({ settings }: HeaderProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="px-4 py-2.5 text-gray-600 rounded-lg transition-colors hover:bg-[#f5dbe8]/30"
-                  style={{ 
-                    '--hover-color': primaryColor,
-                  } as React.CSSProperties}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = primaryColor
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = ''
-                  }}
+                  className="px-4 py-2.5 text-gray-600 hover:text-[#c4367b] hover:bg-[#f5dbe8]/30 rounded-lg transition-colors"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
-
-              {/* Dashboard di mobile menu */}
-              {!loading && user && (
-                <Link
-                  href="/admin"
-                  className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-                  style={{
-                    backgroundColor: '#f5dbe8',
-                    color: primaryColor,
-                  }}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  ⚙️ Dashboard
-                </Link>
-              )}
-
               <Link
                 href="/booking"
                 className="mt-2 px-4 py-2.5 rounded-lg text-white text-center font-semibold transition-colors hover:opacity-90"

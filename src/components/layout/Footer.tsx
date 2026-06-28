@@ -5,7 +5,7 @@ interface Settings {
   address: string | null
   whatsappNumber: string | null
   email: string | null
-  socialLinks: Record<string, string> | null
+  socialLinks: any // ← Ubah ke any atau JsonValue
   operatingHours: Record<string, { open: string; close: string }> | null
   footerContent: string | null
   colorPrimary: string
@@ -98,7 +98,7 @@ export default function Footer({ settings }: FooterProps) {
                   aria-label="TikTok"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.76-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
+                    <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.76-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/>
                   </svg>
                 </a>
               )}
@@ -109,16 +109,16 @@ export default function Footer({ settings }: FooterProps) {
           <div>
             <h4 className="font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/products" className="hover:text-[#c4367b] transition-colors">Products</Link></li>
-              <li><Link href="/promo" className="hover:text-[#c4367b] transition-colors">Promo</Link></li>
-              <li><Link href="/blog" className="hover:text-[#c4367b] transition-colors">Blog</Link></li>
-              <li><Link href="/gallery" className="hover:text-[#c4367b] transition-colors">Gallery</Link></li>
-              <li><Link href="/testimonials" className="hover:text-[#c4367b] transition-colors">Testimonials</Link></li>
-              <li><Link href="/contact" className="hover:text-[#c4367b] transition-colors">Contact</Link></li>
-              <li><Link href="/booking" className="hover:text-[#c4367b] transition-colors">Booking</Link></li>
+              <li><Link href="/products" className="hover:text-pink-400 transition-colors">Products</Link></li>
+              <li><Link href="/promo" className="hover:text-pink-400 transition-colors">Promo</Link></li>
+              <li><Link href="/blog" className="hover:text-pink-400 transition-colors">Blog</Link></li>
+              <li><Link href="/gallery" className="hover:text-pink-400 transition-colors">Gallery</Link></li>
+              <li><Link href="/testimonials" className="hover:text-pink-400 transition-colors">Testimonials</Link></li>
+              <li><Link href="/contact" className="hover:text-pink-400 transition-colors">Contact</Link></li>
+              <li><Link href="/booking" className="hover:text-pink-400 transition-colors">Booking</Link></li>
               {footerLinks.map((link, index) => (
                 <li key={index}>
-                  <Link href={link.href} className="hover:text-[#c4367b] transition-colors">
+                  <Link href={link.href} className="hover:text-pink-400 transition-colors">
                     {link.label}
                   </Link>
                 </li>
