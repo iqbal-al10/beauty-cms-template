@@ -204,6 +204,7 @@ model Promo {
   id            String         @id @default(cuid())
   title         String
   type          String
+  voucherCode   String?        @unique // ← TAMBAHKAN INI
   discountValue Float?
   discountType  String?
   startDate     DateTime
@@ -314,15 +315,21 @@ model StockHistory {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ===== NEW: ORDER MODEL =====
+// ===== ORDER MODEL =====
 model Order {
   id           String   @id @default(cuid())
   customerName String
   customerWhatsapp String
+  address      String?
   productId    String
   productName  String
   quantity     Int
-  totalPrice   Float
+  price        Float
+  discountAmount Float?   @default(0)
+  finalPrice   Float
+  voucherCode  String?
+  paymentMethod String?
+  paymentProof String?
   status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
   note         String?
   approvedBy   String?
@@ -332,4 +339,18 @@ model Order {
 
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user         User?    @relation(fields: [approvedBy], references: [id])
+}
+
+// ===== PAYMENT METHOD MODEL =====
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  name          String
+  type          String   // "bank", "ewallet", "qris"
+  accountNumber String?
+  accountName   String?
+  qrCodeUrl     String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

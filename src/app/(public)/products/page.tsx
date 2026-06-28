@@ -9,18 +9,21 @@ interface Product {
   name: string
   slug: string
   price: number
+  originalPrice: number
+  finalPrice: number
+  discountAmount: number
   compareAtPrice: number | null
   status: string
   stock: number
   category: { name: string } | null
   tags: Array<{ id: string; name: string; color: string | null }>
-  promos: Array<{
+  appliedPromo: {
     id: string
     title: string
     type: string
     discountValue: number
     discountType: string
-  }>
+  } | null
 }
 
 interface Category {
@@ -205,8 +208,10 @@ export default function ProductsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
             const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
-            const hasPromo = product.promos && product.promos.length > 0
-            const promo = hasPromo ? product.promos[0] : null
+            const hasPromo = product.appliedPromo !== null
+            const promo = product.appliedPromo
+            const displayPrice = product.finalPrice || product.price
+            const hasDiscount = product.discountAmount > 0
             const productTags = product.tags || []
             
             return (
@@ -220,16 +225,14 @@ export default function ProductsPage() {
                   <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
                     <span className="text-6xl">🧴</span>
                   </div>
-                  {/* BADGE SALE */}
                   {hasComparePrice && (
                     <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                       SALE
                     </span>
                   )}
-                  {/* BADGE PROMO */}
-                  {hasPromo && (
-                    <span className="absolute top-3 right-3 bg-purple-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                      🔥 {promo?.title || 'PROMO'}
+                  {hasPromo && promo && (
+                    <span className="absolute top-3 right-3 bg-pink-800 text-white text-xs font-bold px-2.5 py-1 rounded-full max-w-[120px] truncate">
+                      🔥 {promo.title}
                     </span>
                   )}
                 </div>
@@ -243,7 +246,6 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  {/* TAGS */}
                   {productTags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {productTags.slice(0, 3).map((tag) => (
@@ -262,22 +264,31 @@ export default function ProductsPage() {
                   )}
 
                   <div className="flex items-center gap-2 mt-2">
+                    {/* HARGA PROMO - PRIMARY */}
                     <p className="text-lg font-bold" style={{ color: primaryColor }}>
-                      Rp {product.price.toLocaleString()}
+                      Rp {displayPrice.toLocaleString()}
                     </p>
                     {hasComparePrice && (
                       <p className="text-sm text-gray-400 line-through">
                         Rp {product.compareAtPrice.toLocaleString()}
                       </p>
                     )}
+                    {hasDiscount && (
+                      <p className="text-xs text-pink-400 line-through">
+                        Rp {product.originalPrice.toLocaleString()}
+                      </p>
+                    )}
                   </div>
 
                   {hasPromo && promo && (
-                    <p className="text-xs text-purple-600 font-medium mt-1">
-                      {promo.discountType === 'PERCENTAGE' 
-                        ? `${promo.discountValue}% OFF` 
-                        : `Rp ${promo.discountValue?.toLocaleString()} OFF`}
-                    </p>
+                    <div className="mt-1">
+                      <p className="text-xs text-pink-800 font-medium truncate">
+                        {promo.title}
+                        {promo.discountType === 'PERCENTAGE' 
+                          ? ` - ${promo.discountValue}% OFF` 
+                          : ` - Rp ${promo.discountValue?.toLocaleString()} OFF`}
+                      </p>
+                    </div>
                   )}
 
                   <button

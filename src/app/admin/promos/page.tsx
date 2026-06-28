@@ -20,6 +20,7 @@ interface Promo {
   id: string
   title: string
   type: string
+  voucherCode: string | null
   discountValue: number | null
   discountType: string | null
   startDate: string
@@ -42,6 +43,7 @@ export default function PromosPage() {
   const [form, setForm] = useState({
     title: '',
     type: 'DISCOUNT',
+    voucherCode: '',
     discountValue: '',
     discountType: 'PERCENTAGE',
     startDate: '',
@@ -90,6 +92,11 @@ export default function PromosPage() {
       return
     }
 
+    if (form.type === 'VOUCHER' && !form.voucherCode.trim()) {
+      toast.error('Kode Voucher wajib diisi untuk tipe VOUCHER')
+      return
+    }
+
     if (selectedProducts.length === 0) {
       toast.error('Pilih minimal satu produk')
       return
@@ -104,6 +111,7 @@ export default function PromosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          voucherCode: form.type === 'VOUCHER' ? form.voucherCode.toUpperCase() : null,
           discountValue: form.discountValue ? parseFloat(form.discountValue) : null,
           productIds: selectedProducts,
         }),
@@ -151,6 +159,7 @@ export default function PromosPage() {
     setForm({
       title: promo.title,
       type: promo.type,
+      voucherCode: promo.voucherCode || '',
       discountValue: promo.discountValue?.toString() || '',
       discountType: promo.discountType || 'PERCENTAGE',
       startDate: promo.startDate.split('T')[0],
@@ -168,6 +177,7 @@ export default function PromosPage() {
     setForm({
       title: '',
       type: 'DISCOUNT',
+      voucherCode: '',
       discountValue: '',
       discountType: 'PERCENTAGE',
       startDate: '',
@@ -213,10 +223,10 @@ export default function PromosPage() {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      FLASH_SALE: '⚡ Flash Sale',
-      DISCOUNT: '🏷️ Discount',
-      VOUCHER: '🎫 Voucher',
-      BUNDLE: '📦 Bundle',
+      FLASH_SALE: 'Flash Sale',
+      DISCOUNT: 'Discount',
+      VOUCHER: 'Voucher',
+      BUNDLE: 'Bundle',
     }
     return labels[type] || type
   }
@@ -269,6 +279,7 @@ export default function PromosPage() {
             setForm({
               title: '',
               type: 'DISCOUNT',
+              voucherCode: '',
               discountValue: '',
               discountType: 'PERCENTAGE',
               startDate: '',
@@ -317,6 +328,27 @@ export default function PromosPage() {
                 </select>
               </div>
             </div>
+
+            {/* VOUCHER CODE - HANYA MUNCUL JIKA TYPE = VOUCHER */}
+            {form.type === 'VOUCHER' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Kode Voucher *
+                  <span className="text-xs text-gray-400 ml-2">(akan otomatis uppercase)</span>
+                </label>
+                <input
+                  type="text"
+                  required={form.type === 'VOUCHER'}
+                  value={form.voucherCode}
+                  onChange={(e) => setForm({ ...form, voucherCode: e.target.value.toUpperCase() })}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="e.g., SUMMER20"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Customer akan memasukkan kode ini di halaman booking/order
+                </p>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -442,6 +474,7 @@ export default function PromosPage() {
           ) : (
             promos.map((promo) => {
               const status = getStatus(promo)
+              const isVoucher = promo.type === 'VOUCHER'
               return (
                 <div key={promo.id} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-center justify-between">
@@ -451,6 +484,11 @@ export default function PromosPage() {
                         <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
                           {getTypeLabel(promo.type)}
                         </span>
+                        {isVoucher && promo.voucherCode && (
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">
+                            Kode: {promo.voucherCode}
+                          </span>
+                        )}
                         <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(status)}`}>
                           {status}
                         </span>
@@ -472,7 +510,7 @@ export default function PromosPage() {
                             : 'bg-red-100 text-red-700 hover:bg-red-200'
                         }`}
                       >
-                        {promo.isActive ? '✅ Active' : '❌ Inactive'}
+                        {promo.isActive ? 'Active' : 'Inactive'}
                       </button>
                       <button
                         onClick={() => handleEdit(promo)}

@@ -31,7 +31,10 @@ import {
   User,
   Contact,
   ExternalLink,
-  Shield
+  Shield,
+  CreditCard,
+  QrCode,
+  Wallet
 } from 'lucide-react'
 
 interface UserData {
@@ -46,7 +49,11 @@ interface SettingsData {
   colorPrimary: string
 }
 
-const SUPER_ADMIN_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
+// Menu yang hanya untuk SUPER_ADMIN
+const SUPER_ADMIN_ONLY_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
+
+// Menu yang untuk SUPER_ADMIN dan ADMIN
+const ADMIN_MENUS = ['Payments']
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; iconBg: string }> = {
   SUPER_ADMIN: { bg: 'bg-red-100', text: 'text-red-700', iconBg: 'bg-red-100 text-red-600' },
@@ -140,11 +147,28 @@ export default function AdminLayout({
     { icon: Activity, label: 'Activity Log', href: '/admin/activity-logs' },
     { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
     { icon: Database, label: 'Backup', href: '/admin/backup' },
+    // ===== PAYMENTS =====
+    { icon: CreditCard, label: 'Payments', href: '/admin/payments' },
   ]
 
-  const menuItems = allMenuItems.filter(item => {
-    if (user?.role === 'SUPER_ADMIN') return true
-    return !SUPER_ADMIN_MENUS.includes(item.label)
+  // Filter menu berdasarkan role
+  const menuItems = allMenuItems.filter((item) => {
+    // Jika user SUPER_ADMIN, tampilkan semua
+    if (user?.role === 'SUPER_ADMIN') {
+      return true
+    }
+    
+    // Jika user ADMIN, tampilkan semua kecuali SUPER_ADMIN_ONLY_MENUS
+    if (user?.role === 'ADMIN') {
+      return !SUPER_ADMIN_ONLY_MENUS.includes(item.label)
+    }
+    
+    // Jika EDITOR atau STAFF, tampilkan menu umum (tidak termasuk admin-only menus)
+    if (user?.role === 'EDITOR' || user?.role === 'STAFF') {
+      return !SUPER_ADMIN_ONLY_MENUS.includes(item.label) && !ADMIN_MENUS.includes(item.label)
+    }
+    
+    return true
   })
 
   if (loading) {
@@ -181,6 +205,7 @@ export default function AdminLayout({
     if (pathname?.startsWith('/admin/videos')) return 'Videos'
     if (pathname?.startsWith('/admin/reviews')) return 'Reviews'
     if (pathname?.startsWith('/admin/contact-messages')) return 'Contact Messages'
+    if (pathname?.startsWith('/admin/payments')) return 'Payments'
     return 'Dashboard'
   }
 
@@ -220,7 +245,7 @@ export default function AdminLayout({
 
       <aside 
         className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
+          sidebarOpen ? 'w-64' : 'w-16'
         } bg-white border-r border-gray-200 transition-all duration-300 shrink-0 h-full overflow-y-auto`}
       >
         <div className={`p-4 border-b border-gray-200 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
@@ -303,7 +328,6 @@ export default function AdminLayout({
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Tombol View Site */}
             <Link
               href="/"
               target="_blank"

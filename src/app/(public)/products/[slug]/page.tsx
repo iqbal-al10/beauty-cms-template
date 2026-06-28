@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import Image from 'next/image'
 import Link from 'next/link'
 import ShareButton from '@/components/public/ShareButton'
+import { ArrowLeft } from 'lucide-react'
 
 interface ProductDetailPageProps {
   params: Promise<{
@@ -41,6 +42,8 @@ export async function generateMetadata({ params }: ProductDetailPageProps) {
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params
 
+  const now = new Date()
+
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
@@ -62,10 +65,33 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound()
   }
 
-  // Ambil promo aktif
+  // Filter promo aktif
   const activePromos = product.promos
     ?.map((pp: any) => pp.promo)
-    .filter((p: any) => p.isActive && new Date(p.startDate) <= new Date() && new Date(p.endDate) >= new Date()) || []
+    .filter((p: any) => p && p.isActive)
+    .filter((p: any) => {
+      const start = new Date(p.startDate)
+      const end = new Date(p.endDate)
+      return start <= now && end >= now && p.type !== 'VOUCHER'
+    }) || []
+
+  // Hitung diskon
+  let finalPrice = product.price
+  let discountAmount = 0
+  let appliedPromo = null
+
+  if (activePromos.length > 0) {
+    const promo = activePromos[0]
+    appliedPromo = promo
+
+    if (promo.discountType === 'PERCENTAGE' && promo.discountValue) {
+      discountAmount = (product.price * promo.discountValue) / 100
+      finalPrice = product.price - discountAmount
+    } else if (promo.discountType === 'FIXED' && promo.discountValue) {
+      discountAmount = promo.discountValue
+      finalPrice = Math.max(0, product.price - discountAmount)
+    }
+  }
 
   const settings = await prisma.settings.findUnique({
     where: { id: 'default' },
@@ -88,20 +114,36 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
   const whatsappNumber = settings?.whatsappNumber || ''
   const cleanWhatsapp = whatsappNumber.replace(/[^0-9]/g, '')
-  const whatsappMessage = `Halo%20saya%20tertarik%20dengan%20produk%20${encodeURIComponent(product.name)}%20harga%20Rp%20${product.price.toLocaleString()}`
+  const whatsappMessage = `Halo%20saya%20tertarik%20dengan%20produk%20${encodeURIComponent(product.name)}%20harga%20Rp%20${Math.round(finalPrice).toLocaleString()}`
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/products/${product.slug}`
 
   const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
-  const hasPromo = activePromos.length > 0
-  const promo = hasPromo ? activePromos[0] : null
+  const hasPromo = appliedPromo !== null
+  const hasDiscount = discountAmount > 0
+  const displayPrice = Math.round(finalPrice)
+
+  const priceData = {
+    compareAtPrice: product.compareAtPrice || null,
+    originalPrice: product.price,
+    finalPrice: Math.round(finalPrice),
+    hasComparePrice: hasComparePrice,
+    hasPromo: hasPromo,
+    discountAmount: Math.round(discountAmount),
+    promoName: appliedPromo?.title || null,
+    promoDiscount: appliedPromo?.discountValue || null,
+    promoType: appliedPromo?.discountType || null,
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <nav className="text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-[#c4367b]">Home</Link>
-        <span className="mx-2">/</span>
+      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
+        <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
+          <ArrowLeft className="w-4 h-4" />
+          Home
+        </Link>
+        <span className="mx-1">/</span>
         <Link href="/products" className="hover:text-[#c4367b]">Products</Link>
-        <span className="mx-2">/</span>
+        <span className="mx-1">/</span>
         <span className="text-gray-800">{product.name}</span>
       </nav>
 
@@ -113,15 +155,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               SALE
             </span>
           )}
-          {hasPromo && (
-            <span className="absolute top-4 right-4 bg-purple-500 text-white text-sm font-bold px-3 py-1.5 rounded-full">
-              🔥 {promo?.title || 'PROMO'}
+          {hasPromo && appliedPromo && (
+            <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full">
+              🔥 {appliedPromo.title}
             </span>
           )}
         </div>
 
         <div>
-          {/* TAGS */}
           {product.tags && product.tags.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mb-3">
               {product.tags.map((tag: any) => (
@@ -156,25 +197,29 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           )}
 
-          {/* HARGA DENGAN WARNA PRIMARY */}
           <div className="flex items-center gap-3 mb-6">
             <span className="text-3xl font-bold" style={{ color: primaryColor }}>
-              Rp {product.price.toLocaleString()}
+              Rp {displayPrice.toLocaleString()}
             </span>
             {hasComparePrice && (
               <span className="text-lg text-gray-400 line-through">
                 Rp {product.compareAtPrice.toLocaleString()}
               </span>
             )}
+            {hasDiscount && (
+              <span className="text-lg text-pink-400 line-through">
+                Rp {product.price.toLocaleString()}
+              </span>
+            )}
           </div>
 
-          {hasPromo && promo && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-purple-700">
-                🔥 <span className="font-semibold">{promo.title}</span>
-                {promo.discountType === 'PERCENTAGE' 
-                  ? ` - ${promo.discountValue}% OFF` 
-                  : ` - Rp ${promo.discountValue?.toLocaleString()} OFF`}
+          {hasPromo && appliedPromo && (
+            <div className="bg-pink-100 border border-pink-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-pink-800">
+                🔥 <span className="font-semibold">{appliedPromo.title}</span>
+                {appliedPromo.discountType === 'PERCENTAGE' 
+                  ? ` - ${appliedPromo.discountValue}% OFF` 
+                  : ` - Rp ${appliedPromo.discountValue?.toLocaleString()} OFF`}
               </p>
             </div>
           )}
@@ -219,23 +264,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 💬 WhatsApp
               </a>
             )}
-            <Link
-              href="/products"
-              className="px-6 py-3 rounded-full border-2 font-semibold text-center transition-all hover:bg-gray-50"
-              style={{ 
-                borderColor: primaryColor,
-                color: primaryColor,
-              }}
-            >
-              Back
-            </Link>
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500 mb-2">Share this product:</p>
             <div className="flex gap-2">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`${product.name} - Rp ${product.price.toLocaleString()} - ${shareUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`${product.name} - Rp ${displayPrice.toLocaleString()} - ${shareUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm transition-colors"
@@ -249,9 +284,53 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               />
             </div>
           </div>
+
+          {/* ===== KETERANGAN HARGA - DI BAWAH SHARE ===== */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-700 mt-3">Keterangan Harga</h4>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-1">
+              {/* Harga Awal (dari compareAtPrice) */}
+              {priceData.hasComparePrice && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Harga Awal</span>
+                  <span className="text-gray-400 line-through">
+                    Rp {priceData.compareAtPrice?.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {/* Harga Normal - LABEL text-gray-600, NOMINAL text-pink-500 */}
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Harga Normal</span>
+                <span className="text-pink-400 font-medium">
+                  Rp {priceData.originalPrice.toLocaleString()}
+                </span>
+              </div>
+
+              {/* Harga Promo - LABEL & NOMINAL primaryColor */}
+              {priceData.hasPromo && (
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium" style={{ color: primaryColor }}>
+                    Harga Promo
+                  </span>
+                  <span className="font-bold" style={{ color: primaryColor }}>
+                    Rp {priceData.finalPrice.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {/* Tambahan Informasi */}
+              <div className="pt-2 border-t border-gray-200">
+                <p className="text-xs text-gray-400 italic">
+                  * Harga dapat berubah sewaktu-waktu
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* RELATED PRODUCTS */}
       {relatedProducts.length > 0 && (
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Related Products</h2>
@@ -295,6 +374,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       )}
 
+      {/* REVIEWS */}
       {product.reviews.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Customer Reviews</h2>

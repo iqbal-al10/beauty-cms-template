@@ -132,6 +132,24 @@ export default function CategoriesPage() {
     }
   }
 
+  // Fungsi untuk generate slug otomatis dari nama
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // hapus karakter khusus
+      .replace(/\s+/g, '-') // spasi jadi -
+      .replace(/-+/g, '-') // multiple dash jadi satu
+      .trim()
+  }
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const name = e.target.value
+    setNewCategory({
+      name,
+      slug: generateSlug(name),
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -169,7 +187,7 @@ export default function CategoriesPage() {
                 type="text"
                 placeholder="Nama Kategori"
                 value={newCategory.name}
-                onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                onChange={handleNameChange}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 required
               />

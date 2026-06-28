@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const skip = (page - 1) * limit
 
+    // Build filter
     const filter: any = {
       status: 'PUBLISHED',
     }
@@ -33,45 +34,73 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where: filter,
-        include: {
-          category: true,
-          tags: true,        // ← INCLUDE TAGS
-          promos: {          // ← INCLUDE PROMOS
-            include: {
-              promo: true,
-            },
+    // Fetch products - tanpa include promos yang kompleks
+    const products = await prisma.product.findMany({
+      where: filter,
+      include: {
+        category: true,
+        tags: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    })
+
+    const total = await prisma.product.count({ where: filter })
+
+    // Fetch promos separately untuk menghindari error include
+    const now = new Date()
+    const allPromos = await prisma.promo.findMany({
+      where: {
+        isActive: true,
+        startDate: { lte: now },
+        endDate: { gte: now },
+      },
+      include: {
+        products: {
+          include: {
+            product: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.product.count({ where: filter }),
-    ])
+      },
+    })
 
-    // Transform data: ekstrak tags dan promos
-    const transformedProducts = products.map((product: any) => ({
-      ...product,
-      tags: product.tags || [],
-      promos: product.promos?.map((pp: any) => pp.promo).filter(Boolean) || [],
-    }))
+    // Map promo ke product
+    const productWithPromos = products.map((product: any) => {
+      // Cari promo yang berlaku untuk product ini
+      const productPromos = allPromos.filter((promo: any) => {
+        return promo.products.some((pp: any) => pp.productId === product.id) && promo.type !== 'VOUCHER'
+      })
 
-    console.log('✅ Products sent:', {
-      count: transformedProducts.length,
-      sample: transformedProducts[0] ? {
-        name: transformedProducts[0].name,
-        price: transformedProducts[0].price,
-        compareAtPrice: transformedProducts[0].compareAtPrice,
-        tagsCount: transformedProducts[0].tags?.length || 0,
-        promosCount: transformedProducts[0].promos?.length || 0,
-      } : 'No products'
+      let finalPrice = product.price
+      let discountAmount = 0
+      let appliedPromo = null
+
+      if (productPromos.length > 0) {
+        const promo = productPromos[0]
+        appliedPromo = promo
+
+        if (promo.discountType === 'PERCENTAGE' && promo.discountValue) {
+          discountAmount = (product.price * promo.discountValue) / 100
+          finalPrice = product.price - discountAmount
+        } else if (promo.discountType === 'FIXED' && promo.discountValue) {
+          discountAmount = promo.discountValue
+          finalPrice = Math.max(0, product.price - discountAmount)
+        }
+      }
+
+      return {
+        ...product,
+        originalPrice: product.price,
+        finalPrice: Math.round(finalPrice),
+        discountAmount: Math.round(discountAmount),
+        appliedPromo: appliedPromo,
+        promos: productPromos,
+      }
     })
 
     return NextResponse.json({
-      data: transformedProducts,
+      data: productWithPromos,
       total,
       page,
       limit,
@@ -79,6 +108,9 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Error fetching products:', error)
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch products' },
+      { status: 500 }
+    )
   }
 }
