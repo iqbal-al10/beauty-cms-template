@@ -5,18 +5,18 @@ import Link from 'next/link'
 import ShareButton from '@/components/public/ShareButton'
 import { ArrowLeft } from 'lucide-react'
 
-// ===== FUNGSI getTagColor SAMA SEPERTI DI ADMIN =====
+// ===== FUNGSI getTagColor =====
 const PRESET_COLORS = [
-  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
-  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
-  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
-  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
-  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
-  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
+  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
   { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
-  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
+  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
-  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
+  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
 const getTagColor = (color: string | null): string => {
@@ -200,7 +200,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <span className="text-8xl">🧴</span>
           )}
           
-          {/* TAGS DI KIRI ATAS - DENGAN getTagColor() */}
+          {/* TAGS DI KIRI ATAS */}
           {productTags.length > 0 && (
             <div className="absolute top-4 left-4 flex flex-col gap-1">
               {productTags.slice(0, 2).map((tag) => (
@@ -247,7 +247,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </span>
             {hasComparePrice && (
               <span className="text-lg text-gray-400 line-through">
-                Rp {product.compareAtPrice.toLocaleString()}
+                {/* PERBAIKAN: Cek null sebelum toLocaleString */}
+                Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
               </span>
             )}
             {hasDiscount && (
@@ -331,18 +332,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           {/* ===== KETERANGAN HARGA ===== */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-[11px] font-semibold text-gray-700">Keterangan Harga</h4>
-            <div className="bg-gray-50 rounded-xl p-2 space-y-1">
+            <h4 className="text-sm font-semibold text-gray-700 mt-3">Keterangan Harga</h4>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-1">
               {priceData.hasComparePrice && (
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Harga Awal</span>
                   <span className="text-gray-400 line-through">
-                    Rp {priceData.compareAtPrice?.toLocaleString()}
+                    Rp {priceData.compareAtPrice ? priceData.compareAtPrice.toLocaleString() : ''}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between text-[11px]">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Harga Normal</span>
                 <span className="text-pink-400 font-medium">
                   Rp {priceData.originalPrice.toLocaleString()}
@@ -350,7 +351,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               </div>
 
               {priceData.hasPromo && (
-                <div className="flex justify-between text-[11px]">
+                <div className="flex justify-between text-sm">
                   <span className="font-medium" style={{ color: primaryColor }}>
                     Harga Promo
                   </span>
@@ -361,7 +362,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               )}
 
               <div className="pt-2 border-t border-gray-200">
-                <p className="text-[10px] text-gray-400 italic">
+                <p className="text-xs text-gray-400 italic">
                   * Harga dapat berubah sewaktu-waktu
                 </p>
               </div>
@@ -424,7 +425,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                       </p>
                       {hasRelatedCompare && (
                         <p className="text-xs text-gray-400 line-through">
-                          Rp {related.compareAtPrice.toLocaleString()}
+                          Rp {related.compareAtPrice ? related.compareAtPrice.toLocaleString() : ''}
                         </p>
                       )}
                     </div>
