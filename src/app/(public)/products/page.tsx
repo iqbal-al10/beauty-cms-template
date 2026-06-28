@@ -15,6 +15,7 @@ interface Product {
   compareAtPrice: number | null
   status: string
   stock: number
+  imageUrl: string | null
   category: { name: string } | null
   tags: Array<{ id: string; name: string; color: string | null }>
   appliedPromo: {
@@ -30,6 +31,28 @@ interface Category {
   id: string
   name: string
   slug: string
+}
+
+// ===== FUNGSI getTagColor SAMA SEPERTI DI ADMIN =====
+const PRESET_COLORS = [
+  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
+  { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
+  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
+  { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
+  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
+]
+
+const getTagColor = (color: string | null): string => {
+  if (!color) return '#6B7280'
+  if (color.startsWith('#')) return color
+  const preset = PRESET_COLORS.find(p => p.value === color)
+  if (preset) return preset.hex
+  return '#6B7280'
 }
 
 export default function ProductsPage() {
@@ -222,14 +245,33 @@ export default function ProductsPage() {
                 style={{ borderColor: `${primaryColor}20` }}
               >
                 <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
-                  <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                    <span className="text-6xl">🧴</span>
-                  </div>
-                  {hasComparePrice && (
-                    <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                      SALE
-                    </span>
+                  {product.imageUrl ? (
+                    <img 
+                      src={product.imageUrl} 
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                      <span className="text-6xl">🧴</span>
+                    </div>
                   )}
+                  
+                  {/* TAGS DI KIRI ATAS - DENGAN getTagColor() */}
+                  {productTags.length > 0 && (
+                    <div className="absolute top-3 left-3 flex flex-col gap-1">
+                      {productTags.slice(0, 2).map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                          style={{ backgroundColor: getTagColor(tag.color) }}
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {hasPromo && promo && (
                     <span className="absolute top-3 right-3 bg-pink-800 text-white text-xs font-bold px-2.5 py-1 rounded-full max-w-[120px] truncate">
                       🔥 {promo.title}
@@ -246,25 +288,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  {productTags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {productTags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="px-1.5 py-0.5 text-[10px] text-white rounded-full"
-                          style={{ backgroundColor: tag.color || '#6B7280' }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                      {productTags.length > 3 && (
-                        <span className="text-[10px] text-gray-400">+{productTags.length - 3}</span>
-                      )}
-                    </div>
-                  )}
-
                   <div className="flex items-center gap-2 mt-2">
-                    {/* HARGA PROMO - PRIMARY */}
                     <p className="text-lg font-bold" style={{ color: primaryColor }}>
                       Rp {displayPrice.toLocaleString()}
                     </p>

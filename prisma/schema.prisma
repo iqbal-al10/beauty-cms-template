@@ -71,6 +71,7 @@ model Product {
   status          String         @default("DRAFT")
   isFeatured      Boolean        @default(false)
   categoryId      String
+  imageUrl        String?        // ← TAMBAHKAN: URL gambar produk
   metaTitle       String?
   metaDescription String?
   canonicalUrl    String?
@@ -204,7 +205,7 @@ model Promo {
   id            String         @id @default(cuid())
   title         String
   type          String
-  voucherCode   String?        @unique // ← TAMBAHKAN INI
+  voucherCode   String?        @unique
   discountValue Float?
   discountType  String?
   startDate     DateTime
@@ -315,7 +316,6 @@ model StockHistory {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ===== ORDER MODEL =====
 model Order {
   id           String   @id @default(cuid())
   customerName String
@@ -330,7 +330,7 @@ model Order {
   voucherCode  String?
   paymentMethod String?
   paymentProof String?
-  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, COMPLETED
+  status       String   @default("PENDING")
   note         String?
   approvedBy   String?
   approvedAt   DateTime?
@@ -341,11 +341,10 @@ model Order {
   user         User?    @relation(fields: [approvedBy], references: [id])
 }
 
-// ===== PAYMENT METHOD MODEL =====
 model PaymentMethod {
   id            String   @id @default(cuid())
   name          String
-  type          String   // "bank", "ewallet", "qris"
+  type          String
   accountNumber String?
   accountName   String?
   qrCodeUrl     String?

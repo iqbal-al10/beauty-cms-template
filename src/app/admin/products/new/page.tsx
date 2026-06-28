@@ -23,16 +23,16 @@ interface Settings {
 }
 
 const PRESET_COLORS = [
-  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
-  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
-  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
-  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
-  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
-  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
+  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
   { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
-  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
+  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
-  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
+  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
 ]
 
 export default function NewProductPage() {
@@ -51,6 +51,7 @@ export default function NewProductPage() {
     stock: '',
     status: 'DRAFT',
     categoryId: '',
+    imageUrl: '',
     metaTitle: '',
     metaDescription: '',
     canonicalUrl: '',
@@ -112,8 +113,7 @@ export default function NewProductPage() {
 
   const getTagColor = (color: string | null): string => {
     if (!color) return '#6B7280'
-    const hexMatch = color.match(/bg-\[(#[0-9a-fA-F]{6})\]/)
-    if (hexMatch) return hexMatch[1]
+    if (color.startsWith('#')) return color
     const preset = PRESET_COLORS.find(p => p.value === color)
     if (preset) return preset.hex
     return '#6B7280'
@@ -175,6 +175,7 @@ export default function NewProductPage() {
       tags: selectedTags,
       primaryColor,
       slug: form.slug || 'product-slug',
+      imageUrl: form.imageUrl || null,
     }
   }
 
@@ -200,11 +201,29 @@ export default function NewProductPage() {
         <div className="border rounded-xl overflow-hidden border-gray-100">
           <div className="bg-white p-3">
             <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center relative">
-              <span className="text-4xl">🧴</span>
-              {preview.compareAtPrice && preview.compareAtPrice > preview.price && (
-                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  SALE
-                </span>
+              {preview.imageUrl ? (
+                <img 
+                  src={preview.imageUrl} 
+                  alt={preview.name}
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              ) : (
+                <span className="text-4xl">🧴</span>
+              )}
+              
+              {/* TAGS DI KIRI ATAS FOTO - TANPA SALE */}
+              {preview.tags.length > 0 && (
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {preview.tags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium shadow-sm"
+                      style={{ backgroundColor: getTagColor(tag.color) }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
 
@@ -218,7 +237,7 @@ export default function NewProductPage() {
                 {preview.tags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="px-1.5 py-0.5 text-[10px] text-white rounded-full"
+                    className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium"
                     style={{ backgroundColor: getTagColor(tag.color) }}
                   >
                     {tag.name}
@@ -260,6 +279,7 @@ export default function NewProductPage() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="lg:w-1/2">
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
+            {/* Form fields sama seperti sebelumnya */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
               <input
@@ -293,6 +313,22 @@ export default function NewProductPage() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Gambar Produk (URL dari Media)</label>
+              <input
+                type="text"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://... (copy dari Media Manager)"
+              />
+              {form.imageUrl && (
+                <div className="mt-2">
+                  <img src={form.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -387,7 +423,6 @@ export default function NewProductPage() {
               </p>
             </div>
 
-            {/* SEO SECTION */}
             <div className="border-t border-gray-200 pt-3">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
               <div className="space-y-3">
@@ -450,7 +485,6 @@ export default function NewProductPage() {
           </form>
         </div>
 
-        {/* PREVIEW */}
         <div className="lg:w-1/2 sticky top-6">
           <ProductPreview />
         </div>

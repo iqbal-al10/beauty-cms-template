@@ -49,7 +49,7 @@ export async function PUT(
 
     const { 
       name, slug, description, price, compareAtPrice, stock, status, 
-      categoryId, metaTitle, metaDescription, canonicalUrl, ogImageUrl 
+      categoryId, imageUrl, metaTitle, metaDescription, canonicalUrl, ogImageUrl 
     } = body
 
     const product = await prisma.product.update({
@@ -63,6 +63,7 @@ export async function PUT(
         stock: parseInt(stock) || 0,
         status: status || 'DRAFT',
         categoryId,
+        imageUrl: imageUrl || null,
         metaTitle: metaTitle || '',
         metaDescription: metaDescription || '',
         canonicalUrl: canonicalUrl || '',
@@ -74,7 +75,7 @@ export async function PUT(
       },
     })
 
-    console.log('✅ Product updated:', product.id, 'compareAtPrice:', product.compareAtPrice)
+    console.log('✅ Product updated:', product.id, 'imageUrl:', product.imageUrl)
     return NextResponse.json(product)
   } catch (error) {
     console.error('❌ Error updating product:', error)

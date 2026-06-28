@@ -1,105 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import { logUserAction } from '@/middleware/activityLogger'
+import { getServerSession } from '@/lib/auth'
+import { uploadFile, deleteFile } from '@/lib/storage'
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const folder = searchParams.get('folder')
-    const search = searchParams.get('search')
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    const where: any = {}
-    if (folder) where.folder = folder
+    const searchParams = request.nextUrl.searchParams
+    const search = searchParams.get('search') || ''
+    const folder = searchParams.get('folder') || ''
+
+    const filter: any = {}
     if (search) {
-      where.fileName = { contains: search }
+      filter.fileName = { contains: search, mode: 'insensitive' }
+    }
+    if (folder) {
+      filter.folder = folder
     }
 
     const files = await prisma.mediaFile.findMany({
-      where,
+      where: filter,
       orderBy: { uploadedAt: 'desc' },
     })
 
-    return NextResponse.json(files || [])
+    return NextResponse.json(files)
   } catch (error) {
-    console.error('Error fetching media:', error)
-    return NextResponse.json([], { status: 200 })
+    console.error('Error fetching media files:', error)
+    return NextResponse.json({ error: 'Failed to fetch media files' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const folder = formData.get('folder') as string || ''
+    const folder = formData.get('folder') as string || 'general'
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: 'Only images are allowed (JPEG, PNG, WebP, GIF, SVG)' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 })
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File size must be less than 5MB' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'File too large (max 5MB)' }, { status: 400 })
     }
 
-    // Generate filename
-    const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
-    const fileName = `${timestamp}-${file.name}`
-
-    // Save file to public/uploads
-    const uploadDir = join(process.cwd(), 'public', 'uploads', folder)
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    const filePath = join(uploadDir, fileName)
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
-
-    // URL to access the file
-    const url = `/uploads/${folder}${folder ? '/' : ''}${fileName}`
+    // Upload to Vercel Blob
+    const result = await uploadFile(file, file.name, folder)
 
     // Save to database
     const mediaFile = await prisma.mediaFile.create({
       data: {
-        url,
-        fileName: file.name,
+        url: result.url,
+        fileName: result.fileName,
         fileType: file.type,
-        sizeBytes: file.size,
-        folder: folder || null,
+        sizeBytes: result.size,
+        folder: folder,
       },
     })
 
-    await logUserAction('CREATE', 'MediaFile', mediaFile.id, {
-      fileName: mediaFile.fileName,
-      folder: mediaFile.folder,
-    })
+    console.log('✅ File uploaded to Vercel Blob:', result.url)
 
-    return NextResponse.json(mediaFile, { status: 201 })
+    return NextResponse.json(mediaFile)
   } catch (error) {
     console.error('Error uploading file:', error)
-    return NextResponse.json(
-      { error: 'Failed to upload file' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const searchParams = request.nextUrl.searchParams
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+    }
+
+    const mediaFile = await prisma.mediaFile.findUnique({
+      where: { id },
+    })
+
+    if (!mediaFile) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
+
+    // Delete from Vercel Blob
+    try {
+      await deleteFile(mediaFile.url)
+    } catch (error) {
+      console.error('Error deleting from Vercel Blob:', error)
+      // Continue to delete from database even if blob deletion fails
+    }
+
+    // Delete from database
+    await prisma.mediaFile.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting file:', error)
+    return NextResponse.json({ error: 'Failed to delete file' }, { status: 500 })
   }
 }

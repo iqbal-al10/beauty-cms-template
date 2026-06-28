@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const skip = (page - 1) * limit
 
-    // Build filter
+    const now = new Date()
+
     const filter: any = {
       status: 'PUBLISHED',
     }
@@ -34,12 +35,22 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    // Fetch products - tanpa include promos yang kompleks
     const products = await prisma.product.findMany({
       where: filter,
       include: {
         category: true,
-        tags: true,
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            color: true, // ← PASTIKAN COLOR DIAMBIL
+          },
+        },
+        promos: {
+          include: {
+            promo: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip,
@@ -48,36 +59,23 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.product.count({ where: filter })
 
-    // Fetch promos separately untuk menghindari error include
-    const now = new Date()
-    const allPromos = await prisma.promo.findMany({
-      where: {
-        isActive: true,
-        startDate: { lte: now },
-        endDate: { gte: now },
-      },
-      include: {
-        products: {
-          include: {
-            product: true,
-          },
-        },
-      },
-    })
-
-    // Map promo ke product
-    const productWithPromos = products.map((product: any) => {
-      // Cari promo yang berlaku untuk product ini
-      const productPromos = allPromos.filter((promo: any) => {
-        return promo.products.some((pp: any) => pp.productId === product.id) && promo.type !== 'VOUCHER'
-      })
+    const transformedProducts = products.map((product: any) => {
+      // Filter promo aktif
+      const activePromos = product.promos
+        ?.map((pp: any) => pp.promo)
+        .filter((p: any) => p && p.isActive)
+        .filter((p: any) => {
+          const start = new Date(p.startDate)
+          const end = new Date(p.endDate)
+          return start <= now && end >= now && p.type !== 'VOUCHER'
+        }) || []
 
       let finalPrice = product.price
       let discountAmount = 0
       let appliedPromo = null
 
-      if (productPromos.length > 0) {
-        const promo = productPromos[0]
+      if (activePromos.length > 0) {
+        const promo = activePromos[0]
         appliedPromo = promo
 
         if (promo.discountType === 'PERCENTAGE' && promo.discountValue) {
@@ -89,18 +87,22 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Tags sudah include color dari select
+      const tags = product.tags || []
+
       return {
         ...product,
         originalPrice: product.price,
         finalPrice: Math.round(finalPrice),
         discountAmount: Math.round(discountAmount),
         appliedPromo: appliedPromo,
-        promos: productPromos,
+        activePromos: activePromos,
+        tags: tags, // tags sudah include color
       }
     })
 
     return NextResponse.json({
-      data: productWithPromos,
+      data: transformedProducts,
       total,
       page,
       limit,
@@ -108,9 +110,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('❌ Error fetching products:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch products' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 })
   }
 }

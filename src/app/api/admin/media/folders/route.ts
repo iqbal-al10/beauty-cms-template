@@ -1,104 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { mkdir, readdir, rm } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import { logUserAction } from '@/middleware/activityLogger'
+import { getServerSession } from '@/lib/auth'
+import { deleteFile } from '@/lib/storage'
 
 export async function GET() {
   try {
-    const uploadPath = join(process.cwd(), 'public', 'uploads')
-    let folders: string[] = []
-
-    if (existsSync(uploadPath)) {
-      const entries = await readdir(uploadPath, { withFileTypes: true })
-      folders = entries
-        .filter((entry: any) => entry.isDirectory())
-        .map((entry: any) => entry.name)
-        .sort()
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    return NextResponse.json(folders)
+    const folders = await prisma.mediaFile.findMany({
+      select: { folder: true },
+      distinct: ['folder'],
+      orderBy: { folder: 'asc' },
+    })
+
+    const folderNames = folders
+      .map((f) => f.folder)
+      .filter((f): f is string => f !== null)
+
+    return NextResponse.json(folderNames)
   } catch (error) {
     console.error('Error fetching folders:', error)
-    return NextResponse.json([], { status: 200 })
+    return NextResponse.json({ error: 'Failed to fetch folders' }, { status: 500 })
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { name } = body
 
     if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: 'Nama folder harus diisi' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Folder name is required' }, { status: 400 })
     }
 
-    const folderPath = join(process.cwd(), 'public', 'uploads', name.trim())
-    
-    if (existsSync(folderPath)) {
-      return NextResponse.json(
-        { error: 'Folder sudah ada' },
-        { status: 400 }
-      )
-    }
-
-    await mkdir(folderPath, { recursive: true })
-
-    await logUserAction('CREATE', 'Folder', name.trim(), {
-      folder: name.trim(),
-    })
-
-    return NextResponse.json({ success: true, folder: name.trim() })
+    // Just return success - folder will be created when files are uploaded
+    return NextResponse.json({ success: true, name: name.trim() })
   } catch (error) {
     console.error('Error creating folder:', error)
-    return NextResponse.json(
-      { error: 'Gagal membuat folder' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to create folder' }, { status: 500 })
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: Request) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const name = searchParams.get('name')
+    const folderName = searchParams.get('name')
 
-    if (!name) {
-      return NextResponse.json(
-        { error: 'Nama folder harus disertakan' },
-        { status: 400 }
-      )
+    if (!folderName) {
+      return NextResponse.json({ error: 'Folder name is required' }, { status: 400 })
     }
 
-    const folderPath = join(process.cwd(), 'public', 'uploads', name)
-    
-    if (!existsSync(folderPath)) {
-      return NextResponse.json(
-        { error: 'Folder tidak ditemukan' },
-        { status: 404 }
-      )
-    }
-
-    await rm(folderPath, { recursive: true, force: true })
-
-    await prisma.mediaFile.deleteMany({
-      where: { folder: name },
+    // Get all files in the folder
+    const files = await prisma.mediaFile.findMany({
+      where: { folder: folderName },
     })
 
-    await logUserAction('DELETE', 'Folder', name, {
-      folder: name,
+    // Delete from Vercel Blob
+    for (const file of files) {
+      try {
+        await deleteFile(file.url)
+      } catch (error) {
+        console.error(`Error deleting ${file.fileName} from Vercel Blob:`, error)
+      }
+    }
+
+    // Delete from database
+    await prisma.mediaFile.deleteMany({
+      where: { folder: folderName },
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting folder:', error)
-    return NextResponse.json(
-      { error: 'Gagal menghapus folder' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete folder' }, { status: 500 })
   }
 }

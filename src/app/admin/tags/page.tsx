@@ -13,16 +13,16 @@ interface Tag {
 }
 
 const PRESET_COLORS = [
-  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
-  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
-  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
-  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
-  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
-  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
+  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
   { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
-  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
+  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
-  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
+  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
 ]
 
 export default function TagsPage() {

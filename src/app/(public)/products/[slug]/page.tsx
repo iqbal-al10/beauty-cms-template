@@ -5,6 +5,28 @@ import Link from 'next/link'
 import ShareButton from '@/components/public/ShareButton'
 import { ArrowLeft } from 'lucide-react'
 
+// ===== FUNGSI getTagColor SAMA SEPERTI DI ADMIN =====
+const PRESET_COLORS = [
+  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
+  { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
+  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
+  { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
+  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
+]
+
+const getTagColor = (color: string | null): string => {
+  if (!color) return '#6B7280'
+  if (color.startsWith('#')) return color
+  const preset = PRESET_COLORS.find(p => p.value === color)
+  if (preset) return preset.hex
+  return '#6B7280'
+}
+
 interface ProductDetailPageProps {
   params: Promise<{
     slug: string
@@ -18,7 +40,13 @@ export async function generateMetadata({ params }: ProductDetailPageProps) {
     where: { slug },
     include: { 
       category: true,
-      tags: true,
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+      },
     },
   })
 
@@ -48,7 +76,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     where: { slug },
     include: {
       category: true,
-      tags: true,
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+      },
       promos: {
         include: {
           promo: true,
@@ -107,7 +141,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     },
     include: {
       category: true,
-      tags: true,
+      tags: {
+        select: {
+          id: true,
+          name: true,
+          color: true,
+        },
+      },
     },
     take: 4,
   })
@@ -121,6 +161,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const hasPromo = appliedPromo !== null
   const hasDiscount = discountAmount > 0
   const displayPrice = Math.round(finalPrice)
+  const productTags = product.tags || []
 
   const priceData = {
     compareAtPrice: product.compareAtPrice || null,
@@ -148,13 +189,32 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl aspect-square flex items-center justify-center relative">
-          <span className="text-8xl">🧴</span>
-          {hasComparePrice && (
-            <span className="absolute top-4 left-4 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full">
-              SALE
-            </span>
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl aspect-square flex items-center justify-center relative overflow-hidden">
+          {product.imageUrl ? (
+            <img 
+              src={product.imageUrl} 
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-8xl">🧴</span>
           )}
+          
+          {/* TAGS DI KIRI ATAS - DENGAN getTagColor() */}
+          {productTags.length > 0 && (
+            <div className="absolute top-4 left-4 flex flex-col gap-1">
+              {productTags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag.id}
+                  className="text-xs font-bold px-3 py-1 rounded-full text-white truncate max-w-[120px] shadow-md"
+                  style={{ backgroundColor: getTagColor(tag.color) }}
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          )}
+
           {hasPromo && appliedPromo && (
             <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full">
               🔥 {appliedPromo.title}
@@ -163,22 +223,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
 
         <div>
-          {product.tags && product.tags.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              {product.tags.map((tag: any) => (
-                <span
-                  key={tag.id}
-                  className="px-3 py-1 text-xs text-white rounded-full"
-                  style={{ 
-                    backgroundColor: tag.color || '#6B7280',
-                  }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          )}
-
           <h1 className="text-3xl font-bold text-gray-800 mb-2">{product.name}</h1>
           <p className="text-gray-500 mb-4">{product.category?.name}</p>
 
@@ -285,13 +329,12 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </div>
 
-          {/* ===== KETERANGAN HARGA - DI BAWAH SHARE ===== */}
+          {/* ===== KETERANGAN HARGA ===== */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mt-3">Keterangan Harga</h4>
-            <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-              {/* Harga Awal (dari compareAtPrice) */}
+            <h4 className="text-[11px] font-semibold text-gray-700">Keterangan Harga</h4>
+            <div className="bg-gray-50 rounded-xl p-2 space-y-1">
               {priceData.hasComparePrice && (
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-[11px]">
                   <span className="text-gray-500">Harga Awal</span>
                   <span className="text-gray-400 line-through">
                     Rp {priceData.compareAtPrice?.toLocaleString()}
@@ -299,17 +342,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </div>
               )}
 
-              {/* Harga Normal - LABEL text-gray-600, NOMINAL text-pink-500 */}
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-[11px]">
                 <span className="text-gray-500">Harga Normal</span>
                 <span className="text-pink-400 font-medium">
                   Rp {priceData.originalPrice.toLocaleString()}
                 </span>
               </div>
 
-              {/* Harga Promo - LABEL & NOMINAL primaryColor */}
               {priceData.hasPromo && (
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-[11px]">
                   <span className="font-medium" style={{ color: primaryColor }}>
                     Harga Promo
                   </span>
@@ -319,9 +360,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 </div>
               )}
 
-              {/* Tambahan Informasi */}
               <div className="pt-2 border-t border-gray-200">
-                <p className="text-xs text-gray-400 italic">
+                <p className="text-[10px] text-gray-400 italic">
                   * Harga dapat berubah sewaktu-waktu
                 </p>
               </div>
@@ -337,6 +377,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {relatedProducts.map((related) => {
               const hasRelatedCompare = related.compareAtPrice && related.compareAtPrice > related.price
+              const relatedTags = related.tags || []
               return (
                 <Link
                   key={related.id}
@@ -345,9 +386,30 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   style={{ borderColor: `${primaryColor}20` }}
                 >
                   <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-300 relative">
-                    <span className="text-4xl">🧴</span>
+                    {related.imageUrl ? (
+                      <img 
+                        src={related.imageUrl} 
+                        alt={related.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <span className="text-4xl">🧴</span>
+                    )}
+                    {relatedTags.length > 0 && (
+                      <div className="absolute top-2 left-2 flex flex-col gap-0.5">
+                        {relatedTags.slice(0, 1).map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="text-[8px] font-bold px-1.5 py-0.5 rounded-full text-white truncate max-w-[60px]"
+                            style={{ backgroundColor: getTagColor(tag.color) }}
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     {hasRelatedCompare && (
-                      <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                         SALE
                       </span>
                     )}
