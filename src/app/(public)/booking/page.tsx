@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
@@ -46,7 +47,8 @@ interface VoucherResponse {
   } | null
 }
 
-export default function BookingPage() {
+// ===== KOMPONEN UTAMA =====
+function BookingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const productIdParam = searchParams.get('product') || ''
@@ -100,7 +102,6 @@ export default function BookingPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch products with promo
       const productsRes = await fetch('/api/public/products?limit=100')
       if (productsRes.ok) {
         const data = await productsRes.json()
@@ -259,13 +260,11 @@ export default function BookingPage() {
 
       const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethodId)
       
-      // Gunakan harga dari selectedProduct yang sudah include promo
       const pricePerUnit = selectedProduct?.finalPrice || selectedProduct?.price || 0
       const subtotal = pricePerUnit * form.quantity
       const originalSubtotal = (selectedProduct?.originalPrice || selectedProduct?.price || 0) * form.quantity
       let discount = (selectedProduct?.discountAmount || 0) * form.quantity
       
-      // Tambahkan diskon dari voucher jika ada
       let voucherDiscount = 0
       if (voucherValid?.valid && voucherValid.promo) {
         const promo = voucherValid.promo
@@ -581,7 +580,7 @@ export default function BookingPage() {
           <p className="text-xs text-gray-400 mt-1">Format: JPG, PNG, WEBP (Max 5MB)</p>
         </div>
 
-        {/* Rincian Order - LENGKAP */}
+        {/* Rincian Order */}
         {selectedProduct && summary && (
           <div className="bg-gray-50 p-4 rounded-lg space-y-2">
             <h3 className="font-semibold text-gray-800 border-b border-gray-200 pb-2">📋 Rincian Pesanan</h3>
@@ -735,5 +734,18 @@ export default function BookingPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ===== PAGE UTAMA DENGAN SUSPENSE =====
+export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#c4367b' }} />
+      </div>
+    }>
+      <BookingContent />
+    </Suspense>
   )
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { Calendar as CalendarIcon, Clock, User, Phone, Mail, MessageSquare, CheckCircle } from 'lucide-react'
 
@@ -11,7 +12,8 @@ interface Service {
   price: number
 }
 
-export default function BookingPage() {
+// ===== KOMPONEN UTAMA =====
+function BookingServiceContent() {
   const [step, setStep] = useState(1)
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(false)
@@ -290,5 +292,18 @@ export default function BookingPage() {
         )}
       </form>
     </div>
+  )
+}
+
+// ===== PAGE UTAMA DENGAN SUSPENSE =====
+export default function BookingServicePage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#c4367b' }} />
+      </div>
+    }>
+      <BookingServiceContent />
+    </Suspense>
   )
 }
