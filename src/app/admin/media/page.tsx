@@ -19,6 +19,7 @@ export default function MediaPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [folders, setFolders] = useState<string[]>([])
+  const [customFolders, setCustomFolders] = useState<string[]>([])
   const [newFolder, setNewFolder] = useState('')
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -29,7 +30,6 @@ export default function MediaPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ===== FETCH FILES =====
   const fetchFiles = async () => {
     try {
       const params = new URLSearchParams()
@@ -48,17 +48,35 @@ export default function MediaPage() {
     }
   }
 
-  // ===== FETCH FOLDERS =====
   const fetchFolders = async () => {
     try {
       const res = await fetch('/api/admin/media/folders')
       if (!res.ok) throw new Error('Failed to fetch folders')
       const data = await res.json()
-      setFolders(data || [])
+      console.log('📁 Folders from API:', data)
+      setFolders(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching folders:', error)
       setFolders([])
     }
+  }
+
+  // Load custom folders from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('beauty_custom_folders')
+      if (saved) {
+        setCustomFolders(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.error('Error loading custom folders:', e)
+    }
+  }, [])
+
+  // Save custom folders to localStorage
+  const saveCustomFolders = (folders: string[]) => {
+    setCustomFolders(folders)
+    localStorage.setItem('beauty_custom_folders', JSON.stringify(folders))
   }
 
   useEffect(() => {
@@ -66,62 +84,53 @@ export default function MediaPage() {
     fetchFolders()
   }, [search])
 
-  // ===== CREATE FOLDER =====
   const handleCreateFolder = async () => {
     if (!newFolder.trim()) {
       toast.error('Nama folder harus diisi')
       return
     }
 
+    // Tambahkan ke custom folders (virtual)
+    if (!customFolders.includes(newFolder.trim())) {
+      saveCustomFolders([...customFolders, newFolder.trim()])
+    }
+
+    // Coba simpan ke API juga
     try {
-      const res = await fetch('/api/admin/media/folders', {
+      await fetch('/api/admin/media/folders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newFolder.trim() }),
       })
-
-      if (res.ok) {
-        toast.success(`Folder "${newFolder}" berhasil dibuat!`)
-        setNewFolder('')
-        setShowNewFolder(false)
-        // REFRESH FOLDERS
-        await fetchFolders()
-        // Refresh files juga
-        await fetchFiles()
-      } else {
-        const error = await res.json()
-        toast.error(error.error || 'Gagal membuat folder')
-      }
     } catch (error) {
-      console.error('Error creating folder:', error)
-      toast.error('Gagal membuat folder')
+      console.error('Error saving folder to API:', error)
     }
+
+    toast.success(`Folder "${newFolder}" berhasil dibuat!`)
+    setNewFolder('')
+    setShowNewFolder(false)
+    await fetchFolders()
   }
 
-  // ===== DELETE FOLDER =====
   const handleDeleteFolder = async (folderName: string) => {
     if (!confirm(`Yakin ingin menghapus folder "${folderName}" dan semua isinya?`)) return
 
+    // Hapus dari custom folders
+    saveCustomFolders(customFolders.filter(f => f !== folderName))
+
     try {
-      const res = await fetch(`/api/admin/media/folders?name=${encodeURIComponent(folderName)}`, {
+      await fetch(`/api/admin/media/folders?name=${encodeURIComponent(folderName)}`, {
         method: 'DELETE',
       })
-
-      if (res.ok) {
-        toast.success(`Folder "${folderName}" berhasil dihapus!`)
-        await fetchFolders()
-        await fetchFiles()
-      } else {
-        const error = await res.json()
-        toast.error(error.error || 'Gagal menghapus folder')
-      }
     } catch (error) {
-      console.error('Error deleting folder:', error)
-      toast.error('Gagal menghapus folder')
+      console.error('Error deleting folder from API:', error)
     }
+
+    toast.success(`Folder "${folderName}" berhasil dihapus!`)
+    await fetchFolders()
+    await fetchFiles()
   }
 
-  // ===== UPLOAD FILE =====
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -169,7 +178,6 @@ export default function MediaPage() {
     }
   }
 
-  // ===== DELETE FILE =====
   const handleDelete = async (id: string, fileName: string) => {
     if (!confirm(`Yakin ingin menghapus "${fileName}"?`)) return
 
@@ -191,15 +199,12 @@ export default function MediaPage() {
     }
   }
 
-  // ===== COPY URL =====
   const handleCopy = (url: string) => {
-    const fullUrl = url
-    navigator.clipboard.writeText(fullUrl)
+    navigator.clipboard.writeText(url)
     setCopySuccess('URL disalin!')
     setTimeout(() => setCopySuccess(''), 2000)
   }
 
-  // ===== PREVIEW IMAGE =====
   const handlePreview = (url: string) => {
     setPreviewImage(url)
     setShowPreviewModal(true)
@@ -239,8 +244,13 @@ export default function MediaPage() {
 
   const folderKeys = Object.keys(groupedFiles).sort()
 
-  // Gabungkan folder dari database dengan folder yang punya files
-  const allFolders = [...new Set([...folders, ...folderKeys.filter(k => k !== 'root')])].sort()
+  // Gabungkan semua folder: dari API + dari files + custom folders
+  const allFolders = [...new Set([...folders, ...folderKeys.filter(k => k !== 'root'), ...customFolders])].sort()
+
+  console.log('📁 All folders:', allFolders)
+  console.log('📁 Folder keys from files:', folderKeys)
+  console.log('📁 Folders from API:', folders)
+  console.log('📁 Custom folders:', customFolders)
 
   return (
     <div>
@@ -272,7 +282,6 @@ export default function MediaPage() {
         </div>
       </div>
 
-      {/* New Folder Form */}
       {showNewFolder && (
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
           <div className="flex gap-2">
@@ -302,7 +311,6 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
@@ -330,9 +338,13 @@ export default function MediaPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 >
                   <option value="">-- Pilih Folder --</option>
-                  {allFolders.map((f) => (
-                    <option key={f} value={f}>📁 {f}</option>
-                  ))}
+                  {allFolders.length > 0 ? (
+                    allFolders.map((f) => (
+                      <option key={f} value={f}>📁 {f}</option>
+                    ))
+                  ) : (
+                    <option value="" disabled>Belum ada folder</option>
+                  )}
                 </select>
               </div>
 
@@ -364,7 +376,6 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* Preview Modal */}
       {showPreviewModal && previewImage && (
         <div 
           className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer"
@@ -396,7 +407,6 @@ export default function MediaPage() {
         </div>
       )}
 
-      {/* Search */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
         <div className="relative max-w-xs">
           <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
@@ -413,15 +423,14 @@ export default function MediaPage() {
         )}
       </div>
 
-      {/* Files Grouped by Folder */}
-      {folderKeys.length === 0 ? (
+      {allFolders.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center text-gray-500">
-          <p className="text-lg font-medium">Belum ada file</p>
-          <p className="text-sm">Upload gambar untuk memulai</p>
+          <p className="text-lg font-medium">Belum ada folder</p>
+          <p className="text-sm">Buat folder atau upload gambar untuk memulai</p>
         </div>
       ) : (
         <div className="space-y-8">
-          {folderKeys.map((folderName) => {
+          {allFolders.map((folderName) => {
             const folderFiles = groupedFiles[folderName] || []
             const displayName = folderName === 'root' ? '📂 Root' : `📁 ${folderName}`
 
@@ -445,7 +454,18 @@ export default function MediaPage() {
 
                 <div className="p-4">
                   {folderFiles.length === 0 ? (
-                    <p className="text-gray-400 text-sm text-center py-4">Tidak ada file di folder ini</p>
+                    <div className="text-center py-8">
+                      <p className="text-gray-400 text-sm">Folder kosong</p>
+                      <button
+                        onClick={() => {
+                          setSelectedFolderForUpload(folderName)
+                          setShowUploadModal(true)
+                        }}
+                        className="mt-2 text-sm text-pink-500 hover:text-pink-600"
+                      >
+                        Upload file ke folder ini
+                      </button>
+                    </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                       {folderFiles.map((file) => (
@@ -457,20 +477,14 @@ export default function MediaPage() {
                             className="aspect-square bg-gray-100 relative cursor-pointer"
                             onClick={() => handlePreview(file.url)}
                           >
-                            {file.fileType.startsWith('image/') ? (
-                              <img
-                                src={file.url}
-                                alt={file.fileName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.src = '/placeholder-image.jpg'
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-4xl">
-                                📄
-                              </div>
-                            )}
+                            <img
+                              src={file.url}
+                              alt={file.fileName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = '/placeholder-image.jpg'
+                              }}
+                            />
                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
                               <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
