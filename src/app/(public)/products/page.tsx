@@ -34,7 +34,6 @@ interface Category {
   slug: string
 }
 
-// ===== FUNGSI getTagColor =====
 const PRESET_COLORS = [
   { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
   { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
@@ -56,7 +55,6 @@ const getTagColor = (color: string | null): string => {
   return '#6B7280'
 }
 
-// ===== KOMPONEN UTAMA YANG PAKAI useSearchParams =====
 function ProductsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -131,17 +129,6 @@ function ProductsContent() {
     router.push(`/products?${params.toString()}`)
   }
 
-  const createUrl = (newParams: Record<string, string>) => {
-    const urlParams = new URLSearchParams()
-    if (categorySlug && categorySlug !== '') urlParams.set('category', categorySlug)
-    if (searchQuery) urlParams.set('search', searchQuery)
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (value) urlParams.set(key, value)
-    })
-    const queryString = urlParams.toString()
-    return queryString ? `/products?${queryString}` : '/products'
-  }
-
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
@@ -181,9 +168,9 @@ function ProductsContent() {
           </div>
         </form>
 
-        <div className="flex gap-2 flex-wrap justify-center md:justify-end items-center">
-          <Link
-            href={createUrl({ category: '' })}
+        <div className="flex flex-wrap gap-2 items-center justify-center md:justify-end">
+          <a
+            href="/products"
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               !categorySlug
                 ? 'text-white'
@@ -192,11 +179,11 @@ function ProductsContent() {
             style={!categorySlug ? { backgroundColor: primaryColor } : {}}
           >
             All
-          </Link>
+          </a>
           {categories.map((category) => (
             <Link
               key={category.id}
-              href={createUrl({ category: category.slug })}
+              href={`/products?category=${category.slug}`}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 categorySlug === category.slug
                   ? 'text-white'
@@ -252,6 +239,17 @@ function ProductsContent() {
                       src={product.imageUrl} 
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        // Show fallback icon
+                        const parent = e.currentTarget.parentElement
+                        if (parent) {
+                          const fallback = document.createElement('div')
+                          fallback.className = 'w-full h-full flex items-center justify-center'
+                          fallback.innerHTML = '<span class="text-6xl">🧴</span>'
+                          parent.appendChild(fallback)
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
@@ -259,7 +257,6 @@ function ProductsContent() {
                     </div>
                   )}
                   
-                  {/* TAGS DI KIRI ATAS */}
                   {productTags.length > 0 && (
                     <div className="absolute top-3 left-3 flex flex-col gap-1">
                       {productTags.slice(0, 2).map((tag) => (
@@ -338,8 +335,8 @@ function ProductsContent() {
             return (
               <Link
                 key={i}
-                href={createUrl({ page: String(pageNum) })}
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                href={`/products?page=${pageNum}`}
+                className={`w-10 h-10 rounded-full flex items-center justifyContent-center text-sm font-medium transition-colors ${
                   isActive
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -356,7 +353,6 @@ function ProductsContent() {
   )
 }
 
-// ===== PAGE UTAMA DENGAN SUSPENSE =====
 export default function ProductsPage() {
   return (
     <Suspense fallback={

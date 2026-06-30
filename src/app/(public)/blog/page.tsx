@@ -18,14 +18,12 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const limit = 9
   const skip = (page - 1) * limit
 
-  // Fetch settings
   const settings = await prisma.settings.findUnique({
     where: { id: 'default' },
   })
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
 
-  // Build filter
   const filter: any = {
     status: 'PUBLISHED',
   }
@@ -44,7 +42,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
     ]
   }
 
-  // Fetch data
   const [posts, totalPosts, categories] = await Promise.all([
     prisma.blogPost.findMany({
       where: filter,
@@ -64,18 +61,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   const totalPages = Math.ceil(totalPosts / limit)
 
-  // Generate URL
-  const createUrl = (newParams: Record<string, string>) => {
-    const urlParams = new URLSearchParams()
-    if (categorySlug) urlParams.set('category', categorySlug)
-    if (searchQuery) urlParams.set('search', searchQuery)
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (value) urlParams.set(key, value)
-    })
-    const queryString = urlParams.toString()
-    return queryString ? `/blog?${queryString}` : '/blog'
-  }
-
   const formatDate = (date: Date | null) => {
     if (!date) return ''
     return new Date(date).toLocaleDateString('id-ID', {
@@ -87,7 +72,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Blog</h1>
         <p className="text-gray-500 mt-1">
@@ -95,9 +79,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </p>
       </div>
 
-      {/* Filter & Search - DIPERBAIKI */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
-        {/* Search */}
         <form action="/blog" method="GET" className="flex-1">
           {categorySlug && (
             <input type="hidden" name="category" value={categorySlug} />
@@ -119,11 +101,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </div>
         </form>
 
-        {/* Category Filter - FIX: CENTER + TOMBOL ALL BISA DIKLIK */}
         <div className="flex flex-wrap gap-2 items-center justify-center md:justify-end">
-          {/* Tombol ALL - menggunakan Link dengan href yang benar */}
-          <Link
-            href={createUrl({ category: '' })}
+          <a
+            href="/blog"
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               !categorySlug
                 ? 'text-white'
@@ -132,11 +112,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             style={!categorySlug ? { backgroundColor: primaryColor } : {}}
           >
             All
-          </Link>
+          </a>
           {categories.map((category) => (
             <Link
               key={category.id}
-              href={createUrl({ category: category.slug })}
+              href={`/blog?category=${category.slug}`}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 categorySlug === category.slug
                   ? 'text-white'
@@ -150,12 +130,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </div>
       </div>
 
-      {/* Result info */}
       <p className="text-sm text-gray-500 mb-6">
         Showing {posts.length} of {totalPosts} posts
       </p>
 
-      {/* Blog Grid */}
       {posts.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-100">
           <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +202,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </div>
       )}
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mt-8">
           {Array.from({ length: totalPages }).map((_, i) => {
@@ -233,7 +210,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             return (
               <Link
                 key={i}
-                href={createUrl({ page: String(pageNum) })}
+                href={`/blog?page=${pageNum}`}
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                   isActive
                     ? 'text-white'

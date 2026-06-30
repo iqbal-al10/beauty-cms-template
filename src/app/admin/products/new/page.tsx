@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image as ImageIcon, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Category {
@@ -17,22 +17,29 @@ interface Tag {
   color: string | null
 }
 
+interface MediaFile {
+  id: string
+  url: string
+  fileName: string
+  folder: string | null
+}
+
 interface Settings {
   colorPrimary: string
   colorSecondary: string
 }
 
 const PRESET_COLORS = [
-  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
-  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
-  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
-  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
-  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
-  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
+  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
   { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
-  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
+  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
-  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
+  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
 export default function NewProductPage() {
@@ -42,6 +49,8 @@ export default function NewProductPage() {
   const [tags, setTags] = useState<Tag[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [form, setForm] = useState({
     name: '',
     slug: '',
@@ -62,6 +71,7 @@ export default function NewProductPage() {
     fetchCategories()
     fetchTags()
     fetchSettings()
+    fetchMediaFiles()
   }, [])
 
   const fetchCategories = async () => {
@@ -108,6 +118,18 @@ export default function NewProductPage() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
+    }
+  }
+
+  const fetchMediaFiles = async () => {
+    try {
+      const res = await fetch('/api/admin/media?limit=20')
+      if (res.ok) {
+        const data = await res.json()
+        setMediaFiles(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching media files:', error)
     }
   }
 
@@ -206,24 +228,24 @@ export default function NewProductPage() {
                   src={preview.imageUrl} 
                   alt={preview.name}
                   className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      const fallback = document.createElement('div')
+                      fallback.className = 'w-full h-full flex items-center justify-center'
+                      fallback.innerHTML = '<span class="text-4xl">🧴</span>'
+                      parent.appendChild(fallback)
+                    }
+                  }}
                 />
               ) : (
                 <span className="text-4xl">🧴</span>
               )}
-              
-              {/* TAGS DI KIRI ATAS FOTO - TANPA SALE */}
-              {preview.tags.length > 0 && (
-                <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  {preview.tags.slice(0, 2).map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium shadow-sm"
-                      style={{ backgroundColor: getTagColor(tag.color) }}
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
+              {preview.compareAtPrice && preview.compareAtPrice > preview.price && (
+                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  SALE
+                </span>
               )}
             </div>
 
@@ -267,6 +289,76 @@ export default function NewProductPage() {
     )
   }
 
+  const MediaPicker = () => {
+    const [search, setSearch] = useState('')
+
+    const filteredMedia = mediaFiles.filter(file => 
+      file.fileName.toLowerCase().includes(search.toLowerCase())
+    )
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Pilih Gambar dari Media</h2>
+            <button
+              onClick={() => setShowMediaPicker(false)}
+              className="p-1 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="p-4">
+            <input
+              type="text"
+              placeholder="Cari gambar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+              {filteredMedia.length === 0 ? (
+                <p className="text-gray-500 col-span-full text-center py-8">Belum ada gambar di media</p>
+              ) : (
+                filteredMedia.map((file) => (
+                  <button
+                    key={file.id}
+                    onClick={() => {
+                      setForm({ ...form, imageUrl: file.url })
+                      setShowMediaPicker(false)
+                      toast.success('Gambar berhasil dipilih!')
+                    }}
+                    className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all"
+                  >
+                    <img 
+                      src={file.url} 
+                      alt={file.fileName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                      {file.fileName}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 border-t text-sm text-gray-500">
+            Total: {filteredMedia.length} gambar
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
@@ -279,7 +371,6 @@ export default function NewProductPage() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="lg:w-1/2">
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
-            {/* Form fields sama seperti sebelumnya */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
               <input
@@ -315,15 +406,26 @@ export default function NewProductPage() {
               />
             </div>
 
+            {/* Gambar Produk - DENGAN TOMBOL PILIH DARI MEDIA */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Gambar Produk (URL dari Media)</label>
-              <input
-                type="text"
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://... (copy dari Media Manager)"
-              />
+              <label className="block text-sm font-medium text-gray-700">Gambar Produk</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={form.imageUrl}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="URL gambar atau pilih dari media"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Pilih
+                </button>
+              </div>
               {form.imageUrl && (
                 <div className="mt-2">
                   <img src={form.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
@@ -489,6 +591,9 @@ export default function NewProductPage() {
           <ProductPreview />
         </div>
       </div>
+
+      {/* Media Picker Modal */}
+      {showMediaPicker && <MediaPicker />}
     </div>
   )
 }
