@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
+import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
 interface Product {
@@ -55,7 +56,8 @@ const getTagColor = (color: string | null): string => {
   return '#6B7280'
 }
 
-export default function ProductsPage() {
+// ===== KOMPONEN UTAMA YANG PAKAI useSearchParams =====
+function ProductsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const categorySlug = searchParams.get('category') || ''
@@ -294,7 +296,6 @@ export default function ProductsPage() {
                     </p>
                     {hasComparePrice && (
                       <p className="text-sm text-gray-400 line-through">
-                        {/* PERBAIKAN: Cek null sebelum toLocaleString */}
                         Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
                       </p>
                     )}
@@ -352,5 +353,18 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+// ===== PAGE UTAMA DENGAN SUSPENSE =====
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#c4367b' }} />
+      </div>
+    }>
+      <ProductsContent />
+    </Suspense>
   )
 }
