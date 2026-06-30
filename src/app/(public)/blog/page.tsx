@@ -95,7 +95,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </p>
       </div>
 
-      {/* Filter & Search */}
+      {/* Filter & Search - DIPERBAIKI */}
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         {/* Search */}
         <form action="/blog" method="GET" className="flex-1">
@@ -119,8 +119,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </div>
         </form>
 
-        {/* Category Filter */}
-        <div className="flex gap-2 flex-wrap">
+        {/* Category Filter - FIX: CENTER + TOMBOL ALL BISA DIKLIK */}
+        <div className="flex flex-wrap gap-2 items-center justify-center md:justify-end">
+          {/* Tombol ALL - menggunakan Link dengan href yang benar */}
           <Link
             href={createUrl({ category: '' })}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
