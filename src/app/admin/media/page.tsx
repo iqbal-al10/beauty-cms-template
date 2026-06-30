@@ -84,8 +84,10 @@ export default function MediaPage() {
         toast.success(`Folder "${newFolder}" berhasil dibuat!`)
         setNewFolder('')
         setShowNewFolder(false)
-        fetchFolders()
-        fetchFiles()
+        // REFRESH FOLDERS
+        await fetchFolders()
+        // Refresh files juga
+        await fetchFiles()
       } else {
         const error = await res.json()
         toast.error(error.error || 'Gagal membuat folder')
@@ -107,8 +109,8 @@ export default function MediaPage() {
 
       if (res.ok) {
         toast.success(`Folder "${folderName}" berhasil dihapus!`)
-        fetchFolders()
-        fetchFiles()
+        await fetchFolders()
+        await fetchFiles()
       } else {
         const error = await res.json()
         toast.error(error.error || 'Gagal menghapus folder')
@@ -124,7 +126,6 @@ export default function MediaPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validasi file
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
       toast.error('Hanya gambar yang diizinkan')
@@ -153,8 +154,8 @@ export default function MediaPage() {
         toast.success(`File berhasil diupload ke folder "${selectedFolderForUpload || 'root'}"!`)
         setShowUploadModal(false)
         setSelectedFolderForUpload('')
-        fetchFiles()
-        fetchFolders()
+        await fetchFiles()
+        await fetchFolders()
         if (fileInputRef.current) fileInputRef.current.value = ''
       } else {
         const error = await res.json()
@@ -180,6 +181,7 @@ export default function MediaPage() {
       if (res.ok) {
         toast.success(`"${fileName}" berhasil dihapus!`)
         setFiles(files.filter(f => f.id !== id))
+        await fetchFolders()
       } else {
         toast.error('Gagal menghapus file')
       }
@@ -191,7 +193,7 @@ export default function MediaPage() {
 
   // ===== COPY URL =====
   const handleCopy = (url: string) => {
-    const fullUrl = `${window.location.origin}${url}`
+    const fullUrl = url
     navigator.clipboard.writeText(fullUrl)
     setCopySuccess('URL disalin!')
     setTimeout(() => setCopySuccess(''), 2000)
@@ -236,6 +238,9 @@ export default function MediaPage() {
   }, {} as Record<string, MediaFile[]>)
 
   const folderKeys = Object.keys(groupedFiles).sort()
+
+  // Gabungkan folder dari database dengan folder yang punya files
+  const allFolders = [...new Set([...folders, ...folderKeys.filter(k => k !== 'root')])].sort()
 
   return (
     <div>
@@ -325,7 +330,7 @@ export default function MediaPage() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 >
                   <option value="">-- Pilih Folder --</option>
-                  {folders.map((f) => (
+                  {allFolders.map((f) => (
                     <option key={f} value={f}>📁 {f}</option>
                   ))}
                 </select>
@@ -373,6 +378,9 @@ export default function MediaPage() {
               src={previewImage}
               alt="Preview"
               className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              onError={(e) => {
+                e.currentTarget.src = '/placeholder-image.jpg'
+              }}
             />
             <button
               className="absolute top-4 right-4 text-white bg-black/50 rounded-full p-2 hover:bg-black/70"
@@ -421,15 +429,18 @@ export default function MediaPage() {
               <div key={folderName} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-800">{displayName}</h2>
-                  {folderName !== 'root' && (
-                    <button
-                      onClick={() => handleDeleteFolder(folderName)}
-                      className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Hapus Folder
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    <span className="text-sm text-gray-500">{folderFiles.length} files</span>
+                    {folderName !== 'root' && (
+                      <button
+                        onClick={() => handleDeleteFolder(folderName)}
+                        className="text-red-500 hover:text-red-700 text-sm flex items-center gap-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Hapus Folder
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-4">
@@ -452,7 +463,7 @@ export default function MediaPage() {
                                 alt={file.fileName}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
-                                  (e.target as HTMLImageElement).src = '/placeholder-image.jpg'
+                                  e.currentTarget.src = '/placeholder-image.jpg'
                                 }}
                               />
                             ) : (
