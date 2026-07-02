@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 
+function generateOrderNumber() {
+  const date = new Date()
+  const prefix = 'INV'
+  const year = date.getFullYear().toString().slice(2)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+  return `${prefix}${year}${month}${day}${random}`
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -9,108 +19,135 @@ export async function POST(request: NextRequest) {
       customerName,
       customerWhatsapp,
       address,
-      productId,
-      quantity,
+      city,
+      province,
+      postalCode,
+      shippingCost,
+      subtotal,
+      discountAmount,
+      total,
+      paymentMethod,
       note,
       voucherCode,
-      discountAmount,
-      finalPrice,
-      paymentMethod,
-      paymentProof,
+      items,
     } = body
 
     // Validasi
-    if (!customerName || !customerWhatsapp || !productId || !quantity) {
+    if (!customerName || !customerWhatsapp || !address || !items || items.length === 0) {
       return NextResponse.json(
-        { error: 'Semua field wajib diisi' },
+        { error: 'Data tidak lengkap' },
         { status: 400 }
       )
     }
 
-    // Get product
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      select: { name: true, price: true, stock: true },
-    })
+    // Generate order number
+    const orderNumber = generateOrderNumber()
 
-    if (!product) {
-      return NextResponse.json(
-        { error: 'Produk tidak ditemukan' },
-        { status: 404 }
-      )
-    }
-
-    if (product.stock < quantity) {
-      return NextResponse.json(
-        { error: `Stok tidak mencukupi (tersisa ${product.stock} unit)` },
-        { status: 400 }
-      )
-    }
-
-    const price = product.price
-    const discount = discountAmount || 0
-    const final = finalPrice || (price * quantity - discount)
-
-    // Simpan order
+    // Create order
     const order = await prisma.order.create({
       data: {
+        orderNumber,
         customerName,
         customerWhatsapp,
-        address: address || '',
-        productId,
-        productName: product.name,
-        quantity,
-        price,
-        discountAmount: discount,
-        finalPrice: final,
-        voucherCode: voucherCode || '',
+        address,
+        city: city || '',
+        province: province || '',
+        postalCode: postalCode || '',
+        shippingCost: shippingCost || 0,
+        subtotal,
+        discountAmount: discountAmount || 0,
+        total,
         paymentMethod: paymentMethod || '',
-        paymentProof: paymentProof || '',
         note: note || '',
+        voucherCode: voucherCode || '',
         status: 'PENDING',
+        items: {
+          create: items.map((item: any) => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.price * item.quantity,
+          })),
+        },
+      },
+      include: {
+        items: true,
       },
     })
 
-    // Kirim notifikasi ke admin
-    console.log(`📦 New Order from ${customerName} (${customerWhatsapp})`)
-    console.log(`📦 Product: ${product.name} x${quantity}`)
-    console.log(`📦 Total: Rp ${final.toLocaleString()}`)
+    // Kurangi stok produk
+    for (const item of items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            decrement: item.quantity,
+          },
+        },
+      })
 
-    // Build WhatsApp message
-    const whatsappNumber = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
-    let message = `*ORDER BARU*%0A%0A`
-    message += `📋 Data Customer:%0A`
-    message += `Nama: ${customerName}%0A`
-    message += `No WA: ${customerWhatsapp}%0A`
-    message += `Alamat: ${address || '-'}%0A%0A`
-    message += `📦 Detail Pesanan:%0A`
-    message += `Produk: ${product.name}%0A`
-    message += `Jumlah: ${quantity} unit%0A`
-    message += `Harga: Rp ${(price * quantity).toLocaleString()}%0A`
-    if (discount > 0) {
-      message += `Diskon: Rp ${discount.toLocaleString()}%0A`
-      message += `Kode Voucher: ${voucherCode || '-'}%0A`
+      // Catat stock history
+      await prisma.stockHistory.create({
+        data: {
+          productId: item.productId,
+          oldStock: 0, // tidak perlu exact
+          newStock: 0, // tidak perlu exact
+          change: -item.quantity,
+          reason: 'ORDER',
+          note: `Order #${orderNumber}`,
+          userId: 'system',
+        },
+      })
     }
-    message += `Total: Rp ${final.toLocaleString()}%0A%0A`
-    message += `💳 Pembayaran:%0A`
-    message += `Metode: ${paymentMethod || '-'}%0A`
-    if (paymentProof) {
-      message += `Bukti Transfer: ${paymentProof}%0A`
-    }
-    message += `%0A_Silakan approve di dashboard admin._`
 
-    const whatsappUrl = whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${message}` : ''
-
-    return NextResponse.json({
-      success: true,
-      order,
-      whatsappUrl,
-      message: 'Pesanan berhasil dibuat',
-    })
+    return NextResponse.json(order, { status: 201 })
   } catch (error) {
     console.error('Error creating order:', error)
     return NextResponse.json(
-      { error: 'Gagal membuat pesanan' },
+      { error: 'Failed to create order: ' + (error as Error).message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '20')
+
+    const where: any = {}
+    if (status) {
+      where.status = status
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
+      include: {
+        items: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    })
+
+    return NextResponse.json(orders)
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch orders' },
       { status: 500 }
     )
   }

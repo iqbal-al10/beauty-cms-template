@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { Menu, X, ShoppingCart, User, LogOut } from 'lucide-react'
+import { Menu, X, ShoppingCart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface Settings {
@@ -30,7 +30,6 @@ interface HeaderProps {
 export default function Header({ settings }: HeaderProps) {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [cartCount, setCartCount] = useState(0)
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
@@ -45,14 +44,8 @@ export default function Header({ settings }: HeaderProps) {
   const fontFamily = settings?.fontFamily || 'Inter'
 
   useEffect(() => {
-    // Check login status
-    const token = localStorage.getItem('auth_token')
-    setIsLoggedIn(!!token)
-
-    // Update cart count
     updateCartCount()
 
-    // Listen for cart updates
     const handleCartUpdate = () => updateCartCount()
     window.addEventListener('cartUpdate', handleCartUpdate)
 
@@ -74,14 +67,6 @@ export default function Header({ settings }: HeaderProps) {
     } catch (e) {
       setCartCount(0)
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token')
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    setIsLoggedIn(false)
-    router.push('/login')
-    router.refresh()
   }
 
   const navLinks = [
@@ -159,26 +144,6 @@ export default function Header({ settings }: HeaderProps) {
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
-              </Link>
-            )}
-
-            {isLoggedIn ? (
-              <button
-                onClick={handleLogout}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-1"
-                style={{ color: navbarText, fontSize: smallFontSize }}
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors flex items-center gap-1"
-                style={{ color: navbarText, fontSize: smallFontSize }}
-              >
-                <User className="w-5 h-5" />
-                <span className="hidden sm:inline">Login</span>
               </Link>
             )}
 

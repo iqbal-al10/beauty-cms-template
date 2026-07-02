@@ -28,6 +28,15 @@ model Settings {
   metaTitle          String?
   metaDescription    String?
   defaultOgImage     String?
+  
+  // Footer Settings
+  copyrightText      String?
+  footerLinks        Json?
+  
+  // Shipping Settings
+  shippingZones       Json?
+  freeShippingThreshold Int?   @default(300000)
+  
   primaryBackground   String   @default("#ffffff")
   secondaryBackground String   @default("#f9fafb")
   headingColor        String   @default("#111827")
@@ -37,13 +46,16 @@ model Settings {
   buttonStyle         String   @default("rounded")
   layoutStyle         String   @default("full-width")
   navStyle            String   @default("sticky")
+  
   navbarBackground    String   @default("#ffffff")
   navbarTextColor     String   @default("#4b5563")
   navbarHoverColor    String   @default("#c4367b")
   navbarActiveColor   String   @default("#c4367b")
+  
   headingFontSize     String   @default("32px")
   bodyFontSize        String   @default("16px")
   smallFontSize       String   @default("14px")
+  
   enableCart          Boolean  @default(true)
   enableWhatsAppOrder Boolean  @default(true)
   enableGuestCheckout Boolean  @default(true)
@@ -52,11 +64,14 @@ model Settings {
   enableBlog          Boolean  @default(true)
   enableGallery       Boolean  @default(true)
   enableFaq           Boolean  @default(true)
+  
   minOrderAmount      Int      @default(0)
   maxOrderQuantity    Int      @default(99)
   cartExpiryDays      Int      @default(7)
+  
   siteDescription     String?
   siteKeywords        String?
+  
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -113,7 +128,7 @@ model Product {
   reviews         Review[]
   tags            ProductTag[]
   stockHistories  StockHistory[]
-  orders          Order[]
+  orders          OrderItem[]
   cartItems       CartItem[]
 }
 
@@ -362,32 +377,48 @@ model StockHistory {
 
 model Order {
   id           String   @id @default(cuid())
+  orderNumber  String   @unique
   customerName String
   customerWhatsapp String
   address      String?
-  productId    String
-  productName  String
-  quantity     Int
-  price        Float
-  discountAmount Float?   @default(0)
-  finalPrice   Float
-  voucherCode  String?
+  city         String?
+  province     String?
+  postalCode   String?
+  shippingCost Float    @default(0)
+  subtotal     Float
+  discountAmount Float   @default(0)
+  total        Float
   paymentMethod String?
   paymentProof String?
   status       String   @default("PENDING")
   note         String?
+  voucherCode  String?
   approvedBy   String?
   approvedAt   DateTime?
+  paidAt       DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  items        OrderItem[]
   user         User?    @relation(fields: [approvedBy], references: [id], onDelete: SetNull)
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String
+  productName String
+  quantity   Int
+  price      Float
+  total      Float
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model PaymentMethod {
   id            String   @id @default(cuid())
   name          String
-  type          String
+  type          String   // BANK, QRIS, EWALLET
   accountNumber String?
   accountName   String?
   qrCodeUrl     String?

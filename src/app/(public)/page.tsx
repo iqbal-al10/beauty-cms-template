@@ -99,8 +99,21 @@ const getTagColor = (color: string | null): string => {
   return '#6B7280'
 }
 
+const DEFAULT_SETTINGS: Settings = {
+  siteName: 'Beauty Studio',
+  colorPrimary: '#c4367b',
+  colorSecondary: '#f5dbe8',
+  colorButton: '#aa1d68',
+  heroBannerUrl: null,
+  enableCart: true,
+  headingFontSize: '32px',
+  bodyFontSize: '16px',
+  smallFontSize: '14px',
+  fontFamily: 'Inter',
+}
+
 export default function HomePage() {
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [featuredServices, setFeaturedServices] = useState<Service[]>([])
   const [activePromos, setActivePromos] = useState<Promo[]>([])
@@ -108,46 +121,74 @@ export default function HomePage() {
   const [latestBlogs, setLatestBlogs] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
 
-  const primaryColor = '#c4367b'
-  const secondaryColor = '#f5dbe8'
-  const buttonColor = '#c4367b'
+  const primaryColor = settings?.colorPrimary || '#c4367b'
+  const secondaryColor = settings?.colorSecondary || '#f5dbe8'
+  const buttonColor = settings?.colorButton || '#c4367b'
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const settingsRes = await fetch('/api/public/settings')
-        if (settingsRes.ok) {
-          const data = await settingsRes.json()
-          setSettings(data)
+        // Fetch data secara paralel dengan timeout
+        const fetchWithTimeout = (url: string, timeout = 5000) => {
+          return Promise.race([
+            fetch(url),
+            new Promise<Response>((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), timeout)
+            )
+          ])
         }
 
-        const productsRes = await fetch('/api/public/products?featured=true&limit=4')
-        if (productsRes.ok) {
-          const data = await productsRes.json()
+        const [
+          settingsRes,
+          productsRes,
+          servicesRes,
+          promosRes,
+          testimonialsRes,
+          blogsRes
+        ] = await Promise.all([
+          fetchWithTimeout('/api/public/settings', 3000).catch(() => null),
+          fetchWithTimeout('/api/public/products?featured=true&limit=4', 5000).catch(() => null),
+          fetchWithTimeout('/api/public/services?featured=true&limit=4', 5000).catch(() => null),
+          fetchWithTimeout('/api/public/promos?active=true&limit=1', 5000).catch(() => null),
+          fetchWithTimeout('/api/public/testimonials?limit=3', 5000).catch(() => null),
+          fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
+        ])
+
+        // Settings - selalu ada fallback
+        if (settingsRes && (settingsRes as Response).ok) {
+          const data = await (settingsRes as Response).json()
+          setSettings({ ...DEFAULT_SETTINGS, ...data })
+        } else {
+          setSettings(DEFAULT_SETTINGS)
+        }
+
+        // Products
+        if (productsRes && (productsRes as Response).ok) {
+          const data = await (productsRes as Response).json()
           setFeaturedProducts(data.data || [])
         }
 
-        const servicesRes = await fetch('/api/public/services?featured=true&limit=4')
-        if (servicesRes.ok) {
-          const data = await servicesRes.json()
+        // Services
+        if (servicesRes && (servicesRes as Response).ok) {
+          const data = await (servicesRes as Response).json()
           setFeaturedServices(data || [])
         }
 
-        const promosRes = await fetch('/api/public/promos?active=true&limit=1')
-        if (promosRes.ok) {
-          const data = await promosRes.json()
+        // Promos
+        if (promosRes && (promosRes as Response).ok) {
+          const data = await (promosRes as Response).json()
           setActivePromos(data || [])
         }
 
-        const testimonialsRes = await fetch('/api/public/testimonials?limit=3')
-        if (testimonialsRes.ok) {
-          const data = await testimonialsRes.json()
+        // Testimonials
+        if (testimonialsRes && (testimonialsRes as Response).ok) {
+          const data = await (testimonialsRes as Response).json()
           setTestimonials(data || [])
         }
 
-        const blogsRes = await fetch('/api/public/blogs?limit=3')
-        if (blogsRes.ok) {
-          const data = await blogsRes.json()
+        // Blogs
+        if (blogsRes && (blogsRes as Response).ok) {
+          const data = await (blogsRes as Response).json()
           setLatestBlogs(data || [])
         }
       } catch (error) {
@@ -386,7 +427,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Services - SAMA SEPERTI FEATURED PRODUCTS */}
+      {/* Featured Services */}
       {featuredServices.length > 0 && (
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">

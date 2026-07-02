@@ -21,8 +21,14 @@ interface Settings {
   address: string | null
   whatsappNumber: string | null
   email: string | null
-  socialLinks: any 
-  footerContent: string | null
+  socialLinks: any
+  footerContent: any
+  secondaryBackground: string
+  headingColor: string
+  bodyTextColor: string
+  copyrightText: string
+  footerLinks: any
+  primaryBackground: string
 }
 
 export default async function PublicLayout({
@@ -57,10 +63,21 @@ export default async function PublicLayout({
         address: data.address || null,
         whatsappNumber: data.whatsappNumber || null,
         email: data.email || null,
-        socialLinks: data.socialLinks || null,
-        // PERBAIKAN: Menambahkan 'as string' untuk mengatasi error tipe data JSON dari Prisma
-        footerContent: (data.footerContent as string) || null,
+        socialLinks: data.socialLinks || {},
+        footerContent: data.footerContent || null,
+        secondaryBackground: data.secondaryBackground || '#f8f9fa', // ← PASTIKAN INI
+        headingColor: data.headingColor || '#111827',
+        bodyTextColor: data.bodyTextColor || '#4b5563',
+        copyrightText: data.copyrightText || '',
+        footerLinks: data.footerLinks || null,
+        primaryBackground: data.primaryBackground || '#ffffff',
       }
+      
+      console.log('🎨 Layout Settings:', {
+        secondaryBackground: settings.secondaryBackground,
+        headingColor: settings.headingColor,
+        bodyTextColor: settings.bodyTextColor,
+      })
     }
   } catch (error) {
     console.error('Error fetching settings:', error)
