@@ -1,32 +1,23 @@
 import { prisma } from '@/lib/prisma'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
-import WhatsAppFloat from '@/components/public/WhatsAppFloat'
+import Header from '@/components/public/Header'
+import Footer from '@/components/public/Footer'
 
-// Interface untuk Settings dengan tipe yang lebih fleksibel
 interface Settings {
-  id: string
   siteName: string
   colorPrimary: string
   colorSecondary: string
   colorButton: string
   fontFamily: string
   logoUrl: string | null
-  faviconUrl: string | null
-  heroBannerUrl: string | null
-  whatsappNumber: string | null
-  email: string | null
-  address: string | null
-  footerContent: string | null
-  operatingHours: Record<string, { open: string; close: string }> | null
-  googleMapsEmbedUrl: string | null
-  socialLinks: any // ← Biarkan any untuk Json
-  gaTrackingId: string | null
-  metaTitle: string | null
-  metaDescription: string | null
-  defaultOgImage: string | null
-  createdAt: Date
-  updatedAt: Date
+  navbarBackground: string
+  navbarTextColor: string
+  navbarHoverColor: string
+  navbarActiveColor: string
+  enableCart: boolean
+  navStyle: string
+  headingFontSize: string
+  bodyFontSize: string
+  smallFontSize: string
 }
 
 export default async function PublicLayout({
@@ -34,18 +25,43 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode
 }) {
-  const settings = await prisma.settings.findUnique({
-    where: { id: 'default' },
-  }) as Settings | null
+  let settings: Settings | null = null
+
+  try {
+    const data = await prisma.settings.findUnique({
+      where: { id: 'default' },
+    })
+
+    if (data) {
+      settings = {
+        siteName: data.siteName || 'Beauty Studio',
+        colorPrimary: data.colorPrimary || '#c4367b',
+        colorSecondary: data.colorSecondary || '#f5dbe8',
+        colorButton: data.colorButton || '#aa1d68',
+        fontFamily: data.fontFamily || 'Inter',
+        logoUrl: data.logoUrl || null,
+        navbarBackground: data.navbarBackground || '#ffffff',
+        navbarTextColor: data.navbarTextColor || '#4b5563',
+        navbarHoverColor: data.navbarHoverColor || '#c4367b',
+        navbarActiveColor: data.navbarActiveColor || '#c4367b',
+        enableCart: data.enableCart !== undefined ? data.enableCart : true,
+        navStyle: data.navStyle || 'sticky',
+        headingFontSize: data.headingFontSize || '32px',
+        bodyFontSize: data.bodyFontSize || '16px',
+        smallFontSize: data.smallFontSize || '14px',
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching settings:', error)
+  }
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       <Header settings={settings} />
       <main className="flex-1">
         {children}
       </main>
       <Footer settings={settings} />
-      <WhatsAppFloat settings={settings} />
-    </>
+    </div>
   )
 }
