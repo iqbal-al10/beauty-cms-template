@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { MapPin, Phone, Mail, Share2, Camera, MessageCircle, Video, CircleUser } from 'lucide-react'
+import { Share2, Video, Camera, CircleUser, MessageCircle, Pin, BriefcaseBusiness, MessageSquare } from 'lucide-react'
 
 interface Settings {
   siteName: string
@@ -22,6 +22,30 @@ interface FooterProps {
   settings: Settings | null
 }
 
+// Map social media keys to Lucide icons yang PASTI ADA
+const SOCIAL_ICONS: Record<string, any> = {
+  instagram: Camera,
+  facebook: Share2,
+  youtube: Video,
+  twitter: MessageCircle,
+  linkedin: BriefcaseBusiness,
+  pinterest: Pin,
+  threads: MessageSquare,
+  tiktok: CircleUser,
+}
+
+// Platform labels
+const platformLabels: Record<string, string> = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  youtube: 'YouTube',
+  twitter: 'Twitter / X',
+  linkedin: 'LinkedIn',
+  pinterest: 'Pinterest',
+  threads: 'Threads',
+  tiktok: 'TikTok',
+}
+
 export default function Footer({ settings }: FooterProps) {
   const siteName = settings?.siteName || 'Beauty Studio'
   const primaryColor = settings?.colorPrimary || '#c4367b'
@@ -35,14 +59,6 @@ export default function Footer({ settings }: FooterProps) {
   const headingFontSize = settings?.headingFontSize || '32px'
 
   const currentYear = new Date().getFullYear()
-
-  const socialIcons: Record<string, any> = {
-    instagram: Camera,
-    facebook: Share2,
-    twitter: MessageCircle,
-    youtube: Video,
-    tiktok: CircleUser,
-  }
 
   return (
     <footer 
@@ -71,7 +87,7 @@ export default function Footer({ settings }: FooterProps) {
                 className="text-gray-600 mb-2 flex items-start gap-2"
                 style={{ fontSize: bodyFontSize }}
               >
-                <MapPin className="w-4 h-4 mt-1 shrink-0" style={{ color: primaryColor }} />
+                <span>📍</span>
                 {address}
               </p>
             )}
@@ -80,7 +96,7 @@ export default function Footer({ settings }: FooterProps) {
                 className="text-gray-600 mb-2 flex items-center gap-2"
                 style={{ fontSize: bodyFontSize }}
               >
-                <Phone className="w-4 h-4" style={{ color: primaryColor }} />
+                <span>📞</span>
                 {whatsappNumber}
               </p>
             )}
@@ -89,7 +105,7 @@ export default function Footer({ settings }: FooterProps) {
                 className="text-gray-600 mb-2 flex items-center gap-2"
                 style={{ fontSize: bodyFontSize }}
               >
-                <Mail className="w-4 h-4" style={{ color: primaryColor }} />
+                <span>📧</span>
                 {email}
               </p>
             )}
@@ -157,7 +173,7 @@ export default function Footer({ settings }: FooterProps) {
             </ul>
           </div>
 
-          {/* Social & Newsletter */}
+          {/* Social Media */}
           <div>
             <h4 
               className="font-semibold mb-4"
@@ -171,18 +187,27 @@ export default function Footer({ settings }: FooterProps) {
             <div className="flex gap-3 mb-4 flex-wrap">
               {Object.entries(socialLinks).map(([key, url]) => {
                 if (!url) return null
-                const Icon = socialIcons[key.toLowerCase()]
-                if (!Icon) return null
+                
+                const IconComponent = SOCIAL_ICONS[key.toLowerCase()]
+                if (!IconComponent) return null
+
+                const label = platformLabels[key.toLowerCase()] || key
+
                 return (
                   <a
                     key={key}
                     href={url as string}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-2 rounded-full transition-colors hover:opacity-70"
-                    style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                    className="p-2 rounded-full transition-all hover:scale-110 hover:shadow-md"
+                    style={{ 
+                      backgroundColor: `${primaryColor}15`, 
+                      color: primaryColor 
+                    }}
+                    title={label}
+                    aria-label={label}
                   >
-                    <Icon className="w-5 h-5" />
+                    <IconComponent className="w-5 h-5" />
                   </a>
                 )
               })}
