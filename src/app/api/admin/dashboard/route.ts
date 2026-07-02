@@ -59,8 +59,10 @@ export async function GET() {
       prisma.order.count({ where: { status: 'PENDING' } }),
       prisma.orderItem.groupBy({
         by: ['productId', 'productName'],
-        _sum: { quantity: true },
-        _sum: { total: true },
+        _sum: { 
+          quantity: true,
+          total: true 
+        },
         orderBy: { _sum: { quantity: 'desc' } },
         take: 5,
       }),
