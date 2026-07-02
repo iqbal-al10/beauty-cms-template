@@ -10,6 +10,7 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [devLink, setDevLink] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,10 +33,9 @@ export default function ForgotPasswordPage() {
 
       setSuccess(true)
       setMessage(data.message || 'Reset link sent to your email')
-
-      // Tampilkan link untuk development
+      
       if (data.devLink) {
-        setMessage(`${data.message}\n\n🔗 Development link: ${data.devLink}`)
+        setDevLink(data.devLink)
       }
     } catch (err: any) {
       setError(err.message)
@@ -55,9 +55,17 @@ export default function ForgotPasswordPage() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Check Your Email</h2>
-            <p className="text-gray-600 whitespace-pre-line">{message}</p>
+            <p className="text-gray-600">{message}</p>
+            {devLink && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-lg text-left">
+                <p className="text-xs text-gray-500">🔗 Development Link:</p>
+                <a href={devLink} target="_blank" className="text-sm text-pink-500 hover:underline break-all">
+                  {devLink}
+                </a>
+              </div>
+            )}
             <Link
-              href="/login"
+              href="/auth/login"
               className="mt-6 inline-block text-pink-500 hover:text-pink-600 font-medium"
             >
               ← Back to Login
@@ -71,7 +79,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
       <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-lg">
-        <Link href="/login" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6">
+        <Link href="/auth/login" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6">
           <ArrowLeft className="w-4 h-4 mr-1" />
           Back to Login
         </Link>

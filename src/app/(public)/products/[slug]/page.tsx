@@ -5,7 +5,6 @@ import Link from 'next/link'
 import ShareButton from '@/components/public/ShareButton'
 import { ArrowLeft } from 'lucide-react'
 
-// ===== FUNGSI getTagColor =====
 const PRESET_COLORS = [
   { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
   { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
@@ -99,7 +98,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     notFound()
   }
 
-  // Filter promo aktif
   const activePromos = product.promos
     ?.map((pp: any) => pp.promo)
     .filter((p: any) => p && p.isActive)
@@ -109,7 +107,6 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
       return start <= now && end >= now && p.type !== 'VOUCHER'
     }) || []
 
-  // Hitung diskon
   let finalPrice = product.price
   let discountAmount = 0
   let appliedPromo = null
@@ -132,6 +129,10 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   })
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
+  const headingFontSize = settings?.headingFontSize || '32px'
+  const bodyFontSize = settings?.bodyFontSize || '16px'
+  const smallFontSize = settings?.smallFontSize || '14px'
+  const fontFamily = settings?.fontFamily || 'Inter'
 
   const relatedProducts = await prisma.product.findMany({
     where: {
@@ -163,21 +164,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const displayPrice = Math.round(finalPrice)
   const productTags = product.tags || []
 
-  const priceData = {
-    compareAtPrice: product.compareAtPrice || null,
-    originalPrice: product.price,
-    finalPrice: Math.round(finalPrice),
-    hasComparePrice: hasComparePrice,
-    hasPromo: hasPromo,
-    discountAmount: Math.round(discountAmount),
-    promoName: appliedPromo?.title || null,
-    promoDiscount: appliedPromo?.discountValue || null,
-    promoType: appliedPromo?.discountType || null,
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
+    <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
+      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2" style={{ fontSize: smallFontSize }}>
         <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
           Home
@@ -200,14 +189,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <span className="text-8xl">🧴</span>
           )}
           
-          {/* TAGS DI KIRI ATAS */}
           {productTags.length > 0 && (
             <div className="absolute top-4 left-4 flex flex-col gap-1">
               {productTags.slice(0, 2).map((tag) => (
                 <span
                   key={tag.id}
                   className="text-xs font-bold px-3 py-1 rounded-full text-white truncate max-w-[120px] shadow-md"
-                  style={{ backgroundColor: getTagColor(tag.color) }}
+                  style={{ backgroundColor: getTagColor(tag.color), fontSize: smallFontSize }}
                 >
                   {tag.name}
                 </span>
@@ -216,15 +204,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           )}
 
           {hasPromo && appliedPromo && (
-            <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full">
+            <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
               🔥 {appliedPromo.title}
             </span>
           )}
         </div>
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">{product.name}</h1>
-          <p className="text-gray-500 mb-4">{product.category?.name}</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2" style={{ fontSize: headingFontSize }}>{product.name}</h1>
+          <p className="text-gray-500 mb-4" style={{ fontSize: bodyFontSize }}>{product.category?.name}</p>
 
           {product.reviews.length > 0 && (
             <div className="flex items-center gap-2 mb-4">
@@ -235,24 +223,23 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   </svg>
                 ))}
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
                 ({product.reviews.length} reviews)
               </span>
             </div>
           )}
 
           <div className="flex items-center gap-3 mb-6">
-            <span className="text-3xl font-bold" style={{ color: primaryColor }}>
+            <span className="text-3xl font-bold" style={{ color: primaryColor, fontSize: headingFontSize }}>
               Rp {displayPrice.toLocaleString()}
             </span>
             {hasComparePrice && (
-              <span className="text-lg text-gray-400 line-through">
-                {/* PERBAIKAN: Cek null sebelum toLocaleString */}
+              <span className="text-lg text-gray-400 line-through" style={{ fontSize: bodyFontSize }}>
                 Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
               </span>
             )}
             {hasDiscount && (
-              <span className="text-lg text-pink-400 line-through">
+              <span className="text-lg text-pink-400 line-through" style={{ fontSize: bodyFontSize }}>
                 Rp {product.price.toLocaleString()}
               </span>
             )}
@@ -260,7 +247,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           {hasPromo && appliedPromo && (
             <div className="bg-pink-100 border border-pink-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-pink-800">
+              <p className="text-sm text-pink-800" style={{ fontSize: smallFontSize }}>
                 🔥 <span className="font-semibold">{appliedPromo.title}</span>
                 {appliedPromo.discountType === 'PERCENTAGE' 
                   ? ` - ${appliedPromo.discountValue}% OFF` 
@@ -272,18 +259,18 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           <div className="mb-6">
             <span className={`text-sm font-medium ${
               product.stock > 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
+            }`} style={{ fontSize: smallFontSize }}>
               {product.stock > 0 ? '✅ In Stock' : '❌ Out of Stock'}
             </span>
-            <span className="text-sm text-gray-400 ml-2">
+            <span className="text-sm text-gray-400 ml-2" style={{ fontSize: smallFontSize }}>
               ({product.stock} units available)
             </span>
           </div>
 
           {product.description && (
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-800 mb-2">Description</h3>
-              <p className="text-gray-600 leading-relaxed">{product.description}</p>
+              <h3 className="font-semibold text-gray-800 mb-2" style={{ fontSize: bodyFontSize }}>Description</h3>
+              <p className="text-gray-600 leading-relaxed" style={{ fontSize: bodyFontSize }}>{product.description}</p>
             </div>
           )}
 
@@ -291,7 +278,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <Link
               href={`/booking?product=${product.id}`}
               className="flex-1 min-w-[200px] px-6 py-3 rounded-full text-white font-semibold text-center transition-all hover:opacity-90 active:scale-95"
-              style={{ backgroundColor: primaryColor }}
+              style={{ backgroundColor: primaryColor, fontSize: bodyFontSize }}
             >
               🛒 Order Now
             </Link>
@@ -304,6 +291,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 style={{ 
                   borderColor: primaryColor,
                   color: primaryColor,
+                  fontSize: bodyFontSize,
                 }}
               >
                 💬 WhatsApp
@@ -312,13 +300,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </div>
 
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-sm text-gray-500 mb-2">Share this product:</p>
+            <p className="text-sm text-gray-500 mb-2" style={{ fontSize: smallFontSize }}>Share this product:</p>
             <div className="flex gap-2">
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(`${product.name} - Rp ${displayPrice.toLocaleString()} - ${shareUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm transition-colors"
+                style={{ fontSize: smallFontSize }}
               >
                 💬 WhatsApp
               </a>
@@ -330,39 +319,38 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </div>
 
-          {/* ===== KETERANGAN HARGA ===== */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 mt-3">Keterangan Harga</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mt-3" style={{ fontSize: bodyFontSize }}>Keterangan Harga</h4>
             <div className="bg-gray-50 rounded-xl p-4 space-y-1">
-              {priceData.hasComparePrice && (
-                <div className="flex justify-between text-sm">
+              {hasComparePrice && (
+                <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
                   <span className="text-gray-500">Harga Awal</span>
                   <span className="text-gray-400 line-through">
-                    Rp {priceData.compareAtPrice ? priceData.compareAtPrice.toLocaleString() : ''}
+                    Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
                   </span>
                 </div>
               )}
 
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
                 <span className="text-gray-500">Harga Normal</span>
                 <span className="text-pink-400 font-medium">
-                  Rp {priceData.originalPrice.toLocaleString()}
+                  Rp {product.price.toLocaleString()}
                 </span>
               </div>
 
-              {priceData.hasPromo && (
-                <div className="flex justify-between text-sm">
+              {hasPromo && (
+                <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
                   <span className="font-medium" style={{ color: primaryColor }}>
                     Harga Promo
                   </span>
                   <span className="font-bold" style={{ color: primaryColor }}>
-                    Rp {priceData.finalPrice.toLocaleString()}
+                    Rp {displayPrice.toLocaleString()}
                   </span>
                 </div>
               )}
 
               <div className="pt-2 border-t border-gray-200">
-                <p className="text-xs text-gray-400 italic">
+                <p className="text-xs text-gray-400 italic" style={{ fontSize: smallFontSize }}>
                   * Harga dapat berubah sewaktu-waktu
                 </p>
               </div>
@@ -371,10 +359,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       </div>
 
-      {/* RELATED PRODUCTS */}
       {relatedProducts.length > 0 && (
         <div className="mt-16">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Related Products</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Related Products</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {relatedProducts.map((related) => {
               const hasRelatedCompare = related.compareAtPrice && related.compareAtPrice > related.price
@@ -416,15 +403,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     )}
                   </div>
                   <div className="p-3">
-                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1 text-sm">
+                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1 text-sm" style={{ fontSize: smallFontSize }}>
                       {related.name}
                     </h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                      <p className="text-sm font-bold" style={{ color: primaryColor, fontSize: smallFontSize }}>
                         Rp {related.price.toLocaleString()}
                       </p>
                       {hasRelatedCompare && (
-                        <p className="text-xs text-gray-400 line-through">
+                        <p className="text-xs text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
                           Rp {related.compareAtPrice ? related.compareAtPrice.toLocaleString() : ''}
                         </p>
                       )}
@@ -437,10 +424,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
       )}
 
-      {/* REVIEWS */}
       {product.reviews.length > 0 && (
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Customer Reviews</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Customer Reviews</h2>
           <div className="space-y-4">
             {product.reviews.map((review) => (
               <div key={review.id} className="bg-gray-50 p-4 rounded-xl">
@@ -452,13 +438,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                       </svg>
                     ))}
                   </div>
-                  <span className="font-semibold text-gray-800">{review.customerName}</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>{review.customerName}</span>
+                  <span className="text-xs text-gray-400" style={{ fontSize: smallFontSize }}>
                     {new Date(review.createdAt).toLocaleDateString('id-ID')}
                   </span>
                 </div>
                 {review.comment && (
-                  <p className="text-gray-600 text-sm">{review.comment}</p>
+                  <p className="text-gray-600 text-sm" style={{ fontSize: bodyFontSize }}>{review.comment}</p>
                 )}
               </div>
             ))}

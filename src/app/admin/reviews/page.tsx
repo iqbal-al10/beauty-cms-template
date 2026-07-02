@@ -59,10 +59,14 @@ export default function ReviewsPage() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch('/api/admin/products?select=true')
-      if (!res.ok) throw new Error('Failed to fetch products')
+      const res = await fetch('/api/admin/products?all=true&select=true')
+      if (!res.ok) {
+        console.warn('Failed to fetch products:', res.status)
+        setProducts([])
+        return
+      }
       const data = await res.json()
-      setProducts(data || [])
+      setProducts(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching products:', error)
       setProducts([])
@@ -353,14 +357,14 @@ export default function ReviewsPage() {
                         className="text-yellow-600 hover:text-yellow-800"
                         title="Edit"
                       >
-                        <Edit className="w-5 h-5" />
+                        <Edit className="w-5 h-5 inline" />
                       </button>
                       <button
                         onClick={() => handleDelete(review.id, review.customerName)}
                         className="text-red-600 hover:text-red-800"
                         title="Hapus"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-5 h-5 inline" />
                       </button>
                     </div>
                   </div>

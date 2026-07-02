@@ -7,7 +7,6 @@ import { Toaster } from 'react-hot-toast'
 import { 
   LayoutDashboard, 
   Package, 
-  FolderTree, 
   Calendar, 
   MessageSquare, 
   FileText, 
@@ -31,10 +30,7 @@ import {
   User,
   Contact,
   ExternalLink,
-  Shield,
-  CreditCard,
-  QrCode,
-  Wallet
+  CreditCard
 } from 'lucide-react'
 
 interface UserData {
@@ -49,10 +45,7 @@ interface SettingsData {
   colorPrimary: string
 }
 
-// Menu yang hanya untuk SUPER_ADMIN
 const SUPER_ADMIN_ONLY_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
-
-// Menu yang untuk SUPER_ADMIN dan ADMIN
 const ADMIN_MENUS = ['Payments']
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; iconBg: string }> = {
@@ -128,14 +121,9 @@ export default function AdminLayout({
   const allMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Package, label: 'Products', href: '/admin/products' },
-    { icon: ShoppingBag, label: 'Promos', href: '/admin/promos' },
     { icon: Calendar, label: 'Bookings', href: '/admin/bookings' },
+    { icon: FileText, label: 'Blog', href: '/admin/blog' },
     { icon: MessageSquare, label: 'Testimonials', href: '/admin/testimonials' },
-    { icon: FolderTree, label: 'Categories', href: '/admin/categories' },
-    { icon: FileText, label: 'Blogs', href: '/admin/blog' },
-    { icon: FolderOpen, label: 'Blog Categories', href: '/admin/blog-categories' },
-    { icon: Hash, label: 'Blog Tags', href: '/admin/blog-tags' },
-    { icon: Tag, label: 'Tags', href: '/admin/tags' },
     { icon: Image, label: 'Media', href: '/admin/media' },
     { icon: Images, label: 'Before/After', href: '/admin/before-after' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
@@ -147,27 +135,15 @@ export default function AdminLayout({
     { icon: Activity, label: 'Activity Log', href: '/admin/activity-logs' },
     { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
     { icon: Database, label: 'Backup', href: '/admin/backup' },
-    // ===== PAYMENTS =====
     { icon: CreditCard, label: 'Payments', href: '/admin/payments' },
   ]
 
-  // Filter menu berdasarkan role
   const menuItems = allMenuItems.filter((item) => {
-    // Jika user SUPER_ADMIN, tampilkan semua
-    if (user?.role === 'SUPER_ADMIN') {
-      return true
-    }
-    
-    // Jika user ADMIN, tampilkan semua kecuali SUPER_ADMIN_ONLY_MENUS
-    if (user?.role === 'ADMIN') {
-      return !SUPER_ADMIN_ONLY_MENUS.includes(item.label)
-    }
-    
-    // Jika EDITOR atau STAFF, tampilkan menu umum (tidak termasuk admin-only menus)
+    if (user?.role === 'SUPER_ADMIN') return true
+    if (user?.role === 'ADMIN') return !SUPER_ADMIN_ONLY_MENUS.includes(item.label)
     if (user?.role === 'EDITOR' || user?.role === 'STAFF') {
       return !SUPER_ADMIN_ONLY_MENUS.includes(item.label) && !ADMIN_MENUS.includes(item.label)
     }
-    
     return true
   })
 
@@ -186,15 +162,10 @@ export default function AdminLayout({
   const getHeaderTitle = () => {
     if (pathname === '/admin') return 'Dashboard'
     if (pathname?.startsWith('/admin/products')) return 'Products'
-    if (pathname?.startsWith('/admin/categories')) return 'Categories'
-    if (pathname?.startsWith('/admin/promos')) return 'Promos'
     if (pathname?.startsWith('/admin/bookings')) return 'Bookings'
     if (pathname?.startsWith('/admin/testimonials')) return 'Testimonials'
-    if (pathname === '/admin/blog') return 'Blogs'
-    if (pathname?.startsWith('/admin/blog-categories')) return 'Blog Categories'
-    if (pathname?.startsWith('/admin/blog-tags')) return 'Blog Tags'
+    if (pathname?.startsWith('/admin/blog')) return 'Blog'
     if (pathname?.startsWith('/admin/before-after')) return 'Before/After'
-    if (pathname?.startsWith('/admin/tags')) return 'Tags'
     if (pathname?.startsWith('/admin/faq')) return 'FAQ'
     if (pathname?.startsWith('/admin/settings')) return 'Settings'
     if (pathname?.startsWith('/admin/media')) return 'Media'
@@ -248,7 +219,7 @@ export default function AdminLayout({
           sidebarOpen ? 'w-64' : 'w-16'
         } bg-white border-r border-gray-200 transition-all duration-300 shrink-0 h-full overflow-y-auto`}
       >
-        <div className={`p-4 border-b border-gray-200 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        <div className={`p-4.5 border-b border-gray-200 flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
           {sidebarOpen ? (
             <>
               <h1 className="text-xl font-bold" style={{ color: primaryColor }}>{siteName}</h1>
@@ -276,7 +247,7 @@ export default function AdminLayout({
             if (item.href === '/admin') {
               isActive = pathname === '/admin'
             } else if (item.href === '/admin/blog') {
-              isActive = pathname === '/admin/blog'
+              isActive = pathname?.startsWith('/admin/blog') || false
             } else {
               isActive = pathname?.startsWith(item.href) || false
             }

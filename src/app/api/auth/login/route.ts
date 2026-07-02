@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import { loginSchema } from '@/lib/validations'
+import { rateLimitMemory } from '@/lib/rate-limit-memory'
+import { headers } from 'next/headers'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -9,18 +12,36 @@ export async function POST(request: Request) {
   console.log('🔐 Login API called')
   
   try {
-    const { email, password } = await request.json()
-    console.log('📧 Email:', email)
+    // 1. RATE LIMIT
+    const ip = (await headers()).get('x-forwarded-for') || 'unknown'
+    const key = `login_${ip}`
+    const { success } = rateLimitMemory(key, 10, 15 * 60 * 1000)
 
-    if (!email || !password) {
-      console.log('❌ Email atau password kosong')
+    if (!success) {
       return NextResponse.json(
-        { error: 'Email dan password wajib diisi' },
+        { error: 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.' },
+        { status: 429 }
+      )
+    }
+
+    // 2. ZOD VALIDATION
+    const body = await request.json()
+    console.log('📧 Request body:', body)
+    
+    const result = loginSchema.safeParse(body)
+    
+    if (!result.success) {
+      const errors = result.error.errors.map((e: any) => e.message).join(', ')
+      console.log('❌ Validation error:', errors)
+      return NextResponse.json(
+        { error: errors },
         { status: 400 }
       )
     }
 
-    // Cari user
+    const { email, password } = result.data
+    console.log('📧 Email:', email)
+
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     })
@@ -35,7 +56,6 @@ export async function POST(request: Request) {
 
     console.log('✅ User ditemukan:', user.email, 'Role:', user.role)
 
-    // Cek password
     const isValid = await bcrypt.compare(password, user.passwordHash)
     if (!isValid) {
       console.log('❌ Password salah untuk:', email)
@@ -47,7 +67,6 @@ export async function POST(request: Request) {
 
     console.log('✅ Password valid untuk:', email)
 
-    // Cek user aktif
     if (!user.isActive) {
       console.log('❌ User tidak aktif:', email)
       return NextResponse.json(
@@ -56,13 +75,11 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update lastLoginAt
     await prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     })
 
-    // Generate token
     const token = jwt.sign(
       {
         userId: user.id,
@@ -76,7 +93,6 @@ export async function POST(request: Request) {
 
     console.log('✅ Token generated untuk:', email)
 
-    // Response dengan cookie
     const response = NextResponse.json({
       success: true,
       user: {
@@ -87,7 +103,6 @@ export async function POST(request: Request) {
       },
     })
 
-    // Set cookie
     response.cookies.set({
       name: 'token',
       value: token,
@@ -95,11 +110,10 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7, // 7 hari
+      maxAge: 60 * 60 * 24 * 7,
     })
 
     console.log('✅ Cookie set untuk:', email)
-    console.log('🍪 Cookie header:', response.cookies.toString())
 
     return response
   } catch (error) {

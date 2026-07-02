@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image as ImageIcon, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Category {
@@ -15,6 +15,22 @@ interface Tag {
   id: string
   name: string
   color: string | null
+}
+
+interface Promo {
+  id: string
+  code: string
+  discount: number
+  startDate: string
+  endDate: string
+  isActive: boolean
+}
+
+interface MediaFile {
+  id: string
+  url: string
+  fileName: string
+  folder: string | null
 }
 
 interface Product {
@@ -34,6 +50,8 @@ interface Product {
   canonicalUrl: string | null
   ogImageUrl: string | null
   tags: Tag[]
+  isFeatured: boolean
+  promos: { promoId: string }[]
 }
 
 interface Settings {
@@ -42,16 +60,16 @@ interface Settings {
 }
 
 const PRESET_COLORS = [
-  { value: 'bg-red-500', hex: '#ad0000', label: 'Red' },
-  { value: 'bg-blue-500', hex: '#0054ad', label: 'Blue' },
-  { value: 'bg-green-500', hex: '#00ad3f', label: 'Green' },
-  { value: 'bg-yellow-500', hex: '#c7c402', label: 'Yellow' },
-  { value: 'bg-purple-500', hex: '#8d00ad', label: 'Purple' },
-  { value: 'bg-pink-500', hex: '#c4367b', label: 'Pink' },
+  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
   { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
-  { value: 'bg-cyan-500', hex: '#0096ad', label: 'Cyan' },
+  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
-  { value: 'bg-gray-500', hex: '#9e959b', label: 'Gray' },
+  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
 export default function EditProductPage() {
@@ -61,8 +79,12 @@ export default function EditProductPage() {
   const [fetching, setFetching] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [promos, setPromos] = useState<Promo[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const [selectedPromoIds, setSelectedPromoIds] = useState<string[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [form, setForm] = useState<Product>({
     id: '',
     name: '',
@@ -79,13 +101,17 @@ export default function EditProductPage() {
     canonicalUrl: '',
     ogImageUrl: '',
     tags: [],
+    isFeatured: false,
+    promos: [],
   })
 
   useEffect(() => {
     fetchProduct()
     fetchCategories()
     fetchTags()
+    fetchPromos()
     fetchSettings()
+    fetchMediaFiles()
   }, [])
 
   const fetchProduct = async () => {
@@ -101,8 +127,10 @@ export default function EditProductPage() {
         ...data,
         compareAtPrice: data.compareAtPrice || null,
         imageUrl: data.imageUrl || null,
+        isFeatured: data.isFeatured || false,
       })
       setSelectedTagIds(data.tags?.map((t: Tag) => t.id) || [])
+      setSelectedPromoIds(data.promos?.map((p: { promoId: string }) => p.promoId) || [])
     } catch (error) {
       console.error('Error fetching product:', error)
       toast.error('Gagal memuat produk')
@@ -144,6 +172,22 @@ export default function EditProductPage() {
     }
   }
 
+  const fetchPromos = async () => {
+    try {
+      const res = await fetch('/api/admin/promos')
+      if (!res.ok) {
+        console.error('Failed to fetch promos:', res.status)
+        setPromos([])
+        return
+      }
+      const data = await res.json()
+      setPromos(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching promos:', error)
+      setPromos([])
+    }
+  }
+
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/settings')
@@ -156,6 +200,18 @@ export default function EditProductPage() {
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
+    }
+  }
+
+  const fetchMediaFiles = async () => {
+    try {
+      const res = await fetch('/api/admin/media?limit=20')
+      if (res.ok) {
+        const data = await res.json()
+        setMediaFiles(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching media files:', error)
     }
   }
 
@@ -178,6 +234,8 @@ export default function EditProductPage() {
         compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice.toString()) : null,
         stock: parseInt(form.stock.toString()),
         imageUrl: form.imageUrl || null,
+        isFeatured: form.isFeatured,
+        promoIds: selectedPromoIds,
       }
 
       const res = await fetch(`/api/admin/products/${params.id}`, {
@@ -230,6 +288,7 @@ export default function EditProductPage() {
 
   const ProductPreview = () => {
     const preview = getPreviewData()
+    const hasTags = preview.tags && preview.tags.length > 0
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -255,18 +314,31 @@ export default function EditProductPage() {
                   src={preview.imageUrl} 
                   alt={preview.name}
                   className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      const fallback = document.createElement('div')
+                      fallback.className = 'w-full h-full flex items-center justify-center'
+                      fallback.innerHTML = '<span class="text-4xl">🧴</span>'
+                      parent.appendChild(fallback)
+                    }
+                  }}
                 />
               ) : (
                 <span className="text-4xl">🧴</span>
               )}
-              
-              {/* TAGS DI KIRI ATAS FOTO - TANPA SALE */}
-              {preview.tags.length > 0 && (
-                <div className="absolute top-2 left-2 flex flex-col gap-1">
-                  {preview.tags.slice(0, 2).map((tag) => (
+              {preview.compareAtPrice && preview.compareAtPrice > preview.price && (
+                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  SALE
+                </span>
+              )}
+              {hasTags && (
+                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                  {preview.tags.slice(0, 2).map((tag: Tag) => (
                     <span
                       key={tag.id}
-                      className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium shadow-sm"
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
                       style={{ backgroundColor: getTagColor(tag.color) }}
                     >
                       {tag.name}
@@ -280,20 +352,6 @@ export default function EditProductPage() {
               {preview.name}
             </h3>
             <p className="text-xs text-gray-500">{preview.category}</p>
-
-            {preview.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {preview.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium"
-                    style={{ backgroundColor: getTagColor(tag.color) }}
-                  >
-                    {tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
 
             <div className="flex items-center gap-2 mt-1">
               <p className="text-base font-bold" style={{ color: preview.primaryColor }}>
@@ -311,6 +369,76 @@ export default function EditProductPage() {
         <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
           <span>🔄 Update real-time</span>
           <span>/products/{preview.slug}</span>
+        </div>
+      </div>
+    )
+  }
+
+  const MediaPicker = () => {
+    const [search, setSearch] = useState('')
+
+    const filteredMedia = mediaFiles.filter(file => 
+      file.fileName.toLowerCase().includes(search.toLowerCase())
+    )
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Pilih Gambar dari Media</h2>
+            <button
+              onClick={() => setShowMediaPicker(false)}
+              className="p-1 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="p-4">
+            <input
+              type="text"
+              placeholder="Cari gambar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+              {filteredMedia.length === 0 ? (
+                <p className="text-gray-500 col-span-full text-center py-8">Belum ada gambar di media</p>
+              ) : (
+                filteredMedia.map((file) => (
+                  <button
+                    key={file.id}
+                    onClick={() => {
+                      setForm({ ...form, imageUrl: file.url })
+                      setShowMediaPicker(false)
+                      toast.success('Gambar berhasil dipilih!')
+                    }}
+                    className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all"
+                  >
+                    <img 
+                      src={file.url} 
+                      alt={file.fileName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                      {file.fileName}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 border-t text-sm text-gray-500">
+            Total: {filteredMedia.length} gambar
+          </div>
         </div>
       </div>
     )
@@ -336,7 +464,6 @@ export default function EditProductPage() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="lg:w-1/2">
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
-            {/* Form fields */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
               <input
@@ -352,6 +479,7 @@ export default function EditProductPage() {
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Contoh: Moisturizer"
               />
             </div>
 
@@ -363,6 +491,7 @@ export default function EditProductPage() {
                 value={form.slug}
                 onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/ /g, '-') })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="moisturizer"
               />
             </div>
 
@@ -373,23 +502,47 @@ export default function EditProductPage() {
                 value={form.description || ''}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Deskripsi produk..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Gambar Produk (URL dari Media)</label>
-              <input
-                type="text"
-                value={form.imageUrl || ''}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://... (copy dari Media Manager)"
-              />
+              <label className="block text-sm font-medium text-gray-700">Gambar Produk</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={form.imageUrl || ''}
+                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="https://example.com/gambar-produk.jpg"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMediaPicker(true)}
+                  className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Pilih
+                </button>
+              </div>
               {form.imageUrl && (
                 <div className="mt-2">
                   <img src={form.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
                 </div>
               )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Featured Product</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="checkbox"
+                  checked={form.isFeatured}
+                  onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+                  className="w-4 h-4 text-pink-500 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-600">Tampilkan di halaman utama sebagai featured</span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -402,6 +555,7 @@ export default function EditProductPage() {
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="100000"
                 />
               </div>
               <div>
@@ -415,7 +569,7 @@ export default function EditProductPage() {
                     compareAtPrice: e.target.value ? parseFloat(e.target.value) : null 
                   })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="0"
+                  placeholder="150000"
                 />
               </div>
             </div>
@@ -429,6 +583,7 @@ export default function EditProductPage() {
                   value={form.stock}
                   onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="50"
                 />
               </div>
               <div>
@@ -487,6 +642,35 @@ export default function EditProductPage() {
               </p>
             </div>
 
+            {/* PROMOS / VOUCHERS - SAMA SEPERTI DI BOOKING */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Voucher</label>
+              <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                {promos.length === 0 ? (
+                  <p className="text-gray-500 text-sm col-span-full">Belum ada voucher. Buat voucher dulu di tab Vouchers.</p>
+                ) : (
+                  promos.filter(p => p.isActive).map((promo) => (
+                    <label key={promo.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedPromoIds.includes(promo.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPromoIds([...selectedPromoIds, promo.id])
+                          } else {
+                            setSelectedPromoIds(selectedPromoIds.filter(id => id !== promo.id))
+                          }
+                        }}
+                        className="w-4 h-4 text-pink-500 rounded border-gray-300"
+                      />
+                      <span className="truncate">{promo.code} (Rp {promo.discount.toLocaleString()})</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Pilih {selectedPromoIds.length} voucher</p>
+            </div>
+
             <div className="border-t border-gray-200 pt-3">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
               <div className="space-y-3">
@@ -497,7 +681,7 @@ export default function EditProductPage() {
                     value={form.metaTitle || ''}
                     onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
                     className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="SEO title (max 60 chars)"
+                    placeholder="Judul untuk SEO (max 60 chars)"
                   />
                 </div>
                 <div>
@@ -507,7 +691,7 @@ export default function EditProductPage() {
                     value={form.metaDescription || ''}
                     onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
                     className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="SEO description (max 160 chars)"
+                    placeholder="Deskripsi untuk SEO (max 160 chars)"
                   />
                 </div>
                 <div>
@@ -553,6 +737,8 @@ export default function EditProductPage() {
           <ProductPreview />
         </div>
       </div>
+
+      {showMediaPicker && <MediaPicker />}
     </div>
   )
 }

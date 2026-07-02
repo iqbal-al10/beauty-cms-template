@@ -14,11 +14,15 @@ export async function GET(
 
     const { id } = await params
 
-    const product = await prisma.product.findUnique({
+    const service = await prisma.service.findUnique({
       where: { id },
       include: {
         category: true,
-        tags: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         promos: {
           include: {
             promo: true,
@@ -27,18 +31,24 @@ export async function GET(
       },
     })
 
-    if (!product) {
+    if (!service) {
       return NextResponse.json(
-        { error: 'Product not found' },
+        { error: 'Service not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(product)
+    const transformed = {
+      ...service,
+      tags: service.tags?.map((t: any) => t.tag) || [],
+      promos: service.promos?.map((p: any) => p.promo) || [],
+    }
+
+    return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error fetching product:', error)
+    console.error('Error fetching service:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch product' },
+      { error: 'Failed to fetch service' },
       { status: 500 }
     )
   }
@@ -56,38 +66,45 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const {
-      name,
-      slug,
-      description,
-      price,
-      compareAtPrice,
-      stock,
-      status,
-      categoryId,
+    const { 
+      name, 
+      slug, 
+      description, 
+      duration, 
+      price, 
+      categoryId, 
       imageUrl,
       isFeatured,
+      isActive,
       metaTitle,
       metaDescription,
       canonicalUrl,
       ogImageUrl,
-      promoIds,
+      tagIds, 
+      promoIds 
     } = body
 
-    // Check if product exists
-    const existing = await prisma.product.findUnique({
+    if (!name || !slug || !price || !duration) {
+      return NextResponse.json(
+        { error: 'Name, slug, price, and duration are required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if service exists
+    const existing = await prisma.service.findUnique({
       where: { id },
     })
     if (!existing) {
       return NextResponse.json(
-        { error: 'Product not found' },
+        { error: 'Service not found' },
         { status: 404 }
       )
     }
 
     // Check slug unique (if changed)
     if (slug !== existing.slug) {
-      const slugExists = await prisma.product.findUnique({
+      const slugExists = await prisma.service.findUnique({
         where: { slug },
       })
       if (slugExists) {
@@ -98,35 +115,48 @@ export async function PUT(
       }
     }
 
-    // Update product
-    const product = await prisma.product.update({
+    // Hapus relasi lama
+    await prisma.serviceBookingTag.deleteMany({
+      where: { serviceId: id },
+    })
+    await prisma.promoBooking.deleteMany({
+      where: { serviceId: id },
+    })
+
+    const service = await prisma.service.update({
       where: { id },
       data: {
         name,
         slug,
         description: description || '',
+        duration: parseInt(duration),
         price: parseFloat(price),
-        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-        stock: parseInt(stock),
-        status: status || 'DRAFT',
-        categoryId,
+        categoryId: categoryId || 'OTHER',
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
+        isActive: isActive !== undefined ? isActive : true,
         metaTitle: metaTitle || null,
         metaDescription: metaDescription || null,
         canonicalUrl: canonicalUrl || null,
         ogImageUrl: ogImageUrl || null,
+        tags: {
+          create: tagIds?.map((tagId: string) => ({
+            tag: { connect: { id: tagId } },
+          })) || [],
+        },
         promos: {
-          deleteMany: {},
-          create: promoIds && promoIds.length > 0 ?
-            promoIds.map((promoId: string) => ({
-              promo: { connect: { id: promoId } },
-            })) : [],
+          create: promoIds?.map((promoId: string) => ({
+            promo: { connect: { id: promoId } },
+          })) || [],
         },
       },
       include: {
         category: true,
-        tags: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
         promos: {
           include: {
             promo: true,
@@ -135,11 +165,17 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(product)
+    const transformed = {
+      ...service,
+      tags: service.tags?.map((t: any) => t.tag) || [],
+      promos: service.promos?.map((p: any) => p.promo) || [],
+    }
+
+    return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error updating product:', error)
+    console.error('Error updating service:', error)
     return NextResponse.json(
-      { error: 'Failed to update product: ' + (error as Error).message },
+      { error: 'Failed to update service: ' + (error as Error).message },
       { status: 500 }
     )
   }
@@ -157,27 +193,35 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check if product exists
-    const existing = await prisma.product.findUnique({
+    // Check if service exists
+    const existing = await prisma.service.findUnique({
       where: { id },
     })
     if (!existing) {
       return NextResponse.json(
-        { error: 'Product not found' },
+        { error: 'Service not found' },
         { status: 404 }
       )
     }
 
-    // Delete product
-    await prisma.product.delete({
+    // Hapus relasi - gunakan model yang benar: PromoBooking
+    await prisma.serviceBookingTag.deleteMany({
+      where: { serviceId: id },
+    })
+    await prisma.promoBooking.deleteMany({
+      where: { serviceId: id },
+    })
+
+    // Hapus service
+    await prisma.service.delete({
       where: { id },
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting product:', error)
+    console.error('Error deleting service:', error)
     return NextResponse.json(
-      { error: 'Failed to delete product: ' + (error as Error).message },
+      { error: 'Failed to delete service: ' + (error as Error).message },
       { status: 500 }
     )
   }

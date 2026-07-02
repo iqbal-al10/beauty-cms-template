@@ -7,7 +7,6 @@ import { headers } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. RATE LIMIT
     const ip = (await headers()).get('x-forwarded-for') || 'unknown'
     const key = `forgot_password_${ip}`
     const { success, resetTime } = rateLimitMemory(key, 3, 60 * 60 * 1000)
@@ -23,7 +22,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 2. ZOD VALIDATION
     const body = await request.json()
     
     try {
@@ -31,7 +29,7 @@ export async function POST(request: NextRequest) {
       const { email } = validated
 
       const user = await prisma.user.findUnique({
-        where: { email },
+        where: { email: email.toLowerCase() },
       })
 
       if (!user) {
@@ -52,17 +50,16 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetToken}`
+      const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`
 
       console.log('📧 RESET LINK:', resetLink)
       console.log('📧 Untuk: ', email)
 
       return NextResponse.json({
         message: 'Jika akun terdaftar, link reset telah dikirim.',
-        devLink: resetLink,
+        devLink: process.env.NODE_ENV === 'development' ? resetLink : undefined,
       })
     } catch (error: any) {
-      // Zod error handling with type assertion
       if (error.name === 'ZodError' && error.errors) {
         const errors = error.errors.map((e: any) => e.message).join(', ')
         return NextResponse.json(

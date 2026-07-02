@@ -17,6 +17,15 @@ interface Tag {
   color: string | null
 }
 
+interface Promo {
+  id: string
+  code: string
+  discount: number
+  startDate: string
+  endDate: string
+  isActive: boolean
+}
+
 interface MediaFile {
   id: string
   url: string
@@ -47,7 +56,9 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
+  const [promos, setPromos] = useState<Promo[]>([])
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
+  const [selectedPromoIds, setSelectedPromoIds] = useState<string[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [showMediaPicker, setShowMediaPicker] = useState(false)
@@ -61,6 +72,7 @@ export default function NewProductPage() {
     status: 'DRAFT',
     categoryId: '',
     imageUrl: '',
+    isFeatured: false,
     metaTitle: '',
     metaDescription: '',
     canonicalUrl: '',
@@ -70,6 +82,7 @@ export default function NewProductPage() {
   useEffect(() => {
     fetchCategories()
     fetchTags()
+    fetchPromos()
     fetchSettings()
     fetchMediaFiles()
   }, [])
@@ -103,6 +116,22 @@ export default function NewProductPage() {
     } catch (error) {
       console.error('Error fetching tags:', error)
       setTags([])
+    }
+  }
+
+  const fetchPromos = async () => {
+    try {
+      const res = await fetch('/api/admin/promos')
+      if (!res.ok) {
+        console.error('Failed to fetch promos:', res.status)
+        setPromos([])
+        return
+      }
+      const data = await res.json()
+      setPromos(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching promos:', error)
+      setPromos([])
     }
   }
 
@@ -154,6 +183,8 @@ export default function NewProductPage() {
           price: parseFloat(form.price),
           compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
           stock: parseInt(form.stock),
+          isFeatured: form.isFeatured,
+          promoIds: selectedPromoIds,
         }),
       })
 
@@ -203,6 +234,7 @@ export default function NewProductPage() {
 
   const ProductPreview = () => {
     const preview = getPreviewData()
+    const hasTags = preview.tags && preview.tags.length > 0
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
@@ -247,26 +279,25 @@ export default function NewProductPage() {
                   SALE
                 </span>
               )}
+              {hasTags && (
+                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                  {preview.tags.slice(0, 2).map((tag: Tag) => (
+                    <span
+                      key={tag.id}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                      style={{ backgroundColor: getTagColor(tag.color) }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">
               {preview.name}
             </h3>
             <p className="text-xs text-gray-500">{preview.category}</p>
-
-            {preview.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {preview.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="px-1.5 py-0.5 text-[10px] text-white rounded-full font-medium"
-                    style={{ backgroundColor: getTagColor(tag.color) }}
-                  >
-                    {tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
 
             <div className="flex items-center gap-2 mt-1">
               <p className="text-base font-bold" style={{ color: preview.primaryColor }}>
@@ -382,6 +413,7 @@ export default function NewProductPage() {
                   setForm({ ...form, name, slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '') })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Contoh: Moisturizer"
               />
             </div>
 
@@ -393,6 +425,7 @@ export default function NewProductPage() {
                 value={form.slug}
                 onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/ /g, '-') })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="moisturizer"
               />
             </div>
 
@@ -403,10 +436,10 @@ export default function NewProductPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Deskripsi produk..."
               />
             </div>
 
-            {/* Gambar Produk - DENGAN TOMBOL PILIH DARI MEDIA */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Gambar Produk</label>
               <div className="flex gap-2">
@@ -415,7 +448,7 @@ export default function NewProductPage() {
                   value={form.imageUrl}
                   onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
                   className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="URL gambar atau pilih dari media"
+                  placeholder="https://example.com/gambar-produk.jpg"
                 />
                 <button
                   type="button"
@@ -433,6 +466,19 @@ export default function NewProductPage() {
               )}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Featured Product</label>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="checkbox"
+                  checked={form.isFeatured}
+                  onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+                  className="w-4 h-4 text-pink-500 rounded border-gray-300"
+                />
+                <span className="text-sm text-gray-600">Tampilkan di halaman utama sebagai featured</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Harga *</label>
@@ -443,6 +489,7 @@ export default function NewProductPage() {
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="100000"
                 />
               </div>
               <div>
@@ -453,7 +500,7 @@ export default function NewProductPage() {
                   value={form.compareAtPrice}
                   onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="0"
+                  placeholder="150000"
                 />
               </div>
             </div>
@@ -467,6 +514,7 @@ export default function NewProductPage() {
                   value={form.stock}
                   onChange={(e) => setForm({ ...form, stock: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="50"
                 />
               </div>
               <div>
@@ -525,6 +573,35 @@ export default function NewProductPage() {
               </p>
             </div>
 
+            {/* PROMOS / VOUCHERS - SAMA SEPERTI DI BOOKING */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Voucher</label>
+              <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                {promos.length === 0 ? (
+                  <p className="text-gray-500 text-sm col-span-full">Belum ada voucher. Buat voucher dulu di tab Vouchers.</p>
+                ) : (
+                  promos.filter(p => p.isActive).map((promo) => (
+                    <label key={promo.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedPromoIds.includes(promo.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPromoIds([...selectedPromoIds, promo.id])
+                          } else {
+                            setSelectedPromoIds(selectedPromoIds.filter(id => id !== promo.id))
+                          }
+                        }}
+                        className="w-4 h-4 text-pink-500 rounded border-gray-300"
+                      />
+                      <span className="truncate">{promo.code} (Rp {promo.discount.toLocaleString()})</span>
+                    </label>
+                  ))
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Pilih {selectedPromoIds.length} voucher</p>
+            </div>
+
             <div className="border-t border-gray-200 pt-3">
               <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
               <div className="space-y-3">
@@ -535,7 +612,7 @@ export default function NewProductPage() {
                     value={form.metaTitle || ''}
                     onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
                     className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="SEO title (max 60 chars)"
+                    placeholder="Judul untuk SEO (max 60 chars)"
                   />
                 </div>
                 <div>
@@ -545,7 +622,7 @@ export default function NewProductPage() {
                     value={form.metaDescription || ''}
                     onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
                     className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="SEO description (max 160 chars)"
+                    placeholder="Deskripsi untuk SEO (max 160 chars)"
                   />
                 </div>
                 <div>
@@ -592,7 +669,6 @@ export default function NewProductPage() {
         </div>
       </div>
 
-      {/* Media Picker Modal */}
       {showMediaPicker && <MediaPicker />}
     </div>
   )

@@ -4,6 +4,8 @@ import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { ShoppingCart } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Product {
   id: string
@@ -32,6 +34,15 @@ interface Category {
   id: string
   name: string
   slug: string
+}
+
+interface Settings {
+  enableCart: boolean
+  colorPrimary: string
+  headingFontSize: string
+  bodyFontSize: string
+  smallFontSize: string
+  fontFamily: string
 }
 
 const PRESET_COLORS = [
@@ -67,7 +78,7 @@ function ProductsContent() {
   const [totalProducts, setTotalProducts] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [settings, setSettings] = useState<any>(null)
+  const [settings, setSettings] = useState<Settings | null>(null)
 
   const primaryColor = '#c4367b'
   const limit = 9
@@ -129,6 +140,47 @@ function ProductsContent() {
     router.push(`/products?${params.toString()}`)
   }
 
+  const addToCart = (product: Product) => {
+    try {
+      const saved = localStorage.getItem('beauty_cart')
+      const items = saved ? JSON.parse(saved) : []
+      
+      const existing = items.find((item: any) => item.id === product.id)
+      if (existing) {
+        if (existing.quantity + 1 > product.stock) {
+          toast.error(`Stok tidak mencukupi (tersisa ${product.stock} unit)`)
+          return
+        }
+        existing.quantity += 1
+      } else {
+        items.push({
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          price: product.finalPrice || product.price,
+          finalPrice: product.finalPrice || product.price,
+          quantity: 1,
+          imageUrl: product.imageUrl,
+          stock: product.stock,
+        })
+      }
+      
+      localStorage.setItem('beauty_cart', JSON.stringify(items))
+      toast.success(`${product.name} ditambahkan ke keranjang!`)
+      
+      window.dispatchEvent(new Event('cartUpdate'))
+    } catch (e) {
+      console.error('Error adding to cart:', e)
+      toast.error('Gagal menambahkan ke keranjang')
+    }
+  }
+
+  const enableCart = settings?.enableCart !== undefined ? settings.enableCart : true
+  const headingFontSize = settings?.headingFontSize || '32px'
+  const bodyFontSize = settings?.bodyFontSize || '16px'
+  const smallFontSize = settings?.smallFontSize || '14px'
+  const fontFamily = settings?.fontFamily || 'Inter'
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
@@ -138,10 +190,10 @@ function ProductsContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Our Products</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>Our Products</h1>
+        <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>
           Discover our premium beauty products
         </p>
       </div>
@@ -160,6 +212,7 @@ function ProductsContent() {
               className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors"
               style={{ 
                 '--tw-ring-color': primaryColor,
+                fontSize: bodyFontSize,
               } as React.CSSProperties}
             />
             <svg className="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +229,7 @@ function ProductsContent() {
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={!categorySlug ? { backgroundColor: primaryColor } : {}}
+            style={!categorySlug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
           >
             All
           </a>
@@ -189,7 +242,7 @@ function ProductsContent() {
                   ? 'text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
-              style={categorySlug === category.slug ? { backgroundColor: primaryColor } : {}}
+              style={categorySlug === category.slug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
             >
               {category.name}
             </Link>
@@ -197,7 +250,7 @@ function ProductsContent() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-gray-500 mb-4" style={{ fontSize: smallFontSize }}>
         Showing {products.length} of {totalProducts} products
       </p>
 
@@ -206,12 +259,12 @@ function ProductsContent() {
           <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <h3 className="text-lg font-semibold text-gray-600">No products found</h3>
-          <p className="text-gray-400 text-sm">Try adjusting your search or filter</p>
+          <h3 className="text-lg font-semibold text-gray-600" style={{ fontSize: headingFontSize }}>No products found</h3>
+          <p className="text-gray-400 text-sm" style={{ fontSize: bodyFontSize }}>Try adjusting your search or filter</p>
           <Link
             href="/products"
             className="inline-block mt-4 px-6 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:opacity-90"
-            style={{ backgroundColor: primaryColor }}
+            style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
           >
             Clear filters
           </Link>
@@ -227,85 +280,83 @@ function ProductsContent() {
             const productTags = product.tags || []
             
             return (
-              <Link
+              <div
                 key={product.id}
-                href={`/products/${product.slug}`}
                 className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
                 style={{ borderColor: `${primaryColor}20` }}
               >
-                <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
-                  {product.imageUrl ? (
-                    <img 
-                      src={product.imageUrl} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                        // Show fallback icon
-                        const parent = e.currentTarget.parentElement
-                        if (parent) {
-                          const fallback = document.createElement('div')
-                          fallback.className = 'w-full h-full flex items-center justify-center'
-                          fallback.innerHTML = '<span class="text-6xl">🧴</span>'
-                          parent.appendChild(fallback)
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                      <span className="text-6xl">🧴</span>
-                    </div>
-                  )}
-                  
-                  {productTags.length > 0 && (
-                    <div className="absolute top-3 left-3 flex flex-col gap-1">
-                      {productTags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
-                          style={{ backgroundColor: getTagColor(tag.color) }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {hasPromo && promo && (
-                    <span className="absolute top-3 right-3 bg-pink-800 text-white text-xs font-bold px-2.5 py-1 rounded-full max-w-[120px] truncate">
-                      🔥 {promo.title}
-                    </span>
-                  )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1">
-                        {product.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">{product.category?.name}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-lg font-bold" style={{ color: primaryColor }}>
-                      Rp {displayPrice.toLocaleString()}
-                    </p>
-                    {hasComparePrice && (
-                      <p className="text-sm text-gray-400 line-through">
-                        Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
-                      </p>
+                <Link href={`/products/${product.slug}`}>
+                  <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+                    {product.imageUrl ? (
+                      <img 
+                        src={product.imageUrl} 
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                        <span className="text-6xl">🧴</span>
+                      </div>
                     )}
-                    {hasDiscount && (
-                      <p className="text-xs text-pink-400 line-through">
-                        Rp {product.originalPrice.toLocaleString()}
+                    
+                    {productTags.length > 0 && (
+                      <div className="absolute top-3 left-3 flex flex-col gap-1">
+                        {productTags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                            style={{ backgroundColor: getTagColor(tag.color) }}
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {hasPromo && promo && (
+                      <span className="absolute top-3 right-3 bg-pink-800 text-white text-xs font-bold px-2.5 py-1 rounded-full max-w-[120px] truncate">
+                        🔥 {promo.title}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+
+                <div className="p-4">
+                  <Link href={`/products/${product.slug}`}>
+                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1" style={{ fontSize: bodyFontSize }}>
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>{product.category?.name}</p>
+                  </Link>
+
+                  <div className="flex items-center justify-between mt-2">
+                    <div>
+                      <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
+                        Rp {displayPrice.toLocaleString()}
                       </p>
+                      {hasComparePrice && (
+                        <p className="text-sm text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
+                          Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* ICON KERANJANG - HANYA JIKA enableCart ON */}
+                    {enableCart && (
+                      <button
+                        onClick={() => addToCart(product)}
+                        className="p-2 rounded-full hover:bg-pink-50 transition-colors"
+                        style={{ color: primaryColor }}
+                        title="Tambah ke keranjang"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                      </button>
                     )}
                   </div>
 
                   {hasPromo && promo && (
                     <div className="mt-1">
-                      <p className="text-xs text-pink-800 font-medium truncate">
+                      <p className="text-xs text-pink-800 font-medium truncate" style={{ fontSize: smallFontSize }}>
                         {promo.title}
                         {promo.discountType === 'PERCENTAGE' 
                           ? ` - ${promo.discountValue}% OFF` 
@@ -314,14 +365,16 @@ function ProductsContent() {
                     </div>
                   )}
 
-                  <button
-                    className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95"
-                    style={{ backgroundColor: primaryColor }}
+                  {/* TOMBOL TETAP VIEW DETAILS */}
+                  <Link
+                    href={`/products/${product.slug}`}
+                    className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
+                    style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                   >
                     View Details
-                  </button>
+                  </Link>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
@@ -336,12 +389,12 @@ function ProductsContent() {
               <Link
                 key={i}
                 href={`/products?page=${pageNum}`}
-                className={`w-10 h-10 rounded-full flex items-center justifyContent-center text-sm font-medium transition-colors ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                   isActive
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                style={isActive ? { backgroundColor: primaryColor } : {}}
+                style={isActive ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
               >
                 {pageNum}
               </Link>

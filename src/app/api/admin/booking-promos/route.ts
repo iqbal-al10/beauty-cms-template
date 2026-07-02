@@ -10,10 +10,15 @@ export async function GET(request: NextRequest) {
     }
 
     const promos = await prisma.promo.findMany({
+      where: {
+        services: {
+          some: {}, // Hanya ambil promo yang terhubung ke service
+        },
+      },
       include: {
-        products: {
+        services: {
           select: {
-            productId: true,
+            serviceId: true,
           },
         },
       },
@@ -22,14 +27,14 @@ export async function GET(request: NextRequest) {
 
     const transformed = promos.map((promo) => ({
       ...promo,
-      products: promo.products.map((p) => ({ productId: p.productId })),
+      services: promo.services.map((s) => ({ serviceId: s.serviceId })),
     }))
 
     return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error fetching promos:', error)
+    console.error('Error fetching booking promos:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch promos' },
+      { error: 'Failed to fetch booking promos' },
       { status: 500 }
     )
   }
@@ -43,9 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { code, discount, startDate, endDate, isActive, productIds } = body
-
-    console.log('📦 Received promo data:', { code, discount, startDate, endDate, isActive, productIds })
+    const { code, discount, startDate, endDate, isActive, serviceIds } = body
 
     // Validasi
     if (!code) {
@@ -66,16 +69,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    if (!productIds || productIds.length === 0) {
+    if (!serviceIds || serviceIds.length === 0) {
       return NextResponse.json(
-        { error: 'Pilih minimal satu produk' },
+        { error: 'Pilih minimal satu layanan' },
         { status: 400 }
       )
     }
 
     // Check unique code
     const existing = await prisma.promo.findUnique({
-      where: { code: code.toUpperCase() },
+      where: { code },
     })
     if (existing) {
       return NextResponse.json(
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create promo with products
+    // Create promo with services
     const promo = await prisma.promo.create({
       data: {
         code: code.toUpperCase(),
@@ -92,33 +95,31 @@ export async function POST(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
-        products: {
-          create: productIds.map((productId: string) => ({
-            product: { connect: { id: productId } },
+        services: {
+          create: serviceIds.map((serviceId: string) => ({
+            service: { connect: { id: serviceId } },
           })),
         },
       },
       include: {
-        products: {
+        services: {
           select: {
-            productId: true,
+            serviceId: true,
           },
         },
       },
     })
 
-    console.log('✅ Promo created:', promo.code)
-
     const transformed = {
       ...promo,
-      products: promo.products.map((p) => ({ productId: p.productId })),
+      services: promo.services.map((s) => ({ serviceId: s.serviceId })),
     }
 
     return NextResponse.json(transformed, { status: 201 })
   } catch (error) {
-    console.error('Error creating promo:', error)
+    console.error('Error creating booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to create promo: ' + (error as Error).message },
+      { error: 'Failed to create booking promo' },
       { status: 500 }
     )
   }
@@ -132,9 +133,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, code, discount, startDate, endDate, isActive, productIds } = body
-
-    console.log('📦 Updating promo:', { id, code, discount, productIds })
+    const { id, code, discount, startDate, endDate, isActive, serviceIds } = body
 
     if (!id) {
       return NextResponse.json(
@@ -157,7 +156,7 @@ export async function PUT(request: NextRequest) {
     // Check unique code (if changed)
     if (code !== existing.code) {
       const codeExists = await prisma.promo.findUnique({
-        where: { code: code.toUpperCase() },
+        where: { code },
       })
       if (codeExists) {
         return NextResponse.json(
@@ -176,17 +175,17 @@ export async function PUT(request: NextRequest) {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
-        products: {
+        services: {
           deleteMany: {},
-          create: productIds?.map((productId: string) => ({
-            product: { connect: { id: productId } },
+          create: serviceIds?.map((serviceId: string) => ({
+            service: { connect: { id: serviceId } },
           })) || [],
         },
       },
       include: {
-        products: {
+        services: {
           select: {
-            productId: true,
+            serviceId: true,
           },
         },
       },
@@ -194,14 +193,14 @@ export async function PUT(request: NextRequest) {
 
     const transformed = {
       ...promo,
-      products: promo.products.map((p) => ({ productId: p.productId })),
+      services: promo.services.map((s) => ({ serviceId: s.serviceId })),
     }
 
     return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error updating promo:', error)
+    console.error('Error updating booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to update promo: ' + (error as Error).message },
+      { error: 'Failed to update booking promo' },
       { status: 500 }
     )
   }
@@ -242,9 +241,9 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting promo:', error)
+    console.error('Error deleting booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to delete promo: ' + (error as Error).message },
+      { error: 'Failed to delete booking promo' },
       { status: 500 }
     )
   }

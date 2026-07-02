@@ -6,76 +6,51 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // Settings
+  // 1. Create default Settings
   await prisma.settings.upsert({
     where: { id: 'default' },
     update: {},
     create: {
       id: 'default',
       siteName: 'Beauty Studio',
-      colorPrimary: '#e88ea7',
-      whatsappNumber: '6281234567890',
-      email: 'hello@beautystudio.com',
+      colorPrimary: '#c4367b',
+      colorSecondary: '#f5dbe8',
+      colorButton: '#aa1d68',
+      fontFamily: 'Inter',
+      whatsappNumber: '6285710379820',
+      email: 'admin@beautystudio.com',
+      enableCart: true,
+      enableWhatsAppOrder: true,
+      enableGuestCheckout: true,
+      enableReviews: true,
+      enableTestimonials: true,
+      enableBlog: true,
+      enableGallery: true,
+      enableFaq: true,
     },
   })
   console.log('✅ Settings created')
 
-  // Super Admin
-  const passwordHash = await bcrypt.hash('admin123', 10)
-  await prisma.user.upsert({
+  // 2. Create Admin User (password: admin123)
+  const adminPassword = await bcrypt.hash('admin123', 10)
+  
+  // Hapus user lama jika ada
+  await prisma.user.deleteMany({
     where: { email: 'admin@beautystudio.com' },
-    update: {},
-    create: {
+  })
+
+  const admin = await prisma.user.create({
+    data: {
       name: 'Super Admin',
       email: 'admin@beautystudio.com',
-      passwordHash,
+      passwordHash: adminPassword,
       role: 'SUPER_ADMIN',
       isActive: true,
     },
   })
-  console.log('✅ Admin created')
+  console.log(`✅ Admin user created: ${admin.email} (password: admin123)`)
 
-  // Demo Users
-  const demoPassword = await bcrypt.hash('password123', 10)
-  await prisma.user.upsert({
-    where: { email: 'admin2@beautystudio.com' },
-    update: {},
-    create: {
-      name: 'Admin 2',
-      email: 'admin2@beautystudio.com',
-      passwordHash: demoPassword,
-      role: 'ADMIN',
-      isActive: true,
-    },
-  })
-
-  await prisma.user.upsert({
-    where: { email: 'editor@beautystudio.com' },
-    update: {},
-    create: {
-      name: 'Editor User',
-      email: 'editor@beautystudio.com',
-      passwordHash: demoPassword,
-      role: 'EDITOR',
-      isActive: true,
-    },
-  })
-
-  await prisma.user.upsert({
-    where: { email: 'staff@beautystudio.com' },
-    update: {},
-    create: {
-      name: 'Staff User',
-      email: 'staff@beautystudio.com',
-      passwordHash: demoPassword,
-      role: 'STAFF',
-      isActive: true,
-    },
-  })
-  console.log('✅ Users created')
-
-  // ... rest of seed data ...
-  console.log('🌱 Seeding completed successfully!')
+  console.log('✅ Seeding completed!')
 }
 
 main()

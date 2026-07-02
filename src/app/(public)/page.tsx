@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
+import { ShoppingCart } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Product {
   id: string
@@ -12,7 +14,24 @@ interface Product {
   compareAtPrice: number | null
   status: string
   isFeatured: boolean
+  imageUrl: string | null
+  stock: number
   category: { name: string } | null
+  tags: Array<{ id: string; name: string; color: string | null }>
+}
+
+interface Service {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  duration: number
+  price: number
+  imageUrl: string | null
+  isFeatured: boolean
+  isActive: boolean
+  category: { name: string } | null
+  tags: Array<{ id: string; name: string; color: string | null }>
 }
 
 interface Promo {
@@ -46,78 +65,90 @@ interface BlogPost {
   category: { name: string } | null
 }
 
-interface Category {
-  id: string
-  name: string
-  slug: string
-  isActive: boolean
-}
-
 interface Settings {
   siteName: string
   colorPrimary: string
   colorSecondary: string
   colorButton: string
   heroBannerUrl: string | null
+  enableCart: boolean
+  headingFontSize: string
+  bodyFontSize: string
+  smallFontSize: string
+  fontFamily: string
+}
+
+const PRESET_COLORS = [
+  { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
+  { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
+  { value: 'bg-green-500', hex: '#22C55E', label: 'Green' },
+  { value: 'bg-yellow-500', hex: '#EAB308', label: 'Yellow' },
+  { value: 'bg-purple-500', hex: '#A855F7', label: 'Purple' },
+  { value: 'bg-pink-500', hex: '#EC4899', label: 'Pink' },
+  { value: 'bg-orange-500', hex: '#F97316', label: 'Orange' },
+  { value: 'bg-teal-500', hex: '#14B8A6', label: 'Teal' },
+  { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
+  { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
+]
+
+const getTagColor = (color: string | null): string => {
+  if (!color) return '#6B7280'
+  if (color.startsWith('#')) return color
+  const preset = PRESET_COLORS.find(p => p.value === color)
+  if (preset) return preset.hex
+  return '#6B7280'
 }
 
 export default function HomePage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [featuredServices, setFeaturedServices] = useState<Service[]>([])
   const [activePromos, setActivePromos] = useState<Promo[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [latestBlogs, setLatestBlogs] = useState<BlogPost[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
   const primaryColor = '#c4367b'
   const secondaryColor = '#f5dbe8'
   const buttonColor = '#c4367b'
-  const buttonHoverColor = '#e20373'
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch settings
         const settingsRes = await fetch('/api/public/settings')
         if (settingsRes.ok) {
           const data = await settingsRes.json()
           setSettings(data)
         }
 
-        // Fetch featured products
         const productsRes = await fetch('/api/public/products?featured=true&limit=4')
         if (productsRes.ok) {
           const data = await productsRes.json()
-          setFeaturedProducts(data || [])
+          setFeaturedProducts(data.data || [])
         }
 
-        // Fetch active promos
+        const servicesRes = await fetch('/api/public/services?featured=true&limit=4')
+        if (servicesRes.ok) {
+          const data = await servicesRes.json()
+          setFeaturedServices(data || [])
+        }
+
         const promosRes = await fetch('/api/public/promos?active=true&limit=1')
         if (promosRes.ok) {
           const data = await promosRes.json()
           setActivePromos(data || [])
         }
 
-        // Fetch testimonials
         const testimonialsRes = await fetch('/api/public/testimonials?limit=3')
         if (testimonialsRes.ok) {
           const data = await testimonialsRes.json()
           setTestimonials(data || [])
         }
 
-        // Fetch latest blogs
         const blogsRes = await fetch('/api/public/blogs?limit=3')
         if (blogsRes.ok) {
           const data = await blogsRes.json()
           setLatestBlogs(data || [])
-        }
-
-        // Fetch categories
-        const categoriesRes = await fetch('/api/public/categories?limit=6')
-        if (categoriesRes.ok) {
-          const data = await categoriesRes.json()
-          setCategories(data || [])
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -131,6 +162,46 @@ export default function HomePage() {
 
   const siteName = settings?.siteName || 'Beauty Studio'
   const heroBanner = settings?.heroBannerUrl || ''
+  const enableCart = settings?.enableCart !== undefined ? settings.enableCart : true
+  const headingFontSize = settings?.headingFontSize || '32px'
+  const bodyFontSize = settings?.bodyFontSize || '16px'
+  const smallFontSize = settings?.smallFontSize || '14px'
+  const fontFamily = settings?.fontFamily || 'Inter'
+
+  const addToCart = (product: Product) => {
+    try {
+      const saved = localStorage.getItem('beauty_cart')
+      const items = saved ? JSON.parse(saved) : []
+      
+      const existing = items.find((item: any) => item.id === product.id)
+      if (existing) {
+        if (existing.quantity + 1 > product.stock) {
+          toast.error(`Stok tidak mencukupi (tersisa ${product.stock} unit)`)
+          return
+        }
+        existing.quantity += 1
+      } else {
+        items.push({
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          price: product.price,
+          finalPrice: product.price,
+          quantity: 1,
+          imageUrl: product.imageUrl,
+          stock: product.stock,
+        })
+      }
+      
+      localStorage.setItem('beauty_cart', JSON.stringify(items))
+      toast.success(`${product.name} ditambahkan ke keranjang!`)
+      
+      window.dispatchEvent(new Event('cartUpdate'))
+    } catch (e) {
+      console.error('Error adding to cart:', e)
+      toast.error('Gagal menambahkan ke keranjang')
+    }
+  }
 
   if (loading) {
     return (
@@ -141,7 +212,7 @@ export default function HomePage() {
   }
 
   return (
-    <div>
+    <div style={{ fontFamily: fontFamily }}>
       {/* Hero Section */}
       <section 
         className="relative min-h-[70vh] flex items-center overflow-hidden"
@@ -165,25 +236,26 @@ export default function HomePage() {
               <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
-              <span className="text-white text-sm font-medium">Premium Beauty Services</span>
+              <span className="text-white text-sm font-medium" style={{ fontSize: smallFontSize }}>Premium Beauty Services</span>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg">
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: headingFontSize }}>
               {siteName}
             </h1>
-            <p className="text-xl text-white/90 mb-8 drop-shadow-md max-w-lg">
+            <p className="text-xl text-white/90 mb-8 drop-shadow-md max-w-lg" style={{ fontSize: bodyFontSize }}>
               Discover premium beauty services and products for your perfect look
             </p>
             <div className="flex flex-wrap gap-4">
               <Link
                 href="/products"
                 className="px-8 py-3 rounded-full text-white font-semibold text-lg transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-lg active:scale-95"
-                style={{ backgroundColor: buttonColor }}
+                style={{ backgroundColor: buttonColor, fontSize: bodyFontSize }}
               >
                 Shop Now
               </Link>
               <Link
                 href="/booking"
                 className="px-8 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-semibold text-lg border border-white/30 hover:bg-white/30 transition-all"
+                style={{ fontSize: bodyFontSize }}
               >
                 Book Now
               </Link>
@@ -192,44 +264,20 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Categories Quick Navigation */}
-      {categories.length > 0 && (
-        <section className="py-12 border-b border-gray-100" style={{ backgroundColor: `${secondaryColor}40` }}>
-          <div className="container mx-auto px-4">
-            <div className="flex flex-wrap justify-center gap-4">
-              {categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/products?category=${category.slug}`}
-                  className="px-6 py-2 rounded-full text-sm font-medium transition-all hover:shadow-md hover:-translate-y-0.5"
-                  style={{
-                    backgroundColor: `${primaryColor}15`,
-                    color: primaryColor,
-                    border: `1px solid ${primaryColor}30`,
-                  }}
-                >
-                  {category.name}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Featured Products */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-12">
             <div>
-              <h2 className="text-3xl font-bold text-gray-800">
+              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
                 Featured Products
               </h2>
-              <p className="text-gray-500 mt-1">Our best picks just for you</p>
+              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Our best picks just for you</p>
             </div>
             <Link
               href="/products"
               className="flex items-center gap-1 font-medium transition-colors"
-              style={{ color: primaryColor }}
+              style={{ color: primaryColor, fontSize: bodyFontSize }}
             >
               View All 
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,45 +288,200 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {featuredProducts.length > 0 ? (
-              featuredProducts.map((product) => (
-                <Link
-                  key={product.id}
-                  href={`/products/${product.slug}`}
-                  className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 p-4 border border-gray-100 hover:-translate-y-2"
-                  style={{ borderColor: `${primaryColor}20` }}
-                >
-                  <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-4 flex items-center justify-center group-hover:from-[#f5dbe8]/50 group-hover:to-[#f5dbe8]/20 transition-colors relative overflow-hidden">
-                    <span className="text-5xl group-hover:scale-110 transition-transform duration-300">🧴</span>
-                    {product.compareAtPrice && product.compareAtPrice > product.price && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        SALE
-                      </span>
-                    )}
+              featuredProducts.map((product) => {
+                const productTags = product.tags || []
+                const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
+
+                return (
+                  <div
+                    key={product.id}
+                    className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
+                    style={{ borderColor: `${primaryColor}20` }}
+                  >
+                    <Link href={`/products/${product.slug}`}>
+                      <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+                        {product.imageUrl ? (
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                            <span className="text-6xl">🧴</span>
+                          </div>
+                        )}
+                        
+                        {productTags.length > 0 && (
+                          <div className="absolute top-3 left-3 flex flex-col gap-1">
+                            {productTags.slice(0, 2).map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                                style={{ backgroundColor: getTagColor(tag.color) }}
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {hasComparePrice && (
+                          <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                            SALE
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+
+                    <div className="p-4">
+                      <Link href={`/products/${product.slug}`}>
+                        <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1" style={{ fontSize: bodyFontSize }}>
+                          {product.name}
+                        </h3>
+                        <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>{product.category?.name}</p>
+                      </Link>
+
+                      <div className="flex items-center justify-between mt-2">
+                        <div>
+                          <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
+                            Rp {product.price.toLocaleString()}
+                          </p>
+                          {hasComparePrice && (
+                            <p className="text-sm text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
+                              Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {enableCart && (
+                          <button
+                            onClick={() => addToCart(product)}
+                            className="p-2 rounded-full hover:bg-pink-50 transition-colors"
+                            style={{ color: primaryColor }}
+                            title="Tambah ke keranjang"
+                          >
+                            <ShoppingCart className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <Link
+                        href={`/products/${product.slug}`}
+                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
+                        style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
+                      >
+                        View Details
+                      </Link>
+                    </div>
                   </div>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-500">{product.category?.name}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-lg font-bold" style={{ color: primaryColor }}>
-                      Rp {product.price.toLocaleString()}
-                    </p>
-                    {product.compareAtPrice && product.compareAtPrice > product.price && (
-                      <p className="text-sm text-gray-400 line-through">
-                        Rp {product.compareAtPrice.toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))
+                )
+              })
             ) : (
-              <p className="text-gray-500 col-span-full text-center py-8">
+              <p className="text-gray-500 col-span-full text-center py-8" style={{ fontSize: bodyFontSize }}>
                 No featured products available
               </p>
             )}
           </div>
         </div>
       </section>
+
+      {/* Featured Services - SAMA SEPERTI FEATURED PRODUCTS */}
+      {featuredServices.length > 0 && (
+        <section className="py-16 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="flex justify-between items-center mb-12">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
+                  Featured Services
+                </h2>
+                <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Our premium beauty services</p>
+              </div>
+              <Link
+                href="/booking"
+                className="flex items-center gap-1 font-medium transition-colors"
+                style={{ color: primaryColor, fontSize: bodyFontSize }}
+              >
+                View All 
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredServices.map((service) => {
+                const serviceTags = service.tags || []
+                return (
+                  <div
+                    key={service.id}
+                    className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
+                    style={{ borderColor: `${primaryColor}20` }}
+                  >
+                    <Link href={`/booking/${service.slug}`}>
+                      <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+                        {service.imageUrl ? (
+                          <img 
+                            src={service.imageUrl} 
+                            alt={service.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                            <span className="text-6xl">🧖</span>
+                          </div>
+                        )}
+                        
+                        {serviceTags.length > 0 && (
+                          <div className="absolute top-3 left-3 flex flex-col gap-1">
+                            {serviceTags.slice(0, 2).map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                                style={{ backgroundColor: getTagColor(tag.color) }}
+                              >
+                                {tag.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+
+                    <div className="p-4">
+                      <Link href={`/booking/${service.slug}`}>
+                        <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1" style={{ fontSize: bodyFontSize }}>
+                          {service.name}
+                        </h3>
+                        <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>{service.category?.name}</p>
+                      </Link>
+
+                      <div className="flex items-center justify-between mt-2">
+                        <div>
+                          <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
+                            Rp {service.price.toLocaleString()}
+                          </p>
+                          <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
+                            {service.duration} menit
+                          </p>
+                        </div>
+                      </div>
+
+                      <Link
+                        href={`/booking/${service.slug}`}
+                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
+                        style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
+                      >
+                        Book Now
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Promo Banner */}
       {activePromos.length > 0 && (
@@ -289,20 +492,20 @@ export default function HomePage() {
                 key={promo.id}
                 className="rounded-2xl overflow-hidden relative"
                 style={{
-                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${buttonHoverColor} 100%)`,
+                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
                 }}
               >
                 <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10" />
                 <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex-1 text-center md:text-left text-white">
-                    <span className="inline-block px-4 py-1 text-xs font-semibold bg-white/20 backdrop-blur-sm rounded-full mb-4">
+                    <span className="inline-block px-4 py-1 text-xs font-semibold bg-white/20 backdrop-blur-sm rounded-full mb-4" style={{ fontSize: smallFontSize }}>
                       🔥 Limited Time Offer
                     </span>
-                    <h3 className="text-3xl md:text-4xl font-bold mb-2">
+                    <h3 className="text-3xl md:text-4xl font-bold mb-2" style={{ fontSize: headingFontSize }}>
                       {promo.title}
                     </h3>
                     {promo.discountValue && (
-                      <p className="text-4xl md:text-5xl font-extrabold mb-4">
+                      <p className="text-4xl md:text-5xl font-extrabold mb-4" style={{ fontSize: headingFontSize }}>
                         {promo.discountType === 'PERCENTAGE' 
                           ? `${promo.discountValue}% OFF` 
                           : `Rp ${promo.discountValue.toLocaleString()} OFF`}
@@ -311,6 +514,7 @@ export default function HomePage() {
                     <Link
                       href="/promo"
                       className="inline-block px-8 py-3 rounded-full bg-white text-gray-900 font-semibold transition-all hover:scale-105 hover:shadow-lg active:scale-95"
+                      style={{ fontSize: bodyFontSize }}
                     >
                       Grab Now
                     </Link>
@@ -338,10 +542,10 @@ export default function HomePage() {
         <section className="py-16" style={{ backgroundColor: `${secondaryColor}30` }}>
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-800">
+              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
                 What Our Customers Say
               </h2>
-              <p className="text-gray-500 mt-1">Real reviews from real people</p>
+              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Real reviews from real people</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -358,7 +562,7 @@ export default function HomePage() {
                       </svg>
                     ))}
                   </div>
-                  <p className="text-gray-600 mb-4 line-clamp-4 italic">
+                  <p className="text-gray-600 mb-4 line-clamp-4 italic" style={{ fontSize: bodyFontSize }}>
                     "{testimonial.reviewText}"
                   </p>
                   <div className="flex items-center gap-3">
@@ -368,7 +572,7 @@ export default function HomePage() {
                     >
                       {testimonial.customerName.charAt(0)}
                     </div>
-                    <p className="font-semibold text-gray-800">
+                    <p className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>
                       {testimonial.customerName}
                     </p>
                   </div>
@@ -380,7 +584,7 @@ export default function HomePage() {
               <Link
                 href="/testimonials"
                 className="font-medium transition-colors"
-                style={{ color: primaryColor }}
+                style={{ color: primaryColor, fontSize: bodyFontSize }}
               >
                 See All Testimonials →
               </Link>
@@ -395,15 +599,15 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <div className="flex justify-between items-center mb-12">
               <div>
-                <h2 className="text-3xl font-bold text-gray-800">
+                <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
                   Latest from Blog
                 </h2>
-                <p className="text-gray-500 mt-1">Tips and inspiration</p>
+                <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Tips and inspiration</p>
               </div>
               <Link
                 href="/blog"
                 className="flex items-center gap-1 font-medium transition-colors"
-                style={{ color: primaryColor }}
+                style={{ color: primaryColor, fontSize: bodyFontSize }}
               >
                 View All 
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -441,18 +645,19 @@ export default function HomePage() {
                         style={{
                           backgroundColor: `${primaryColor}15`,
                           color: primaryColor,
+                          fontSize: smallFontSize,
                         }}
                       >
                         {blog.category.name}
                       </span>
                     )}
-                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-2">
+                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-2" style={{ fontSize: bodyFontSize }}>
                       {blog.title}
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2" style={{ fontSize: smallFontSize }}>
                       {blog.excerpt || 'Read more...'}
                     </p>
-                    <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                    <div className="flex items-center gap-2 mt-3 text-xs text-gray-400" style={{ fontSize: smallFontSize }}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                       </svg>
@@ -476,19 +681,20 @@ export default function HomePage() {
       <section 
         className="py-16"
         style={{
-          background: `linear-gradient(135deg, ${primaryColor} 0%, ${buttonHoverColor} 100%)`,
+          background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
         }}
       >
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">
+          <h2 className="text-3xl font-bold text-white mb-4" style={{ fontSize: headingFontSize }}>
             Ready to Glow?
           </h2>
-          <p className="text-white/80 mb-8 max-w-md mx-auto">
+          <p className="text-white/80 mb-8 max-w-md mx-auto" style={{ fontSize: bodyFontSize }}>
             Book your appointment today and experience the best beauty services
           </p>
           <Link
             href="/booking"
             className="inline-block px-10 py-4 rounded-full bg-white text-gray-900 font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95"
+            style={{ fontSize: bodyFontSize }}
           >
             Book Now
           </Link>

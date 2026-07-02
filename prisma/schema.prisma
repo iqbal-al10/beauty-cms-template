@@ -28,6 +28,35 @@ model Settings {
   metaTitle          String?
   metaDescription    String?
   defaultOgImage     String?
+  primaryBackground   String   @default("#ffffff")
+  secondaryBackground String   @default("#f9fafb")
+  headingColor        String   @default("#111827")
+  bodyTextColor       String   @default("#4b5563")
+  linkHoverColor      String   @default("#c4367b")
+  borderRadius        String   @default("medium")
+  buttonStyle         String   @default("rounded")
+  layoutStyle         String   @default("full-width")
+  navStyle            String   @default("sticky")
+  navbarBackground    String   @default("#ffffff")
+  navbarTextColor     String   @default("#4b5563")
+  navbarHoverColor    String   @default("#c4367b")
+  navbarActiveColor   String   @default("#c4367b")
+  headingFontSize     String   @default("32px")
+  bodyFontSize        String   @default("16px")
+  smallFontSize       String   @default("14px")
+  enableCart          Boolean  @default(true)
+  enableWhatsAppOrder Boolean  @default(true)
+  enableGuestCheckout Boolean  @default(true)
+  enableReviews       Boolean  @default(true)
+  enableTestimonials  Boolean  @default(true)
+  enableBlog          Boolean  @default(true)
+  enableGallery       Boolean  @default(true)
+  enableFaq           Boolean  @default(true)
+  minOrderAmount      Int      @default(0)
+  maxOrderQuantity    Int      @default(99)
+  cartExpiryDays      Int      @default(7)
+  siteDescription     String?
+  siteKeywords        String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -47,6 +76,7 @@ model User {
   activityLogs     ActivityLog[]
   stockHistories   StockHistory[]
   orders           Order[]
+  transactions     Transaction[]
 }
 
 model Category {
@@ -71,7 +101,7 @@ model Product {
   status          String         @default("DRAFT")
   isFeatured      Boolean        @default(false)
   categoryId      String
-  imageUrl        String?        // ← TAMBAHKAN: URL gambar produk
+  imageUrl        String?
   metaTitle       String?
   metaDescription String?
   canonicalUrl    String?
@@ -84,6 +114,7 @@ model Product {
   tags            ProductTag[]
   stockHistories  StockHistory[]
   orders          Order[]
+  cartItems       CartItem[]
 }
 
 model Service {
@@ -93,11 +124,20 @@ model Service {
   description String?
   duration    Int
   price       Float
-  categoryId  String
+  categoryId  String?
+  category    BookingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  imageUrl    String?
+  isFeatured  Boolean   @default(false)
   isActive    Boolean   @default(true)
+  metaTitle   String?
+  metaDescription String?
+  canonicalUrl  String?
+  ogImageUrl    String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   bookings    Booking[]
+  tags        ServiceBookingTag[]
+  promos      PromoBooking[]
 }
 
 model Booking {
@@ -112,7 +152,7 @@ model Booking {
   status       String   @default("PENDING")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  service      Service? @relation(fields: [serviceId], references: [id])
+  service      Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
 }
 
 model Testimonial {
@@ -143,7 +183,7 @@ model BlogPost {
   ogImageUrl    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  category      BlogCategory? @relation(fields: [categoryId], references: [id])
+  category      BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   tags          BlogTag[]
 }
 
@@ -202,28 +242,33 @@ model BeforeAfter {
 }
 
 model Promo {
-  id            String         @id @default(cuid())
-  title         String
-  type          String
-  voucherCode   String?        @unique
-  discountValue Float?
-  discountType  String?
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discount      Float
   startDate     DateTime
   endDate       DateTime
-  bannerUrl     String?
-  isActive      Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   products      PromoProduct[]
+  services      PromoBooking[]
 }
 
 model PromoProduct {
   id        String   @id @default(cuid())
   promoId   String
   productId String
-  price     Float?
   createdAt DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promo     Promo    @relation(fields: [promoId], references: [id], onDelete: Cascade)
+}
+
+model PromoBooking {
+  id        String   @id @default(cuid())
+  promoId   String
+  serviceId String
+  createdAt DateTime @default(now())
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   promo     Promo    @relation(fields: [promoId], references: [id], onDelete: Cascade)
 }
 
@@ -292,12 +337,12 @@ model Review {
 }
 
 model ProductTag {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
   color     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   products  Product[]
 }
 
@@ -311,7 +356,6 @@ model StockHistory {
   note      String?
   userId    String
   createdAt DateTime @default(now())
-
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -336,9 +380,8 @@ model Order {
   approvedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user         User?    @relation(fields: [approvedBy], references: [id])
+  user         User?    @relation(fields: [approvedBy], references: [id], onDelete: SetNull)
 }
 
 model PaymentMethod {
@@ -352,4 +395,81 @@ model PaymentMethod {
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String
+  category    String
+  amount      Float
+  description String?
+  orderId     String?
+  bookingId   String?
+  userId      String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  amount      Float
+  category    String
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  sessionId  String     @unique
+  items      CartItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id         String   @id @default(cuid())
+  cartId     String
+  productId  String
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model BookingCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  services    Service[]
+}
+
+model BookingTag {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  slug       String   @unique
+  color      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  services   ServiceBookingTag[]
+}
+
+model ServiceBookingTag {
+  id         String     @id @default(cuid())
+  serviceId  String
+  tagId      String
+  createdAt  DateTime   @default(now())
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  tag        BookingTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 }

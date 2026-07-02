@@ -17,9 +17,9 @@ export async function GET(
     const promo = await prisma.promo.findUnique({
       where: { id },
       include: {
-        products: {
+        services: {
           select: {
-            productId: true,
+            serviceId: true,
           },
         },
       },
@@ -34,14 +34,14 @@ export async function GET(
 
     const transformed = {
       ...promo,
-      products: promo.products.map((p) => ({ productId: p.productId })),
+      services: promo.services.map((s) => ({ serviceId: s.serviceId })),
     }
 
     return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error fetching promo:', error)
+    console.error('Error fetching booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch promo' },
+      { error: 'Failed to fetch booking promo' },
       { status: 500 }
     )
   }
@@ -59,7 +59,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { code, discount, startDate, endDate, isActive, productIds } = body
+    const { code, discount, startDate, endDate, isActive, serviceIds } = body
 
     if (!code) {
       return NextResponse.json(
@@ -88,7 +88,7 @@ export async function PUT(
     // Check unique code (if changed)
     if (code !== existing.code) {
       const codeExists = await prisma.promo.findUnique({
-        where: { code: code.toUpperCase() },
+        where: { code },
       })
       if (codeExists) {
         return NextResponse.json(
@@ -107,17 +107,17 @@ export async function PUT(
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
-        products: {
+        services: {
           deleteMany: {},
-          create: productIds?.map((productId: string) => ({
-            product: { connect: { id: productId } },
+          create: serviceIds?.map((serviceId: string) => ({
+            service: { connect: { id: serviceId } },
           })) || [],
         },
       },
       include: {
-        products: {
+        services: {
           select: {
-            productId: true,
+            serviceId: true,
           },
         },
       },
@@ -125,14 +125,14 @@ export async function PUT(
 
     const transformed = {
       ...promo,
-      products: promo.products.map((p) => ({ productId: p.productId })),
+      services: promo.services.map((s) => ({ serviceId: s.serviceId })),
     }
 
     return NextResponse.json(transformed)
   } catch (error) {
-    console.error('Error updating promo:', error)
+    console.error('Error updating booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to update promo: ' + (error as Error).message },
+      { error: 'Failed to update booking promo' },
       { status: 500 }
     )
   }
@@ -168,9 +168,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting promo:', error)
+    console.error('Error deleting booking promo:', error)
     return NextResponse.json(
-      { error: 'Failed to delete promo: ' + (error as Error).message },
+      { error: 'Failed to delete booking promo' },
       { status: 500 }
     )
   }
