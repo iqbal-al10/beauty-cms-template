@@ -25,13 +25,18 @@ interface Settings {
   bodyFontSize: string
   smallFontSize: string
   headingFontSize: string
+  secondaryBackground: string
+  headingColor: string
+  bodyTextColor: string
+  copyrightText: string
+  footerLinks: any
+  primaryBackground: string
 }
 
 interface FooterProps {
   settings: Settings | null
 }
 
-// Map social media keys to React Icons
 const SOCIAL_ICONS: Record<string, any> = {
   instagram: FaInstagram,
   facebook: FaFacebook,
@@ -43,7 +48,6 @@ const SOCIAL_ICONS: Record<string, any> = {
   tiktok: FaTiktok,
 }
 
-// Platform labels
 const platformLabels: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
@@ -66,15 +70,36 @@ export default function Footer({ settings }: FooterProps) {
   const bodyFontSize = settings?.bodyFontSize || '16px'
   const smallFontSize = settings?.smallFontSize || '14px'
   const headingFontSize = settings?.headingFontSize || '32px'
+  
+  // AMBIL DARI SETTINGS - FALLBACK DEFAULT
+  // NOTE: Di response API, secondaryBackground = '#ff00a6'
+  const footerBg = settings?.secondaryBackground || '#f8f9fa'
+  const headingColor = settings?.headingColor || '#111827'
+  const textColor = settings?.bodyTextColor || '#4b5563'
+  const copyrightText = settings?.copyrightText || `© ${new Date().getFullYear()} ${siteName}. All rights reserved.`
+  
+  console.log('🎨 Footer Settings:', {
+    secondaryBackground: settings?.secondaryBackground,
+    footerBg: footerBg,
+    headingColor: headingColor,
+    textColor: textColor
+  })
 
-  const currentYear = new Date().getFullYear()
+  let footerLinks = settings?.footerLinks || []
+  if (typeof footerLinks === 'string') {
+    try {
+      footerLinks = JSON.parse(footerLinks)
+    } catch (e) {
+      footerLinks = []
+    }
+  }
 
   return (
     <footer 
       className="border-t"
       style={{ 
         fontFamily: fontFamily,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: footerBg,
         borderColor: `${primaryColor}20`,
       }}
     >
@@ -93,8 +118,11 @@ export default function Footer({ settings }: FooterProps) {
             </h3>
             {address && (
               <p 
-                className="text-gray-600 mb-2 flex items-start gap-2"
-                style={{ fontSize: bodyFontSize }}
+                className="mb-2 flex items-start gap-2"
+                style={{ 
+                  color: textColor,
+                  fontSize: bodyFontSize 
+                }}
               >
                 <span>📍</span>
                 {address}
@@ -102,8 +130,11 @@ export default function Footer({ settings }: FooterProps) {
             )}
             {whatsappNumber && (
               <p 
-                className="text-gray-600 mb-2 flex items-center gap-2"
-                style={{ fontSize: bodyFontSize }}
+                className="mb-2 flex items-center gap-2"
+                style={{ 
+                  color: textColor,
+                  fontSize: bodyFontSize 
+                }}
               >
                 <span>📞</span>
                 {whatsappNumber}
@@ -111,8 +142,11 @@ export default function Footer({ settings }: FooterProps) {
             )}
             {email && (
               <p 
-                className="text-gray-600 mb-2 flex items-center gap-2"
-                style={{ fontSize: bodyFontSize }}
+                className="mb-2 flex items-center gap-2"
+                style={{ 
+                  color: textColor,
+                  fontSize: bodyFontSize 
+                }}
               >
                 <span>📧</span>
                 {email}
@@ -141,8 +175,11 @@ export default function Footer({ settings }: FooterProps) {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-gray-600 hover:opacity-70 transition-colors"
-                    style={{ fontSize: smallFontSize }}
+                    className="hover:opacity-70 transition-colors"
+                    style={{ 
+                      color: textColor,
+                      fontSize: smallFontSize 
+                    }}
                   >
                     {link.label}
                   </Link>
@@ -172,8 +209,10 @@ export default function Footer({ settings }: FooterProps) {
               ].map((service) => (
                 <li key={service}>
                   <span 
-                    className="text-gray-600"
-                    style={{ fontSize: smallFontSize }}
+                    style={{ 
+                      color: textColor,
+                      fontSize: smallFontSize 
+                    }}
                   >
                     {service}
                   </span>
@@ -221,11 +260,15 @@ export default function Footer({ settings }: FooterProps) {
                 )
               })}
             </div>
+            
             <p 
-              className="text-gray-500"
-              style={{ fontSize: smallFontSize }}
+              style={{ 
+                color: textColor,
+                fontSize: smallFontSize,
+                opacity: 0.7
+              }}
             >
-              © {currentYear} {siteName}. All rights reserved.
+              {copyrightText}
             </p>
           </div>
         </div>
