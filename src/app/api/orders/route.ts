@@ -12,8 +12,33 @@ function generateOrderNumber() {
   return `${prefix}${year}${month}${day}${random}`
 }
 
+// Fungsi untuk mendapatkan atau membuat user system
+async function getSystemUserId() {
+  let systemUser = await prisma.user.findUnique({
+    where: { id: 'system' },
+  })
+
+  if (!systemUser) {
+    // Buat user system jika belum ada
+    systemUser = await prisma.user.create({
+      data: {
+        id: 'system',
+        name: 'System',
+        email: 'system@beautystudio.com',
+        passwordHash: 'system',
+        role: 'STAFF',
+        isActive: true,
+      },
+    })
+    console.log('✅ System user created')
+  }
+
+  return systemUser.id
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
     const body = await request.json()
     console.log('📦 Received order data:', JSON.stringify(body, null, 2))
 
@@ -36,7 +61,6 @@ export async function POST(request: NextRequest) {
 
     // Validasi
     if (!customerName || !customerWhatsapp || !address || !items || items.length === 0) {
-      console.log('❌ Validation failed:', { customerName, customerWhatsapp, address, itemsCount: items?.length })
       return NextResponse.json(
         { error: 'Data tidak lengkap. Pastikan semua field terisi.' },
         { status: 400 }
@@ -46,7 +70,6 @@ export async function POST(request: NextRequest) {
     // Validasi items
     for (const item of items) {
       if (!item.productId || !item.quantity || !item.price) {
-        console.log('❌ Invalid item:', item)
         return NextResponse.json(
           { error: 'Item pesanan tidak valid.' },
           { status: 400 }
@@ -93,8 +116,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Order created: ${order.id}`)
 
-    // Kurangi stok produk
+    // Dapatkan userId untuk stock history
+    // Gunakan userId dari session jika ada, atau system user
+    let userId = session?.userId
+    if (!userId) {
+      userId = await getSystemUserId()
+    }
+
+    // Kurangi stok produk dan catat history
     for (const item of items) {
+      // Get product stock before update
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { stock: true },
+      })
+
+      // Update stock
       await prisma.product.update({
         where: { id: item.productId },
         data: {
@@ -104,18 +141,23 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Catat stock history
-      await prisma.stockHistory.create({
-        data: {
-          productId: item.productId,
-          oldStock: 0,
-          newStock: 0,
-          change: -item.quantity,
-          reason: 'ORDER',
-          note: `Order #${orderNumber}`,
-          userId: 'system',
-        },
-      })
+      // Catat stock history dengan userId yang valid
+      try {
+        await prisma.stockHistory.create({
+          data: {
+            productId: item.productId,
+            oldStock: product?.stock || 0,
+            newStock: (product?.stock || 0) - item.quantity,
+            change: -item.quantity,
+            reason: 'ORDER',
+            note: `Order #${orderNumber}`,
+            userId: userId,
+          },
+        })
+      } catch (stockError) {
+        console.error('❌ Error creating stock history:', stockError)
+        // Lanjutkan meskipun stock history error
+      }
     }
 
     return NextResponse.json(order, { status: 201 })
