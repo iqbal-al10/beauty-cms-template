@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { CheckCircle, Download, Printer, Home, ShoppingBag, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+export const dynamic = 'force-dynamic'
+
 interface OrderItem {
   id: string
   productName: string
