@@ -11,6 +11,7 @@ interface CartItem {
   name: string
   slug: string
   price: number
+  compareAtPrice: number | null
   finalPrice: number
   quantity: number
   imageUrl: string | null
@@ -85,7 +86,6 @@ export default function CartPage() {
       toast.error('Keranjang kosong')
       return
     }
-    // Redirect ke halaman checkout
     router.push('/checkout')
   }
 
@@ -142,62 +142,74 @@ export default function CartPage() {
               </div>
 
               <div className="divide-y divide-gray-100">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center gap-4">
-                    {/* Image */}
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      {item.imageUrl ? (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-cover rounded-lg"
-                        />
-                      ) : (
-                        <span className="text-3xl">🧴</span>
-                      )}
-                    </div>
+                {cartItems.map((item) => {
+                  const displayPrice = item.finalPrice || item.price
+                  const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
+                  
+                  return (
+                    <div key={item.id} className="p-4 flex items-center gap-4">
+                      {/* Image */}
+                      <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <span className="text-3xl">🧴</span>
+                        )}
+                      </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        href={`/products/${item.slug}`}
-                        className="font-medium text-gray-800 hover:text-pink-500 transition-colors line-clamp-1"
-                      >
-                        {item.name}
-                      </Link>
-                      <p className="text-sm font-bold text-pink-500 mt-1">
-                        Rp {(item.finalPrice || item.price).toLocaleString()}
-                      </p>
-                    </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/products/${item.slug}`}
+                          className="font-medium text-gray-800 hover:text-pink-500 transition-colors line-clamp-1"
+                        >
+                          {item.name}
+                        </Link>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <p className="text-sm font-bold text-pink-500">
+                            Rp {displayPrice.toLocaleString()}
+                          </p>
+                          {hasCompare && (
+                            <p className="text-xs text-gray-400 line-through">
+                              Rp {item.compareAtPrice?.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Quantity */}
-                    <div className="flex items-center gap-2">
+                      {/* Quantity */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          disabled={item.quantity >= item.stock}
+                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Remove */}
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                        className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
+                        onClick={() => removeItem(item.id, item.name)}
+                        className="text-gray-400 hover:text-red-500"
                       >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="w-8 text-center font-medium">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        disabled={item.quantity >= item.stock}
-                        className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
-                      >
-                        <Plus className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
-
-                    {/* Remove */}
-                    <button
-                      onClick={() => removeItem(item.id, item.name)}
-                      className="text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>

@@ -14,6 +14,7 @@ interface CartItem {
   name: string
   slug: string
   price: number
+  compareAtPrice: number | null
   finalPrice: number
   quantity: number
   imageUrl: string | null
@@ -30,14 +31,6 @@ interface PaymentMethod {
   isActive: boolean
 }
 
-interface ShippingZone {
-  id: number
-  name: string
-  cities: string[]
-  cost: number
-  estimate: string
-}
-
 interface ShippingCost {
   cost: number
   estimate: string
@@ -51,7 +44,6 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
-  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([])
   const [shippingCost, setShippingCost] = useState<ShippingCost | null>(null)
   const [voucherDiscount, setVoucherDiscount] = useState(0)
   const [voucherCode, setVoucherCode] = useState('')
@@ -106,19 +98,13 @@ export default function CheckoutPage() {
 
   const fetchData = async () => {
     try {
-      const [paymentsRes, shippingRes] = await Promise.all([
+      const [paymentsRes] = await Promise.all([
         fetch('/api/admin/payments'),
-        fetch('/api/shipping'),
       ])
 
       if (paymentsRes.ok) {
         const data = await paymentsRes.json()
         setPaymentMethods(data.filter((p: PaymentMethod) => p.isActive))
-      }
-
-      if (shippingRes.ok) {
-        const data = await shippingRes.json()
-        setShippingZones(data.zones || [])
       }
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -243,6 +229,7 @@ export default function CheckoutPage() {
           productName: item.name,
           quantity: item.quantity,
           price: item.finalPrice || item.price,
+          compareAtPrice: item.compareAtPrice,
         })),
       }
 
@@ -294,8 +281,7 @@ export default function CheckoutPage() {
   const shipping = shippingCost?.cost || 0
   const totalItems = calculateTotalItems()
   const total = subtotal + shipping - voucherDiscount
-  const freeShipping = shippingCost?.freeShippingThreshold || 0
-  const isFreeShipping = totalItems >= 12 || subtotal >= freeShipping
+  const isFreeShipping = totalItems >= 12
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -495,24 +481,39 @@ export default function CheckoutPage() {
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan</h2>
 
             <div className="space-y-3 max-h-80 overflow-y-auto">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex gap-3">
-                  <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <span className="text-xl">🧴</span>
-                    )}
+              {cartItems.map((item) => {
+                const displayPrice = item.finalPrice || item.price
+                const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
+                
+                return (
+                  <div key={item.id} className="flex gap-3">
+                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <span className="text-xl">🧴</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-medium text-pink-500">
+                          Rp {displayPrice.toLocaleString()}
+                        </p>
+                        {hasCompare && (
+                          <p className="text-xs text-gray-400 line-through">
+                            Rp {item.compareAtPrice?.toLocaleString()}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500">× {item.quantity}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium text-gray-800">
+                      Rp {(displayPrice * item.quantity).toLocaleString()}
+                    </p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.quantity} × Rp {(item.finalPrice || item.price).toLocaleString()}</p>
-                  </div>
-                  <p className="text-sm font-medium text-gray-800">
-                    Rp {((item.finalPrice || item.price) * item.quantity).toLocaleString()}
-                  </p>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="border-t border-gray-200 mt-4 pt-4 space-y-2 text-sm">
@@ -525,7 +526,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Ongkir ({shippingCost.zone})</span>
                   <span className="font-medium">
-                    {isFreeShipping || totalItems >= 12 ? (
+                    {isFreeShipping ? (
                       <span className="text-green-500">GRATIS</span>
                     ) : (
                       `Rp ${shipping.toLocaleString()}`
@@ -537,7 +538,7 @@ export default function CheckoutPage() {
               {shippingCost && (
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>Estimasi: {shippingCost.estimate}</span>
-                  {totalItems >= 12 && <span className="text-green-500">✅ Gratis ongkir (12 produk)</span>}
+                  {isFreeShipping && <span className="text-green-500">✅ Gratis ongkir (12 produk)</span>}
                 </div>
               )}
 

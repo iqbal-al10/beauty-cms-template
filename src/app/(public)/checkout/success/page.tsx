@@ -11,6 +11,7 @@ interface OrderItem {
   productName: string
   quantity: number
   price: number
+  compareAtPrice: number | null
   total: number
 }
 
@@ -136,12 +137,23 @@ export default function CheckoutSuccessPage() {
         <div className="border-t border-gray-200 mt-4 pt-4">
           <h3 className="font-medium text-gray-800 mb-2">Produk</h3>
           <div className="space-y-2">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between text-sm">
-                <span>{item.productName} × {item.quantity}</span>
-                <span className="font-medium">Rp {item.total.toLocaleString()}</span>
-              </div>
-            ))}
+            {order.items.map((item) => {
+              const hasCompare = item.compareAtPrice && item.compareAtPrice > item.price
+              return (
+                <div key={item.id} className="flex justify-between items-center text-sm">
+                  <div>
+                    <span className="font-medium">{item.productName}</span>
+                    <span className="text-gray-400 ml-2">× {item.quantity}</span>
+                    {hasCompare && (
+                      <span className="text-gray-400 line-through text-xs ml-2">
+                        Rp {item.compareAtPrice?.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-medium">Rp {item.total.toLocaleString()}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
 
