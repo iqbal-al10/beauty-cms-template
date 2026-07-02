@@ -25,7 +25,6 @@ interface FooterProps {
 export default function Footer({ settings }: FooterProps) {
   const siteName = settings?.siteName || 'Beauty Studio'
   const primaryColor = settings?.colorPrimary || '#c4367b'
-  const secondaryColor = settings?.colorSecondary || '#f5dbe8'
   const fontFamily = settings?.fontFamily || 'Inter'
   const address = settings?.address || null
   const whatsappNumber = settings?.whatsappNumber || null
@@ -37,7 +36,6 @@ export default function Footer({ settings }: FooterProps) {
 
   const currentYear = new Date().getFullYear()
 
-  // Map social links to icons
   const socialIcons: Record<string, any> = {
     instagram: Camera,
     facebook: Share2,
