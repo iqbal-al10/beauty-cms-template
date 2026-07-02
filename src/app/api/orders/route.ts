@@ -15,6 +15,8 @@ function generateOrderNumber() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('📦 Received order data:', JSON.stringify(body, null, 2))
+
     const {
       customerName,
       customerWhatsapp,
@@ -34,14 +36,27 @@ export async function POST(request: NextRequest) {
 
     // Validasi
     if (!customerName || !customerWhatsapp || !address || !items || items.length === 0) {
+      console.log('❌ Validation failed:', { customerName, customerWhatsapp, address, itemsCount: items?.length })
       return NextResponse.json(
-        { error: 'Data tidak lengkap' },
+        { error: 'Data tidak lengkap. Pastikan semua field terisi.' },
         { status: 400 }
       )
     }
 
+    // Validasi items
+    for (const item of items) {
+      if (!item.productId || !item.quantity || !item.price) {
+        console.log('❌ Invalid item:', item)
+        return NextResponse.json(
+          { error: 'Item pesanan tidak valid.' },
+          { status: 400 }
+        )
+      }
+    }
+
     // Generate order number
     const orderNumber = generateOrderNumber()
+    console.log(`📋 Creating order #${orderNumber}`)
 
     // Create order
     const order = await prisma.order.create({
@@ -76,6 +91,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    console.log(`✅ Order created: ${order.id}`)
+
     // Kurangi stok produk
     for (const item of items) {
       await prisma.product.update({
@@ -91,8 +108,8 @@ export async function POST(request: NextRequest) {
       await prisma.stockHistory.create({
         data: {
           productId: item.productId,
-          oldStock: 0, // tidak perlu exact
-          newStock: 0, // tidak perlu exact
+          oldStock: 0,
+          newStock: 0,
           change: -item.quantity,
           reason: 'ORDER',
           note: `Order #${orderNumber}`,
@@ -103,9 +120,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(order, { status: 201 })
   } catch (error) {
-    console.error('Error creating order:', error)
+    console.error('❌ Error creating order:', error)
     return NextResponse.json(
-      { error: 'Failed to create order: ' + (error as Error).message },
+      { error: 'Gagal membuat pesanan: ' + (error as Error).message },
       { status: 500 }
     )
   }
