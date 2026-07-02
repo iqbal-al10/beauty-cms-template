@@ -1,12 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, Download, Printer, Home, ShoppingBag, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-export const dynamic = 'force-dynamic'
 
 interface OrderItem {
   id: string
@@ -35,7 +34,8 @@ interface Order {
   items: OrderItem[]
 }
 
-export default function CheckoutSuccessPage() {
+// Content component yang menggunakan useSearchParams
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const orderId = searchParams.get('orderId')
@@ -274,5 +274,18 @@ export default function CheckoutSuccessPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+// Main page dengan Suspense
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }
