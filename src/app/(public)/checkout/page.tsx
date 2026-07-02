@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -8,8 +9,6 @@ import {
   CheckCircle, AlertCircle, X, Trash2, Plus, Minus
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-export const dynamic = 'force-dynamic'
 
 interface CartItem {
   id: string
@@ -40,7 +39,8 @@ interface ShippingCost {
   freeShippingThreshold: number
 }
 
-export default function CheckoutPage() {
+// Content component yang menggunakan useSearchParams
+function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const productId = searchParams.get('product')
@@ -277,7 +277,6 @@ export default function CheckoutPage() {
       const msg = 'Silakan pilih metode pembayaran terlebih dahulu'
       setErrorMessage(msg)
       toast.error(msg)
-      // Scroll ke bagian metode pembayaran
       document.getElementById('payment-method-section')?.scrollIntoView({ behavior: 'smooth' })
       return
     }
@@ -516,11 +515,11 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Payment Method - dengan ID untuk scroll */}
+            {/* Payment Method */}
             <div id="payment-method-section">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Metode Pembayaran *
-                <span className="text-red-500 ml-1"></span>
+                <span className="text-red-500 ml-1">(wajib dipilih)</span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {paymentMethods.length === 0 ? (
@@ -708,5 +707,18 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Main page dengan Suspense
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      </div>
+    }>
+      <CheckoutContent />
+    </Suspense>
   )
 }
