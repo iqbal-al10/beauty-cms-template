@@ -2,6 +2,53 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json(order)
+  } catch (error) {
+    console.error('Error fetching order:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch order' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,19 +61,25 @@ export async function PATCH(
 
     const { id } = await params
     const body = await request.json()
-    const { action } = body // 'approve' atau 'reject'
+    const { action } = body
 
-    if (!action || !['approve', 'reject'].includes(action)) {
+    if (!action) {
       return NextResponse.json(
-        { error: 'Action must be "approve" or "reject"' },
+        { error: 'Action is required (approve/reject)' },
         { status: 400 }
       )
     }
 
-    // Get order
+    // Get order dengan items
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { product: true },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
     })
 
     if (!order) {
@@ -36,6 +89,7 @@ export async function PATCH(
       )
     }
 
+    // Cek apakah sudah diproses
     if (order.status !== 'PENDING') {
       return NextResponse.json(
         { error: `Order already ${order.status.toLowerCase()}` },
@@ -43,76 +97,111 @@ export async function PATCH(
       )
     }
 
-    if (action === 'reject') {
-      // Reject order
-      const updatedOrder = await prisma.order.update({
-        where: { id },
-        data: {
-          status: 'REJECTED',
-          approvedBy: session.userId,
-          approvedAt: new Date(),
-        },
-      })
-
-      console.log(`❌ Order rejected: ${order.customerName} - ${order.productName}`)
-      return NextResponse.json({
-        success: true,
-        order: updatedOrder,
-        message: 'Order rejected',
-      })
-    }
-
-    // APPROVE: reduce stock
-    if (order.product.stock < order.quantity) {
+    let newStatus: string
+    if (action === 'approve') {
+      newStatus = 'APPROVED'
+    } else if (action === 'reject') {
+      newStatus = 'REJECTED'
+    } else {
       return NextResponse.json(
-        { error: `Stok tidak mencukupi (tersisa ${order.product.stock} unit)` },
+        { error: 'Invalid action. Use "approve" or "reject"' },
         { status: 400 }
       )
     }
 
-    const newStock = order.product.stock - order.quantity
-
-    // Update stock, create stock history, update order
-    const [updatedProduct, stockHistory, updatedOrder] = await prisma.$transaction([
-      prisma.product.update({
-        where: { id: order.productId },
-        data: { stock: newStock },
-      }),
-      prisma.stockHistory.create({
-        data: {
-          productId: order.productId,
-          oldStock: order.product.stock,
-          newStock: newStock,
-          change: -order.quantity,
-          reason: `Order via WhatsApp - ${order.customerName} (${order.customerWhatsapp})`,
-          note: order.note || '',
-          userId: session.userId,
+    // Update order
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
         },
-      }),
-      prisma.order.update({
-        where: { id },
-        data: {
-          status: 'APPROVED',
-          approvedBy: session.userId,
-          approvedAt: new Date(),
-        },
-      }),
-    ])
-
-    console.log(`✅ Order approved: ${order.customerName} - ${order.productName} x${order.quantity}`)
-    console.log(`📦 Stock updated: ${order.product.stock} → ${newStock}`)
-
-    return NextResponse.json({
-      success: true,
-      order: updatedOrder,
-      product: updatedProduct,
-      stockHistory,
-      message: `Order approved, stock reduced by ${order.quantity}`,
+      },
     })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: session.userId,
+        action: action.toUpperCase(),
+        entityType: 'Order',
+        entityId: order.id,
+        metadata: {
+          orderNumber: order.orderNumber,
+          status: newStatus,
+          customerName: order.customerName,
+        },
+      },
+    })
+
+    return NextResponse.json(updatedOrder)
   } catch (error) {
-    console.error('Error processing order:', error)
+    console.error('Error updating order:', error)
     return NextResponse.json(
-      { error: 'Failed to process order' },
+      { error: 'Failed to update order: ' + (error as Error).message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
+    // Delete order items first (cascade)
+    await prisma.orderItem.deleteMany({
+      where: { orderId: id },
+    })
+
+    await prisma.order.delete({
+      where: { id },
+    })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: session.userId,
+        action: 'DELETE',
+        entityType: 'Order',
+        entityId: order.id,
+        metadata: {
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+        },
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting order:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete order: ' + (error as Error).message },
       { status: 500 }
     )
   }

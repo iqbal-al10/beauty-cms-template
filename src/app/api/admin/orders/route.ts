@@ -9,8 +9,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const searchParams = request.nextUrl.searchParams
-    const status = searchParams.get('status') || ''
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status')
+    const limit = parseInt(searchParams.get('limit') || '20')
 
     const filter: any = {}
     if (status) {
@@ -20,11 +21,15 @@ export async function GET(request: NextRequest) {
     const orders = await prisma.order.findMany({
       where: filter,
       include: {
-        product: {
-          select: {
-            name: true,
-            price: true,
-            stock: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                price: true,
+                stock: true,
+              },
+            },
           },
         },
         user: {
@@ -35,13 +40,227 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: limit,
     })
 
-    return NextResponse.json(orders)
+    // Transform untuk frontend
+    const transformed = orders.map((order) => ({
+      id: order.id,
+      customerName: order.customerName,
+      customerWhatsapp: order.customerWhatsapp,
+      productName: order.items.length > 0 ? order.items[0]?.productName || order.items[0]?.product?.name || '-' : '-',
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      finalPrice: order.total || 0,
+      status: order.status,
+      note: order.note,
+      createdAt: order.createdAt,
+    }))
+
+    return NextResponse.json(transformed)
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { error: 'Failed to fetch orders: ' + (error as Error).message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    const body = await request.json()
+    const { action } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Order ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: { items: true },
+    })
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      )
+    }
+
+    let newStatus = order.status
+    if (action === 'approve') {
+      newStatus = 'APPROVED'
+    } else if (action === 'reject') {
+      newStatus = 'REJECTED'
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid action. Use "approve" or "reject"' },
+        { status: 400 }
+      )
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id },
+      data: {
+        status: newStatus,
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      },
+    })
+
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: session.userId,
+        action: action.toUpperCase(),
+        entityType: 'Order',
+        entityId: order.id,
+        metadata: { orderNumber: order.orderNumber, status: newStatus },
+      },
+    })
+
+    return NextResponse.json(updatedOrder)
+  } catch (error) {
+    console.error('Error updating order:', error)
+    return NextResponse.json(
+      { error: 'Failed to update order: ' + (error as Error).message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    console.log('📦 Received order data:', JSON.stringify(body, null, 2))
+
+    const {
+      customerName,
+      customerWhatsapp,
+      address,
+      city,
+      province,
+      postalCode,
+      shippingCost,
+      subtotal,
+      discountAmount,
+      total,
+      paymentMethod,
+      note,
+      voucherCode,
+      items,
+    } = body
+
+    // Validasi
+    if (!customerName || !customerWhatsapp || !address || !items || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Data tidak lengkap. Pastikan semua field terisi.' },
+        { status: 400 }
+      )
+    }
+
+    // Validasi items
+    for (const item of items) {
+      if (!item.productId || !item.quantity || !item.price) {
+        return NextResponse.json(
+          { error: 'Item pesanan tidak valid.' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Generate order number
+    const orderNumber = `INV${Date.now().toString().slice(-8)}${Math.floor(Math.random() * 1000)}`
+
+    // Create order
+    const order = await prisma.order.create({
+      data: {
+        orderNumber,
+        customerName,
+        customerWhatsapp,
+        address,
+        city: city || '',
+        province: province || '',
+        postalCode: postalCode || '',
+        shippingCost: shippingCost || 0,
+        subtotal,
+        discountAmount: discountAmount || 0,
+        total,
+        paymentMethod: paymentMethod || '',
+        note: note || '',
+        voucherCode: voucherCode || '',
+        status: 'PENDING',
+        items: {
+          create: items.map((item: any) => ({
+            productId: item.productId,
+            productName: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.price * item.quantity,
+          })),
+        },
+      },
+      include: {
+        items: true,
+      },
+    })
+
+    console.log(`✅ Order created: ${order.id}`)
+
+    // Kurangi stok produk
+    for (const item of items) {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+        select: { stock: true },
+      })
+
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            decrement: item.quantity,
+          },
+        },
+      })
+
+      // Catat stock history
+      try {
+        await prisma.stockHistory.create({
+          data: {
+            productId: item.productId,
+            oldStock: product?.stock || 0,
+            newStock: (product?.stock || 0) - item.quantity,
+            change: -item.quantity,
+            reason: 'ORDER',
+            note: `Order #${orderNumber}`,
+            userId: session.userId,
+          },
+        })
+      } catch (stockError) {
+        console.error('❌ Error creating stock history:', stockError)
+      }
+    }
+
+    return NextResponse.json(order, { status: 201 })
+  } catch (error) {
+    console.error('❌ Error creating order:', error)
+    return NextResponse.json(
+      { error: 'Gagal membuat pesanan: ' + (error as Error).message },
       { status: 500 }
     )
   }

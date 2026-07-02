@@ -12,10 +12,9 @@ interface Product {
   name: string
   slug: string
   price: number
-  originalPrice: number
+  compareAtPrice: number | null
   finalPrice: number
   discountAmount: number
-  compareAtPrice: number | null
   status: string
   stock: number
   imageUrl: string | null
@@ -157,7 +156,8 @@ function ProductsContent() {
           id: product.id,
           name: product.name,
           slug: product.slug,
-          price: product.finalPrice || product.price,
+          price: product.price,
+          compareAtPrice: product.compareAtPrice,
           finalPrice: product.finalPrice || product.price,
           quantity: 1,
           imageUrl: product.imageUrl,
@@ -272,11 +272,9 @@ function ProductsContent() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
-            const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
-            const hasPromo = product.appliedPromo !== null
-            const promo = product.appliedPromo
             const displayPrice = product.finalPrice || product.price
-            const hasDiscount = product.discountAmount > 0
+            const hasCompare = product.compareAtPrice && product.compareAtPrice > displayPrice
+            const discountAmount = hasCompare ? product.compareAtPrice - displayPrice : 0
             const productTags = product.tags || []
             
             return (
@@ -313,9 +311,9 @@ function ProductsContent() {
                       </div>
                     )}
 
-                    {hasPromo && promo && (
-                      <span className="absolute top-3 right-3 bg-pink-800 text-white text-xs font-bold px-2.5 py-1 rounded-full max-w-[120px] truncate">
-                        🔥 {promo.title}
+                    {hasCompare && (
+                      <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                        SALE
                       </span>
                     )}
                   </div>
@@ -329,23 +327,39 @@ function ProductsContent() {
                     <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>{product.category?.name}</p>
                   </Link>
 
-                  <div className="flex items-center justify-between mt-2">
-                    <div>
-                      <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
-                        Rp {displayPrice.toLocaleString()}
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
+                      Rp {displayPrice.toLocaleString()}
+                    </p>
+                    {hasCompare && (
+                      <p className="text-sm text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
+                        Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
                       </p>
-                      {hasComparePrice && (
-                        <p className="text-sm text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
-                          Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
-                        </p>
-                      )}
+                    )}
+                  </div>
+                  
+                  {/* BADGE HEMAT */}
+                  {hasCompare && discountAmount > 0 && (
+                    <div className="mt-1">
+                      <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                        Hemat Rp {discountAmount.toLocaleString()}
+                      </span>
                     </div>
+                  )}
+
+                  <div className="flex items-center justify-between mt-3 gap-2">
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="flex-1 py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center"
+                      style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
+                    >
+                      View Details
+                    </Link>
                     
-                    {/* ICON KERANJANG - HANYA JIKA enableCart ON */}
-                    {enableCart && (
+                    {enableCart && product.stock > 0 && (
                       <button
                         onClick={() => addToCart(product)}
-                        className="p-2 rounded-full hover:bg-pink-50 transition-colors"
+                        className="p-2 rounded-full hover:bg-pink-50 transition-colors border border-gray-200 hover:border-pink-300 flex-shrink-0"
                         style={{ color: primaryColor }}
                         title="Tambah ke keranjang"
                       >
@@ -353,26 +367,6 @@ function ProductsContent() {
                       </button>
                     )}
                   </div>
-
-                  {hasPromo && promo && (
-                    <div className="mt-1">
-                      <p className="text-xs text-pink-800 font-medium truncate" style={{ fontSize: smallFontSize }}>
-                        {promo.title}
-                        {promo.discountType === 'PERCENTAGE' 
-                          ? ` - ${promo.discountValue}% OFF` 
-                          : ` - Rp ${promo.discountValue?.toLocaleString()} OFF`}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* TOMBOL TETAP VIEW DETAILS */}
-                  <Link
-                    href={`/products/${product.slug}`}
-                    className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
-                    style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
-                  >
-                    View Details
-                  </Link>
                 </div>
               </div>
             )

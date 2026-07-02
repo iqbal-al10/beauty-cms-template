@@ -104,7 +104,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     .filter((p: any) => {
       const start = new Date(p.startDate)
       const end = new Date(p.endDate)
-      return start <= now && end >= now && p.type !== 'VOUCHER'
+      return start <= now && end >= now
     }) || []
 
   let finalPrice = product.price
@@ -115,12 +115,15 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
     const promo = activePromos[0]
     appliedPromo = promo
 
-    if (promo.discountType === 'PERCENTAGE' && promo.discountValue) {
-      discountAmount = (product.price * promo.discountValue) / 100
-      finalPrice = product.price - discountAmount
-    } else if (promo.discountType === 'FIXED' && promo.discountValue) {
-      discountAmount = promo.discountValue
-      finalPrice = Math.max(0, product.price - discountAmount)
+    // Hanya jika promo memiliki discountValue yang valid
+    if (promo.discountValue && promo.discountValue > 0) {
+      if (promo.discountType === 'PERCENTAGE') {
+        discountAmount = (product.price * promo.discountValue) / 100
+        finalPrice = product.price - discountAmount
+      } else if (promo.discountType === 'FIXED') {
+        discountAmount = promo.discountValue
+        finalPrice = Math.max(0, product.price - discountAmount)
+      }
     }
   }
 
@@ -159,8 +162,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/products/${product.slug}`
 
   const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
-  const hasPromo = appliedPromo !== null
-  const hasDiscount = discountAmount > 0
+  const hasPromo = appliedPromo !== null && discountAmount > 0
   const displayPrice = Math.round(finalPrice)
   const productTags = product.tags || []
 
@@ -203,9 +205,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           )}
 
-          {hasPromo && appliedPromo && (
+          {hasPromo && (
             <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
-              🔥 {appliedPromo.title}
+              🔥 {appliedPromo?.title}
             </span>
           )}
         </div>
@@ -238,20 +240,26 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
               </span>
             )}
-            {hasDiscount && (
-              <span className="text-lg text-pink-400 line-through" style={{ fontSize: bodyFontSize }}>
-                Rp {product.price.toLocaleString()}
-              </span>
-            )}
           </div>
+
+          {/* TAMPILKAN HEMAT */}
+          {hasComparePrice && product.compareAtPrice && product.compareAtPrice > displayPrice && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-4">
+              <p className="text-sm text-green-700" style={{ fontSize: smallFontSize }}>
+                💰 Hemat Rp {(product.compareAtPrice - displayPrice).toLocaleString()}
+              </p>
+            </div>
+          )}
 
           {hasPromo && appliedPromo && (
             <div className="bg-pink-100 border border-pink-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-pink-800" style={{ fontSize: smallFontSize }}>
                 🔥 <span className="font-semibold">{appliedPromo.title}</span>
-                {appliedPromo.discountType === 'PERCENTAGE' 
+                {appliedPromo.discountType === 'PERCENTAGE' && appliedPromo.discountValue
                   ? ` - ${appliedPromo.discountValue}% OFF` 
-                  : ` - Rp ${appliedPromo.discountValue?.toLocaleString()} OFF`}
+                  : appliedPromo.discountType === 'FIXED' && appliedPromo.discountValue
+                  ? ` - Rp ${appliedPromo.discountValue.toLocaleString()} OFF`
+                  : ''}
               </p>
             </div>
           )}
@@ -276,11 +284,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href={`/booking?product=${product.id}`}
+              href={`/checkout?product=${product.id}&quantity=1`}
               className="flex-1 min-w-[200px] px-6 py-3 rounded-full text-white font-semibold text-center transition-all hover:opacity-90 active:scale-95"
               style={{ backgroundColor: primaryColor, fontSize: bodyFontSize }}
             >
-              🛒 Order Now
+              🛒 Checkout
             </Link>
             {cleanWhatsapp && (
               <a
@@ -319,21 +327,21 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-5 pt-5 border-t border-gray-200">
             <h4 className="text-sm font-semibold text-gray-700 mt-3" style={{ fontSize: bodyFontSize }}>Keterangan Harga</h4>
             <div className="bg-gray-50 rounded-xl p-4 space-y-1">
               {hasComparePrice && (
                 <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
-                  <span className="text-gray-500">Harga Awal</span>
-                  <span className="text-gray-400 line-through">
+                  <span className="text-gray-500">Harga Normal</span>
+                  <span className="text-gray-500 line-through">
                     Rp {product.compareAtPrice ? product.compareAtPrice.toLocaleString() : ''}
                   </span>
                 </div>
               )}
 
               <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
-                <span className="text-gray-500">Harga Normal</span>
-                <span className="text-pink-400 font-medium">
+                <span className="text-pink-500">Harga Diskon</span>
+                <span className="text-pink-500 font-medium">
                   Rp {product.price.toLocaleString()}
                 </span>
               </div>
@@ -346,6 +354,13 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   <span className="font-bold" style={{ color: primaryColor }}>
                     Rp {displayPrice.toLocaleString()}
                   </span>
+                </div>
+              )}
+
+              {hasComparePrice && product.compareAtPrice && product.compareAtPrice > displayPrice && (
+                <div className="flex justify-between text-sm text-green-600 font-medium" style={{ fontSize: smallFontSize }}>
+                  <span>Anda Hemat</span>
+                  <span>Rp {(product.compareAtPrice - displayPrice).toLocaleString()}</span>
                 </div>
               )}
 

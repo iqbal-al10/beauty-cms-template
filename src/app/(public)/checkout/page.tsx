@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
   ArrowLeft, ShoppingBag, Truck, CreditCard, 
-  CheckCircle, AlertCircle, X, Trash2 
+  CheckCircle, AlertCircle, X, Trash2, Plus, Minus
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -40,6 +40,10 @@ interface ShippingCost {
 
 export default function CheckoutPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const productId = searchParams.get('product')
+  const initialQuantity = parseInt(searchParams.get('quantity') || '1', 10)
+
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -49,6 +53,8 @@ export default function CheckoutPage() {
   const [voucherCode, setVoucherCode] = useState('')
   const [voucherApplied, setVoucherApplied] = useState(false)
   const [voucherError, setVoucherError] = useState('')
+  const [singleProduct, setSingleProduct] = useState<CartItem | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
 
   const [form, setForm] = useState({
     customerName: '',
@@ -62,20 +68,6 @@ export default function CheckoutPage() {
   })
 
   useEffect(() => {
-    // Load cart from localStorage
-    const saved = localStorage.getItem('beauty_cart')
-    if (saved) {
-      const items = JSON.parse(saved)
-      if (items.length === 0) {
-        router.push('/cart')
-        return
-      }
-      setCartItems(items)
-    } else {
-      router.push('/cart')
-      return
-    }
-
     // Load customer data from localStorage
     const customerData = localStorage.getItem('beauty_customer')
     if (customerData) {
@@ -93,8 +85,58 @@ export default function CheckoutPage() {
       } catch (e) {}
     }
 
-    fetchData()
-  }, [])
+    // Check if coming from product detail (single product)
+    if (productId) {
+      fetchSingleProduct(productId, initialQuantity)
+    } else {
+      // Load cart from localStorage
+      const saved = localStorage.getItem('beauty_cart')
+      if (saved) {
+        const items = JSON.parse(saved)
+        if (items.length === 0) {
+          router.push('/cart')
+          return
+        }
+        setCartItems(items)
+      } else {
+        router.push('/cart')
+        return
+      }
+      fetchData()
+    }
+  }, [productId])
+
+  const fetchSingleProduct = async (id: string, quantity: number) => {
+    try {
+      const res = await fetch(`/api/public/product-by-id?id=${id}`)
+      if (!res.ok) {
+        toast.error('Produk tidak ditemukan')
+        router.push('/products')
+        return
+      }
+      const product = await res.json()
+      
+      const item: CartItem = {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        price: product.price,
+        compareAtPrice: product.compareAtPrice || null,
+        finalPrice: product.price,
+        quantity: Math.min(quantity, product.stock || 1),
+        imageUrl: product.imageUrl || null,
+        stock: product.stock || 0,
+      }
+      
+      setSingleProduct(item)
+      setCartItems([item])
+      fetchData()
+    } catch (error) {
+      console.error('Error fetching product:', error)
+      toast.error('Gagal memuat produk')
+      router.push('/products')
+    }
+  }
 
   const fetchData = async () => {
     try {
@@ -111,6 +153,24 @@ export default function CheckoutPage() {
       toast.error('Gagal memuat data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const updateQuantity = (id: string, newQuantity: number) => {
+    if (newQuantity < 1) return
+    
+    const item = cartItems.find(i => i.id === id)
+    if (item && newQuantity > item.stock) {
+      toast.error(`Stok tersisa ${item.stock} unit`)
+      return
+    }
+
+    setCartItems(prev => prev.map(i => 
+      i.id === id ? { ...i, quantity: newQuantity } : i
+    ))
+    
+    if (singleProduct) {
+      setSingleProduct(prev => prev ? { ...prev, quantity: newQuantity } : null)
     }
   }
 
@@ -165,10 +225,13 @@ export default function CheckoutPage() {
       }
 
       if (data.valid) {
-        setVoucherDiscount(data.discount)
+        const discountValue = data.discount || 0
+        setVoucherDiscount(discountValue)
         setVoucherApplied(true)
         setVoucherError('')
-        toast.success(`✅ Voucher ${data.code} berhasil! Potongan Rp ${data.discount.toLocaleString()}`)
+        toast.success(`✅ Voucher ${data.code} berhasil! Potongan Rp ${discountValue.toLocaleString()}`)
+        
+        console.log('💰 Voucher applied:', { code: data.code, discount: discountValue })
       }
     } catch (error) {
       console.error('Error applying voucher:', error)
@@ -185,21 +248,35 @@ export default function CheckoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('🔄 Submit button clicked')
     
+    setErrorMessage('')
+
+    // Validasi form
     if (!form.customerName.trim()) {
-      toast.error('Nama lengkap wajib diisi')
+      const msg = 'Nama lengkap wajib diisi'
+      setErrorMessage(msg)
+      toast.error(msg)
       return
     }
     if (!form.customerWhatsapp.trim()) {
-      toast.error('Nomor WhatsApp wajib diisi')
+      const msg = 'Nomor WhatsApp wajib diisi'
+      setErrorMessage(msg)
+      toast.error(msg)
       return
     }
     if (!form.address.trim()) {
-      toast.error('Alamat wajib diisi')
+      const msg = 'Alamat wajib diisi'
+      setErrorMessage(msg)
+      toast.error(msg)
       return
     }
     if (!form.paymentMethod) {
-      toast.error('Pilih metode pembayaran')
+      const msg = 'Silakan pilih metode pembayaran terlebih dahulu'
+      setErrorMessage(msg)
+      toast.error(msg)
+      // Scroll ke bagian metode pembayaran
+      document.getElementById('payment-method-section')?.scrollIntoView({ behavior: 'smooth' })
       return
     }
 
@@ -208,30 +285,41 @@ export default function CheckoutPage() {
     try {
       const subtotal = calculateSubtotal()
       const shipping = shippingCost?.cost || 0
-      const total = subtotal + shipping - voucherDiscount
+      const appliedDiscount = voucherApplied ? voucherDiscount : 0
+      const total = subtotal + shipping - appliedDiscount
+
+      console.log('💰 Order calculation:', {
+        subtotal,
+        shipping,
+        voucherDiscount: appliedDiscount,
+        voucherApplied,
+        total,
+      })
 
       const orderData = {
         customerName: form.customerName,
         customerWhatsapp: form.customerWhatsapp,
         address: form.address,
-        city: form.city,
-        province: form.province,
-        postalCode: form.postalCode,
+        city: form.city || '',
+        province: form.province || '',
+        postalCode: form.postalCode || '',
         shippingCost: shipping,
         subtotal,
-        discountAmount: voucherDiscount,
+        discountAmount: appliedDiscount,
         total,
         paymentMethod: form.paymentMethod,
-        note: form.note,
+        note: form.note || '',
         voucherCode: voucherApplied ? voucherCode : '',
         items: cartItems.map(item => ({
           productId: item.id,
           productName: item.name,
           quantity: item.quantity,
           price: item.finalPrice || item.price,
-          compareAtPrice: item.compareAtPrice,
+          compareAtPrice: item.compareAtPrice || null,
         })),
       }
+
+      console.log('📦 Order data:', JSON.stringify(orderData, null, 2))
 
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -255,15 +343,19 @@ export default function CheckoutPage() {
         postalCode: form.postalCode,
       }))
 
-      // Clear cart
-      localStorage.removeItem('beauty_cart')
-      window.dispatchEvent(new Event('cartUpdate'))
+      // Clear cart if not single product
+      if (!productId) {
+        localStorage.removeItem('beauty_cart')
+        window.dispatchEvent(new Event('cartUpdate'))
+      }
 
-      // Redirect to success page
+      toast.success('✅ Pesanan berhasil dibuat!')
       router.push(`/checkout/success?orderId=${data.id}`)
     } catch (error: any) {
-      console.error('Error creating order:', error)
-      toast.error(error.message || 'Gagal membuat pesanan')
+      console.error('❌ Error creating order:', error)
+      const msg = error.message || 'Gagal membuat pesanan'
+      setErrorMessage(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -280,18 +372,25 @@ export default function CheckoutPage() {
   const subtotal = calculateSubtotal()
   const shipping = shippingCost?.cost || 0
   const totalItems = calculateTotalItems()
-  const total = subtotal + shipping - voucherDiscount
+  const appliedDiscount = voucherApplied ? voucherDiscount : 0
+  const total = subtotal + shipping - appliedDiscount
   const isFreeShipping = totalItems >= 12
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-4 mb-8">
-        <Link href="/cart" className="text-gray-500 hover:text-gray-700 flex items-center gap-1">
+        <Link href={productId ? `/products/${cartItems[0]?.slug || ''}` : '/cart'} className="text-gray-500 hover:text-gray-700 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
-          Back to Cart
+          {productId ? 'Back to Product' : 'Back to Cart'}
         </Link>
         <h1 className="text-2xl font-bold text-gray-800">Checkout</h1>
       </div>
+
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+          ⚠️ {errorMessage}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form */}
@@ -415,12 +514,15 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Payment Method */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Metode Pembayaran</h2>
+            {/* Payment Method - dengan ID untuk scroll */}
+            <div id="payment-method-section">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                Metode Pembayaran *
+                <span className="text-red-500 ml-1"></span>
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {paymentMethods.length === 0 ? (
-                  <p className="text-gray-500 col-span-full">Belum ada metode pembayaran</p>
+                  <p className="text-gray-500 col-span-full">Belum ada metode pembayaran. Silakan hubungi admin.</p>
                 ) : (
                   paymentMethods.map((method) => (
                     <label
@@ -450,6 +552,9 @@ export default function CheckoutPage() {
                   ))
                 )}
               </div>
+              {!form.paymentMethod && paymentMethods.length > 0 && (
+                <p className="text-xs text-red-500 mt-2">⚠️ Silakan pilih salah satu metode pembayaran di atas</p>
+              )}
             </div>
 
             {/* Note */}
@@ -467,7 +572,7 @@ export default function CheckoutPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 rounded-lg text-white font-semibold text-lg transition-all hover:opacity-90 disabled:opacity-50"
+              className="w-full py-3 rounded-lg text-white font-semibold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#c4367b' }}
             >
               {submitting ? 'Memproses...' : 'Konfirmasi Pesanan'}
@@ -478,39 +583,80 @@ export default function CheckoutPage() {
         {/* Summary */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan</h2>
+            <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan Pesanan</h2>
 
-            <div className="space-y-3 max-h-80 overflow-y-auto">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {cartItems.map((item) => {
                 const displayPrice = item.finalPrice || item.price
                 const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
+                const itemTotal = displayPrice * item.quantity
+                const compareTotal = hasCompare ? (item.compareAtPrice || 0) * item.quantity : 0
+                const savings = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
                 
                 return (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                      ) : (
-                        <span className="text-xl">🧴</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-xs font-medium text-pink-500">
-                          Rp {displayPrice.toLocaleString()}
-                        </p>
-                        {hasCompare && (
-                          <p className="text-xs text-gray-400 line-through">
-                            Rp {item.compareAtPrice?.toLocaleString()}
+                  <div key={item.id} className="border-b border-gray-100 pb-3 last:border-0">
+                    <div className="flex gap-3">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                        ) : (
+                          <span className="text-xl">🧴</span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                        
+                        {/* Quantity Control */}
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                            className="p-0.5 rounded-full hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-medium w-6 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            disabled={item.quantity >= item.stock}
+                            className="p-0.5 rounded-full hover:bg-gray-100 disabled:opacity-50"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs text-gray-400 ml-1">/ {item.stock} tersedia</span>
+                        </div>
+                        
+                        {/* Harga dengan coret */}
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <p className="text-sm font-bold text-pink-500">
+                            Rp {displayPrice.toLocaleString()}
+                          </p>
+                          {hasCompare && (
+                            <p className="text-xs text-gray-400 line-through">
+                              Rp {item.compareAtPrice?.toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Hemat per item */}
+                        {hasCompare && savings > 0 && (
+                          <p className="text-xs text-green-600">
+                            Hemat Rp {savings.toLocaleString()} / item
                           </p>
                         )}
-                        <p className="text-xs text-gray-500">× {item.quantity}</p>
                       </div>
+                      <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
+                        Rp {itemTotal.toLocaleString()}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-gray-800">
-                      Rp {(displayPrice * item.quantity).toLocaleString()}
-                    </p>
+                    
+                    {/* Total per item dengan coret */}
+                    {hasCompare && compareTotal > itemTotal && (
+                      <div className="text-right text-xs text-gray-400 mt-1">
+                        <span className="line-through">Rp {compareTotal.toLocaleString()}</span>
+                        <span className="text-green-600 ml-2">Hemat Rp {(compareTotal - itemTotal).toLocaleString()}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -542,8 +688,8 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {voucherDiscount > 0 && (
-                <div className="flex justify-between text-green-600">
+              {voucherApplied && voucherDiscount > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
                   <span>Diskon Voucher</span>
                   <span>- Rp {voucherDiscount.toLocaleString()}</span>
                 </div>

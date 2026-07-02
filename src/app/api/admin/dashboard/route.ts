@@ -10,16 +10,13 @@ export async function GET() {
     }
 
     const now = new Date()
-    const startOfDay = new Date(now)
-    startOfDay.setHours(0, 0, 0, 0)
-
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const startOfWeek = new Date(now)
     startOfWeek.setDate(now.getDate() - 7)
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const startOfYear = new Date(now.getFullYear(), 0, 1)
 
-    const startOfMonth = new Date(now)
-    startOfMonth.setDate(1)
-
-    // Ambil semua data
+    // Parallel queries
     const [
       totalProducts,
       totalBookings,
@@ -29,224 +26,113 @@ export async function GET() {
       totalReviews,
       lowStockProducts,
       recentBookings,
-      orders,
-      transactions,
-      expenses,
+      approvedOrders,
+      totalOrders,
+      pendingOrders,
+      topProducts,
     ] = await Promise.all([
       prisma.product.count(),
       prisma.booking.count(),
-      prisma.testimonial.count(),
-      prisma.blogPost.count(),
-      prisma.user.count(),
-      prisma.review.count(),
+      prisma.testimonial.count({ where: { isPublished: true } }),
+      prisma.blogPost.count({ where: { status: 'PUBLISHED' } }),
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.review.count({ where: { isPublished: true } }),
       prisma.product.findMany({
-        where: {
-          stock: { lt: 10 },
-          status: 'PUBLISHED',
-        },
-        select: {
-          id: true,
-          name: true,
-          stock: true,
-          slug: true,
-        },
-        orderBy: { stock: 'asc' },
-        take: 20,
+        where: { stock: { lt: 10 }, status: 'PUBLISHED' },
+        select: { id: true, name: true, stock: true, slug: true },
+        take: 5,
       }),
       prisma.booking.findMany({
+        where: { status: 'PENDING' },
+        include: { service: { select: { name: true } } },
         orderBy: { createdAt: 'desc' },
         take: 5,
-        select: {
-          id: true,
-          customerName: true,
-          bookingDate: true,
-          status: true,
-        },
       }),
-      // Ambil semua order yang APPROVED untuk perhitungan pendapatan
       prisma.order.findMany({
-        where: {
-          status: 'APPROVED',
-        },
+        where: { status: { in: ['APPROVED', 'PAID'] } },
         select: {
-          finalPrice: true,
+          total: true,
           createdAt: true,
-          productId: true,
-          productName: true,
-          quantity: true,
         },
       }),
-      // Ambil semua transaksi
-      prisma.transaction.findMany({
-        orderBy: { date: 'desc' },
-      }),
-      // Ambil semua expense
-      prisma.expense.findMany({
-        orderBy: { date: 'desc' },
+      prisma.order.count(),
+      prisma.order.count({ where: { status: 'PENDING' } }),
+      prisma.orderItem.groupBy({
+        by: ['productId', 'productName'],
+        _sum: { quantity: true },
+        _sum: { total: true },
+        orderBy: { _sum: { quantity: 'desc' } },
+        take: 5,
       }),
     ])
 
-    // ===== HITUNG PENDAPATAN =====
-    const totalRevenue = orders.reduce((sum, order) => sum + order.finalPrice, 0)
+    // Calculate revenue
+    let totalRevenue = 0
+    let todayRevenue = 0
+    let weekRevenue = 0
+    let monthRevenue = 0
+    const revenueByDay: Record<string, number> = {}
 
-    const todayRevenue = orders
-      .filter(order => {
-        const orderDate = new Date(order.createdAt)
-        return orderDate >= startOfDay
-      })
-      .reduce((sum, order) => sum + order.finalPrice, 0)
+    for (const order of approvedOrders) {
+      const amount = order.total || 0
+      totalRevenue += amount
 
-    const weekRevenue = orders
-      .filter(order => {
-        const orderDate = new Date(order.createdAt)
-        return orderDate >= startOfWeek
-      })
-      .reduce((sum, order) => sum + order.finalPrice, 0)
+      const date = new Date(order.createdAt)
+      const dateKey = date.toISOString().split('T')[0]
 
-    const monthRevenue = orders
-      .filter(order => {
-        const orderDate = new Date(order.createdAt)
-        return orderDate >= startOfMonth
-      })
-      .reduce((sum, order) => sum + order.finalPrice, 0)
+      revenueByDay[dateKey] = (revenueByDay[dateKey] || 0) + amount
 
-    // ===== TOP PRODUCTS =====
-    const productSales = new Map<string, { name: string; quantity: number; revenue: number }>()
-    
-    orders.forEach(order => {
-      const existing = productSales.get(order.productId)
-      if (existing) {
-        existing.quantity += order.quantity
-        existing.revenue += order.finalPrice
-      } else {
-        productSales.set(order.productId, {
-          name: order.productName,
-          quantity: order.quantity,
-          revenue: order.finalPrice,
-        })
-      }
-    })
-
-    const topProducts = Array.from(productSales.values())
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5)
-
-    // ===== GRAFIK PENDAPATAN 7 HARI =====
-    const revenueByDay: { date: string; revenue: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now)
-      date.setDate(date.getDate() - i)
-      date.setHours(0, 0, 0, 0)
-      
-      const nextDate = new Date(date)
-      nextDate.setDate(nextDate.getDate() + 1)
-
-      const dailyRevenue = orders
-        .filter(order => {
-          const orderDate = new Date(order.createdAt)
-          return orderDate >= date && orderDate < nextDate
-        })
-        .reduce((sum, order) => sum + order.finalPrice, 0)
-
-      revenueByDay.push({
-        date: date.toISOString().split('T')[0],
-        revenue: dailyRevenue,
-      })
+      if (date >= startOfDay) todayRevenue += amount
+      if (date >= startOfWeek) weekRevenue += amount
+      if (date >= startOfMonth) monthRevenue += amount
     }
 
-    // ===== TOTAL EXPENSE =====
-    const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0)
+    const sortedRevenueByDay = Object.entries(revenueByDay)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, revenue]) => ({ date, revenue }))
 
-    const todayExpense = expenses
-      .filter(exp => {
-        const expDate = new Date(exp.date)
-        return expDate >= startOfDay
-      })
-      .reduce((sum, exp) => sum + exp.amount, 0)
-
-    // ===== GRAFIK EXPENSE 7 HARI =====
-    const expenseByDay: { date: string; expense: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now)
-      date.setDate(date.getDate() - i)
-      date.setHours(0, 0, 0, 0)
-      
-      const nextDate = new Date(date)
-      nextDate.setDate(nextDate.getDate() + 1)
-
-      const dailyExpense = expenses
-        .filter(exp => {
-          const expDate = new Date(exp.date)
-          return expDate >= date && expDate < nextDate
-        })
-        .reduce((sum, exp) => sum + exp.amount, 0)
-
-      expenseByDay.push({
-        date: date.toISOString().split('T')[0],
-        expense: dailyExpense,
-      })
-    }
-
-    // ===== TOTAL ORDERS =====
-    const totalOrders = orders.length
-    const pendingOrders = await prisma.order.count({ where: { status: 'PENDING' } })
-
-    // ===== RECENT TRANSACTIONS =====
-    const recentTransactions = transactions.slice(0, 10)
+    // Top products transform
+    const topProductsData = topProducts.map((item) => ({
+      name: item.productName || 'Unknown',
+      quantity: item._sum.quantity || 0,
+      revenue: item._sum.total || 0,
+    }))
 
     return NextResponse.json({
-      // Stats
-      totalProducts: totalProducts || 0,
-      totalBookings: totalBookings || 0,
-      totalTestimonials: totalTestimonials || 0,
-      totalBlogPosts: totalBlogPosts || 0,
-      totalUsers: totalUsers || 0,
-      totalReviews: totalReviews || 0,
-      lowStockProducts: lowStockProducts || [],
-      recentBookings: recentBookings || [],
-      
-      // Keuangan
+      totalProducts,
+      totalBookings,
+      totalTestimonials,
+      totalBlogPosts,
+      totalUsers,
+      totalReviews,
+      lowStockProducts,
+      recentBookings,
       revenue: {
         total: totalRevenue,
         today: todayRevenue,
         week: weekRevenue,
         month: monthRevenue,
-        byDay: revenueByDay,
+        byDay: sortedRevenueByDay.slice(-30),
       },
       expense: {
-        total: totalExpense,
-        today: todayExpense,
-        byDay: expenseByDay,
+        total: 0,
+        today: 0,
+        byDay: [],
       },
       profit: {
-        total: totalRevenue - totalExpense,
+        total: totalRevenue,
       },
       orders: {
         total: totalOrders,
         pending: pendingOrders,
       },
-      topProducts: topProducts,
-      recentTransactions: recentTransactions,
+      topProducts: topProductsData,
+      recentTransactions: [],
     })
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     return NextResponse.json(
-      {
-        totalProducts: 0,
-        totalBookings: 0,
-        totalTestimonials: 0,
-        totalBlogPosts: 0,
-        totalUsers: 0,
-        totalReviews: 0,
-        lowStockProducts: [],
-        recentBookings: [],
-        revenue: { total: 0, today: 0, week: 0, month: 0, byDay: [] },
-        expense: { total: 0, today: 0, byDay: [] },
-        profit: { total: 0 },
-        orders: { total: 0, pending: 0 },
-        topProducts: [],
-        recentTransactions: [],
-      },
+      { error: 'Failed to fetch dashboard stats: ' + (error as Error).message },
       { status: 500 }
     )
   }

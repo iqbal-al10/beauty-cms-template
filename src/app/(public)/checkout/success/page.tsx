@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle, Download, Printer, Home, ShoppingBag } from 'lucide-react'
+import { CheckCircle, Download, Printer, Home, ShoppingBag, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface OrderItem {
@@ -39,6 +39,7 @@ export default function CheckoutSuccessPage() {
   const orderId = searchParams.get('orderId')
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
+  const [adminWhatsapp, setAdminWhatsapp] = useState('')
 
   useEffect(() => {
     if (!orderId) {
@@ -47,6 +48,7 @@ export default function CheckoutSuccessPage() {
     }
 
     fetchOrder()
+    fetchSettings()
   }, [orderId])
 
   const fetchOrder = async () => {
@@ -66,6 +68,18 @@ export default function CheckoutSuccessPage() {
     }
   }
 
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/public/settings')
+      if (res.ok) {
+        const data = await res.json()
+        setAdminWhatsapp(data.whatsappNumber || '')
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    }
+  }
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('id-ID', {
       day: 'numeric',
@@ -79,6 +93,14 @@ export default function CheckoutSuccessPage() {
   const getPaymentInstruction = (paymentMethodName: string) => {
     return `Silakan transfer ke rekening yang tertera sesuai dengan nominal yang harus dibayar. Setelah transfer, kirim bukti transfer ke WhatsApp admin.`
   }
+
+  const getWhatsAppMessage = () => {
+    if (!order) return ''
+    const message = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A%0A📎 *Berikut bukti pembayaran saya.*%0A%0ATerima kasih.`
+    return message
+  }
+
+  const cleanWhatsapp = adminWhatsapp.replace(/[^0-9]/g, '')
 
   if (loading) {
     return (
@@ -203,6 +225,29 @@ export default function CheckoutSuccessPage() {
           </div>
           <p className="text-xs text-blue-600 mt-3">
             ⚠️ Gunakan nominal yang sesuai untuk memudahkan verifikasi
+          </p>
+        </div>
+      )}
+
+      {/* WhatsApp Payment Proof Button */}
+      {cleanWhatsapp && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+          <h2 className="text-lg font-semibold text-green-800 mb-2">📱 Kirim Bukti Pembayaran</h2>
+          <p className="text-sm text-green-700 mb-4">
+            Setelah melakukan pembayaran, kirim bukti transfer melalui WhatsApp untuk mempercepat proses verifikasi.
+          </p>
+          <a
+            href={`https://wa.me/${cleanWhatsapp}?text=${getWhatsAppMessage()}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95"
+            style={{ backgroundColor: '#25D366' }}
+          >
+            <MessageCircle className="w-5 h-5" />
+            Kirim Bukti Pembayaran via WhatsApp
+          </a>
+          <p className="text-xs text-gray-500 mt-3">
+            💡 Klik tombol di atas untuk membuka chat WhatsApp dengan pesan otomatis
           </p>
         </div>
       )}

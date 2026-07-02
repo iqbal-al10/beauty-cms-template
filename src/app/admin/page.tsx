@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { 
   Package, Calendar, MessageSquare, FileText, Users, Star, 
   RefreshCw, ShoppingBag, CheckCircle, XCircle, 
@@ -174,6 +174,8 @@ export default function DashboardPage() {
   const [stockHistories, setStockHistories] = useState<StockHistory[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [processingOrder, setProcessingOrder] = useState<string | null>(null)
   const [processingBooking, setProcessingBooking] = useState<string | null>(null)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
@@ -189,50 +191,79 @@ export default function DashboardPage() {
 
   const primaryColor = '#c4367b'
 
-  const fetchData = async () => {
+  // Fungsi fetch data
+  const fetchData = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setRefreshing(true)
+      }
       
-      const statsRes = await fetch('/api/admin/dashboard')
+      const [
+        statsRes,
+        ordersRes,
+        bookingsRes,
+        historyRes,
+        expensesRes
+      ] = await Promise.all([
+        fetch('/api/admin/dashboard'),
+        fetch('/api/admin/orders?status=PENDING'),
+        fetch('/api/admin/bookings?status=PENDING'),
+        fetch('/api/admin/stock-history?limit=10'),
+        fetch('/api/admin/expenses'),
+      ])
+
       if (statsRes.ok) {
         const data = await statsRes.json()
         setStats(data)
       }
 
-      const ordersRes = await fetch('/api/admin/orders?status=PENDING')
       if (ordersRes.ok) {
         const data = await ordersRes.json()
         setOrders(data)
       }
 
-      const bookingsRes = await fetch('/api/admin/bookings?status=PENDING')
       if (bookingsRes.ok) {
         const data = await bookingsRes.json()
         setBookings(data)
       }
 
-      const historyRes = await fetch('/api/admin/stock-history?limit=10')
       if (historyRes.ok) {
         const data = await historyRes.json()
         setStockHistories(data)
       }
 
-      const expensesRes = await fetch('/api/admin/expenses')
       if (expensesRes.ok) {
         const data = await expensesRes.json()
         setExpenses(data || [])
       }
+
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
     } finally {
+      if (showLoading) {
+        setRefreshing(false)
+      }
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    fetchData()
   }, [])
+
+  // Initial fetch & auto-refresh setiap 5 detik
+  useEffect(() => {
+    fetchData(true)
+
+    const interval = setInterval(() => {
+      fetchData(false) // Silent refresh tanpa loading indicator
+    }, 5000) // 5 detik
+
+    return () => clearInterval(interval)
+  }, [fetchData])
+
+  // Manual refresh
+  const handleManualRefresh = () => {
+    fetchData(true)
+  }
 
   const handleOrderAction = async (orderId: string, action: 'approve' | 'reject') => {
     setProcessingOrder(orderId)
@@ -247,7 +278,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         toast.success(action === 'approve' ? '✅ Pesanan disetujui! Stok berkurang.' : '❌ Pesanan ditolak')
-        fetchData()
+        fetchData(false)
       } else {
         toast.error(data.error || 'Gagal memproses pesanan')
       }
@@ -272,7 +303,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         toast.success(action === 'approve' ? '✅ Booking disetujui!' : '❌ Booking ditolak')
-        fetchData()
+        fetchData(false)
       } else {
         toast.error(data.error || 'Gagal memproses booking')
       }
@@ -311,7 +342,7 @@ export default function DashboardPage() {
       }
 
       toast.success(editingExpense ? 'Pengeluaran berhasil diupdate!' : 'Pengeluaran berhasil ditambahkan!')
-      fetchData()
+      fetchData(false)
       setShowExpenseForm(false)
       setEditingExpense(null)
       setExpenseForm({
@@ -341,7 +372,7 @@ export default function DashboardPage() {
       }
 
       toast.success(`Pengeluaran "${title}" berhasil dihapus!`)
-      fetchData()
+      fetchData(false)
     } catch (error: any) {
       console.error('Error:', error)
       toast.error(error.message || 'Gagal menghapus pengeluaran')
@@ -489,13 +520,21 @@ export default function DashboardPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <button
-          onClick={fetchData}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-gray-400">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Notifikasi Pemesanan & Booking */}
@@ -504,9 +543,9 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" style={{ color: primaryColor }} />
-            Notifikasi Pemesanan
+            Notifikasi Pemesanan Produk
             {pendingOrders.length > 0 && (
-              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                 {pendingOrders.length} baru
               </span>
             )}
@@ -525,7 +564,7 @@ export default function DashboardPage() {
                       <p className="font-semibold text-gray-800">{order.customerName}</p>
                       <p className="text-sm text-gray-500">{order.customerWhatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
                       <Clock className="w-3 h-3" /> Pending
                     </span>
                   </div>
@@ -556,9 +595,9 @@ export default function DashboardPage() {
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <Calendar className="w-5 h-5" style={{ color: primaryColor }} />
-            Notifikasi Booking
+            Notifikasi Booking Layanan
             {pendingBookings.length > 0 && (
-              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                 {pendingBookings.length} baru
               </span>
             )}
@@ -577,7 +616,7 @@ export default function DashboardPage() {
                       <p className="font-semibold text-gray-800">{booking.customerName}</p>
                       <p className="text-sm text-gray-500">{booking.whatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
                       <Clock className="w-3 h-3" /> Pending
                     </span>
                   </div>
