@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Facebook, Instagram, Twitter, Youtube, MapPin, Phone, Mail } from 'lucide-react'
+import { MapPin, Phone, Mail, Share2, Camera, MessageCircle, Video, CircleUser } from 'lucide-react'
 
 interface Settings {
   siteName: string
@@ -36,6 +36,15 @@ export default function Footer({ settings }: FooterProps) {
   const headingFontSize = settings?.headingFontSize || '32px'
 
   const currentYear = new Date().getFullYear()
+
+  // Map social links to icons
+  const socialIcons: Record<string, any> = {
+    instagram: Camera,
+    facebook: Share2,
+    twitter: MessageCircle,
+    youtube: Video,
+    tiktok: CircleUser,
+  }
 
   return (
     <footer 
@@ -161,51 +170,24 @@ export default function Footer({ settings }: FooterProps) {
             >
               Follow Us
             </h4>
-            <div className="flex gap-3 mb-4">
-              {socialLinks?.instagram && (
-                <a
-                  href={socialLinks.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-full transition-colors hover:opacity-70"
-                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                >
-                  <Instagram className="w-5 h-5" />
-                </a>
-              )}
-              {socialLinks?.facebook && (
-                <a
-                  href={socialLinks.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-full transition-colors hover:opacity-70"
-                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                >
-                  <Facebook className="w-5 h-5" />
-                </a>
-              )}
-              {socialLinks?.twitter && (
-                <a
-                  href={socialLinks.twitter}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-full transition-colors hover:opacity-70"
-                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                >
-                  <Twitter className="w-5 h-5" />
-                </a>
-              )}
-              {socialLinks?.youtube && (
-                <a
-                  href={socialLinks.youtube}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-full transition-colors hover:opacity-70"
-                  style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
-                >
-                  <Youtube className="w-5 h-5" />
-                </a>
-              )}
+            <div className="flex gap-3 mb-4 flex-wrap">
+              {Object.entries(socialLinks).map(([key, url]) => {
+                if (!url) return null
+                const Icon = socialIcons[key.toLowerCase()]
+                if (!Icon) return null
+                return (
+                  <a
+                    key={key}
+                    href={url as string}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 rounded-full transition-colors hover:opacity-70"
+                    style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </a>
+                )
+              })}
             </div>
             <p 
               className="text-gray-500"
