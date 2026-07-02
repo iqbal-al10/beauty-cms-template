@@ -10,6 +10,12 @@ const PUBLIC_PATHS = [
   '/_next',
   '/favicon.ico',
   '/images',
+  '/login',
+  '/products',
+  '/booking',
+  '/about',
+  '/contact',
+  '/',
 ]
 
 // Admin paths that require authentication
@@ -18,8 +24,13 @@ const ADMIN_PATHS = ['/admin', '/api/admin']
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
+  // Skip static files
+  if (path.match(/\.(svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|eot)$/)) {
+    return NextResponse.next()
+  }
+
   // Check if path is public
-  const isPublic = PUBLIC_PATHS.some(p => path.startsWith(p))
+  const isPublic = PUBLIC_PATHS.some(p => path === p || path.startsWith(p + '/'))
 
   // Check if path requires admin access
   const isAdmin = ADMIN_PATHS.some(p => path.startsWith(p))
@@ -36,6 +47,7 @@ export function middleware(request: NextRequest) {
     if (!token) {
       // Redirect to login if not authenticated
       const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('redirect', path)
       return NextResponse.redirect(loginUrl)
     }
 
@@ -50,6 +62,13 @@ export function middleware(request: NextRequest) {
 // Configure matcher
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public (public files)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|eot)$).*)',
   ],
 }
