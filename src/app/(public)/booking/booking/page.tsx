@@ -13,6 +13,7 @@ interface Service {
   description: string | null
   duration: number
   price: number
+  isActive: boolean  // ← TAMBAHKAN INI
 }
 
 function BookingServiceContent() {
