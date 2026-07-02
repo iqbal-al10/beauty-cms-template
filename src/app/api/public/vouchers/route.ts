@@ -4,56 +4,78 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const code = searchParams.get('code') || ''
-    const productId = searchParams.get('productId') || ''
+    const code = searchParams.get('code')
 
     if (!code) {
-      return NextResponse.json({ error: 'Kode voucher required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Kode voucher harus diisi' },
+        { status: 400 }
+      )
     }
 
-    // Cari promo dengan kode voucher yang match (case insensitive)
-    const promo = await prisma.promo.findFirst({
+    // Cari promo berdasarkan kode
+    const promo = await prisma.promo.findUnique({
       where: {
-        isActive: true,
-        startDate: { lte: new Date() },
-        endDate: { gte: new Date() },
-        type: 'VOUCHER',
-        voucherCode: { equals: code.toUpperCase(), mode: 'insensitive' },
+        code: code.toUpperCase(),
       },
       include: {
         products: {
-          include: {
-            product: true,
+          select: {
+            productId: true,
+          },
+        },
+        services: {
+          select: {
+            serviceId: true,
           },
         },
       },
     })
 
     if (!promo) {
-      return NextResponse.json({ error: 'Voucher tidak ditemukan atau kadaluarsa' }, { status: 404 })
+      return NextResponse.json(
+        { error: 'Kode voucher tidak ditemukan' },
+        { status: 404 }
+      )
     }
 
-    // Check if product is applicable (jika promo terbatas untuk produk tertentu)
-    if (productId && promo.products.length > 0) {
-      const isApplicable = promo.products.some((pp: any) => pp.productId === productId)
-      if (!isApplicable) {
-        return NextResponse.json({ error: 'Voucher tidak berlaku untuk produk ini' }, { status: 400 })
-      }
+    // Cek apakah promo aktif dan dalam periode berlaku
+    const now = new Date()
+    if (!promo.isActive) {
+      return NextResponse.json(
+        { error: 'Voucher sudah tidak aktif' },
+        { status: 400 }
+      )
+    }
+
+    if (now < promo.startDate) {
+      return NextResponse.json(
+        { error: 'Voucher belum berlaku' },
+        { status: 400 }
+      )
+    }
+
+    if (now > promo.endDate) {
+      return NextResponse.json(
+        { error: 'Voucher sudah expired' },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json({
       valid: true,
-      promo: {
-        id: promo.id,
-        title: promo.title,
-        discountType: promo.discountType,
-        discountValue: promo.discountValue,
-        type: promo.type,
-        voucherCode: promo.voucherCode,
-      },
+      code: promo.code,
+      discount: promo.discount,
+      startDate: promo.startDate,
+      endDate: promo.endDate,
+      productIds: promo.products.map((p) => p.productId),
+      serviceIds: promo.services.map((s) => s.serviceId),
     })
   } catch (error) {
-    console.error('Error validating voucher:', error)
-    return NextResponse.json({ error: 'Failed to validate voucher' }, { status: 500 })
+    console.error('Error checking voucher:', error)
+    return NextResponse.json(
+      { error: 'Gagal memeriksa voucher' },
+      { status: 500 }
+    )
   }
 }
