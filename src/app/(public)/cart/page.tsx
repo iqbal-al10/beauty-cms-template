@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Minus, Plus, Trash2, ShoppingBag, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -17,6 +18,7 @@ interface CartItem {
 }
 
 export default function CartPage() {
+  const router = useRouter()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -76,6 +78,15 @@ export default function CartPage() {
     localStorage.removeItem('beauty_cart')
     window.dispatchEvent(new Event('cartUpdate'))
     toast.success('Keranjang dikosongkan')
+  }
+
+  const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      toast.error('Keranjang kosong')
+      return
+    }
+    // Redirect ke halaman checkout
+    router.push('/checkout')
   }
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
@@ -214,15 +225,9 @@ export default function CartPage() {
               </div>
 
               <button
+                onClick={handleCheckout}
                 className="w-full mt-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 active:scale-95"
                 style={{ backgroundColor: '#c4367b' }}
-                onClick={() => {
-                  if (cartItems.length === 0) {
-                    toast.error('Keranjang kosong')
-                    return
-                  }
-                  toast.success('Redirect ke checkout...')
-                }}
               >
                 Checkout
               </button>
