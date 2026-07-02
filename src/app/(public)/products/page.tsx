@@ -273,8 +273,9 @@ function ProductsContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
             const displayPrice = product.finalPrice || product.price
-            const hasCompare = product.compareAtPrice && product.compareAtPrice > displayPrice
-            const discountAmount = hasCompare ? product.compareAtPrice - displayPrice : 0
+            const comparePrice = product.compareAtPrice ?? 0 
+            const hasCompare = comparePrice > displayPrice
+            const discountAmount = hasCompare ? comparePrice - displayPrice : 0
             const productTags = product.tags || []
             
             return (

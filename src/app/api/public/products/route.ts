@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             name: true,
-            color: true, // ← PASTIKAN COLOR DIAMBIL
+            color: true,
           },
         },
         promos: {

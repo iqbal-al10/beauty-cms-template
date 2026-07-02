@@ -327,9 +327,9 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           </div>
 
-          <div className="mt-5 pt-5 border-t border-gray-200">
+          <div className="mt-3 pt-3 border-t border-gray-200">
             <h4 className="text-sm font-semibold text-gray-700 mt-3" style={{ fontSize: bodyFontSize }}>Keterangan Harga</h4>
-            <div className="bg-gray-50 rounded-xl p-4 space-y-1">
+            <div className="bg-gray-50 rounded-xl p-1 space-y-0.5">
               {hasComparePrice && (
                 <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
                   <span className="text-gray-500">Harga Normal</span>
