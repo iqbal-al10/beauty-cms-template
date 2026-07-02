@@ -1,7 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Share2, Video, Camera, CircleUser, MessageCircle, Pin, BriefcaseBusiness, MessageSquare } from 'lucide-react'
+import { 
+  FaInstagram, 
+  FaFacebook, 
+  FaYoutube, 
+  FaTwitter, 
+  FaLinkedin, 
+  FaPinterest,
+  FaTiktok
+} from 'react-icons/fa'
+import { RiThreadsFill } from 'react-icons/ri'
 
 interface Settings {
   siteName: string
@@ -22,16 +31,16 @@ interface FooterProps {
   settings: Settings | null
 }
 
-// Map social media keys to Lucide icons yang PASTI ADA
+// Map social media keys to React Icons
 const SOCIAL_ICONS: Record<string, any> = {
-  instagram: Camera,
-  facebook: Share2,
-  youtube: Video,
-  twitter: MessageCircle,
-  linkedin: BriefcaseBusiness,
-  pinterest: Pin,
-  threads: MessageSquare,
-  tiktok: CircleUser,
+  instagram: FaInstagram,
+  facebook: FaFacebook,
+  youtube: FaYoutube,
+  twitter: FaTwitter,
+  linkedin: FaLinkedin,
+  pinterest: FaPinterest,
+  threads: RiThreadsFill,
+  tiktok: FaTiktok,
 }
 
 // Platform labels
