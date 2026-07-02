@@ -411,6 +411,27 @@ export default function DashboardPage() {
     return combinedData
   }
 
+  // Custom tooltip formatter untuk Recharts
+  const tooltipFormatter = (value: number | string | undefined, name: string) => {
+    if (value === undefined || value === null) {
+      return ['Rp 0', name]
+    }
+    if (typeof value === 'number') {
+      return [`Rp ${value.toLocaleString('id-ID')}`, name]
+    }
+    return [`${value}`, name]
+  }
+
+  const pieTooltipFormatter = (value: number | string | undefined) => {
+    if (value === undefined || value === null) {
+      return 'Rp 0'
+    }
+    if (typeof value === 'number') {
+      return `Rp ${value.toLocaleString('id-ID')}`
+    }
+    return `${value}`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -657,6 +678,27 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* 2. STATS CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        {cards.map((card) => (
+          <Link
+            key={card.title}
+            href={card.href}
+            className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">{card.title}</p>
+                <p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p>
+              </div>
+              <div className={`${card.color} p-2 rounded-lg`}>
+                <card.icon className="w-4 h-4" />
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
       {/* 2. STATISTIK KEUANGAN */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -840,27 +882,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 3. STATS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        {cards.map((card) => (
-          <Link
-            key={card.title}
-            href={card.href}
-            className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">{card.title}</p>
-                <p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p>
-              </div>
-              <div className={`${card.color} p-2 rounded-lg`}>
-                <card.icon className="w-4 h-4" />
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-
       {/* 4. GRAFIK KEUANGAN DENGAN FILTER */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
@@ -927,7 +948,7 @@ export default function DashboardPage() {
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                 }}
-                formatter={(value: number) => formatCurrency(value)}
+                formatter={tooltipFormatter}
               />
               <Legend />
               <Bar dataKey="revenue" fill="#c4367b" radius={[4, 4, 0, 0]} name="Pendapatan" />
@@ -1072,7 +1093,7 @@ export default function DashboardPage() {
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
                     }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={pieTooltipFormatter}
                   />
                 </PieChart>
               </ResponsiveContainer>
