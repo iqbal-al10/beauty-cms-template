@@ -45,30 +45,19 @@ export function middleware(request: NextRequest) {
     const token = request.cookies.get('token')?.value
 
     if (!token) {
-      // Redirect to login if not authenticated
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('redirect', path)
       return NextResponse.redirect(loginUrl)
     }
 
-    // Allow if token exists
     return NextResponse.next()
   }
 
-  // Allow all other paths
   return NextResponse.next()
 }
 
-// Configure matcher
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public (public files)
-     */
     '/((?!_next/static|_next/image|favicon.ico|public|.*\\.(?:svg|png|jpg|jpeg|gif|webp|css|js|woff|woff2|ttf|eot)$).*)',
   ],
 }
