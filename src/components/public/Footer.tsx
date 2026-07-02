@@ -71,20 +71,12 @@ export default function Footer({ settings }: FooterProps) {
   const smallFontSize = settings?.smallFontSize || '14px'
   const headingFontSize = settings?.headingFontSize || '32px'
   
-  // AMBIL DARI SETTINGS - FALLBACK DEFAULT
-  // NOTE: Di response API, secondaryBackground = '#ff00a6'
   const footerBg = settings?.secondaryBackground || '#f8f9fa'
   const headingColor = settings?.headingColor || '#111827'
   const textColor = settings?.bodyTextColor || '#4b5563'
   const copyrightText = settings?.copyrightText || `© ${new Date().getFullYear()} ${siteName}. All rights reserved.`
   
-  console.log('🎨 Footer Settings:', {
-    secondaryBackground: settings?.secondaryBackground,
-    footerBg: footerBg,
-    headingColor: headingColor,
-    textColor: textColor
-  })
-
+  // Parse footer links
   let footerLinks = settings?.footerLinks || []
   if (typeof footerLinks === 'string') {
     try {
@@ -221,7 +213,7 @@ export default function Footer({ settings }: FooterProps) {
             </ul>
           </div>
 
-          {/* Social Media */}
+          {/* Social Media & Copyright */}
           <div>
             <h4 
               className="font-semibold mb-4"
@@ -260,6 +252,22 @@ export default function Footer({ settings }: FooterProps) {
                 )
               })}
             </div>
+            
+            {/* Footer Links dari Settings */}
+            {footerLinks && footerLinks.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-2">
+                {footerLinks.map((link: any, index: number) => (
+                  <Link
+                    key={index}
+                    href={link.href || '#'}
+                    className="hover:opacity-70 transition-colors text-xs"
+                    style={{ color: textColor }}
+                  >
+                    {link.label || link}
+                  </Link>
+                ))}
+              </div>
+            )}
             
             <p 
               style={{ 
