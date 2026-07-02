@@ -39,8 +39,7 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
 
-    // TODO: Verify token validity
-    // For now, just allow if token exists
+    // Allow if token exists
     return NextResponse.next()
   }
 
@@ -51,12 +50,6 @@ export function middleware(request: NextRequest) {
 // Configure matcher
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
