@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { 
-  Camera, Share2, CircleUser, Video, MessageCircle, 
+import {
+  Camera, Share2, CircleUser, Video, MessageCircle,
   BriefcaseBusiness, Pin, MessageSquare, MapPin, Phone, Mail,
-  Instagram, Facebook, Youtube, Twitter, Linkedin, 
-  Menu, ShoppingCart, Home, Package, Calendar, 
+  Menu, ShoppingCart, Home, Package, Calendar,
   FileText, Users, Star, Settings as SettingsIcon,
   Eye, Palette, Type, Image, CreditCard, Search,
   Globe, Lock, Bell, ChevronDown, ChevronRight,
@@ -204,13 +203,13 @@ export default function SettingsPage() {
     if (!confirm('Yakin ingin mereset semua pengaturan ke default?')) return
     setSettings(DEFAULT_SETTINGS)
     setSocial({})
-    toast.success('✅ Pengaturan direset ke default')
+    toast.success('Pengaturan direset ke default')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    
+
     try {
       const socialLinks = { ...social }
       const payload = {
@@ -233,10 +232,10 @@ export default function SettingsPage() {
         throw new Error(data.error || 'Failed to save')
       }
 
-      toast.success('✅ Pengaturan berhasil disimpan!')
+      toast.success('Pengaturan berhasil disimpan!')
     } catch (error: any) {
       console.error('Error saving settings:', error)
-      toast.error('❌ Gagal menyimpan pengaturan')
+      toast.error('Gagal menyimpan pengaturan')
     } finally {
       setSaving(false)
     }
@@ -292,7 +291,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* ===== STICKY LIVE PREVIEW - FULL WEBSITE ===== */}
+      {/* STICKY LIVE PREVIEW */}
       <div className="sticky top-[-20px] z-10 -mx-6 px-6 bg-gray-50/95 backdrop-blur-sm py-2">
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden max-w-full">
           <div className="bg-pink-500 px-4 py-0.5 text-white text-xs font-medium flex items-center justify-between">
@@ -300,14 +299,14 @@ export default function SettingsPage() {
               <Eye className="w-3 h-3" />
               Live Preview (Real-time)
             </span>
-            <span className="text-white/70 text-[10px]">● Perubahan langsung terlihat</span>
+            <span className="text-white/70 text-[10px]">Perubahan langsung terlihat</span>
           </div>
 
-          <div className="p-3" style={{ 
+          <div className="p-3" style={{
             backgroundColor: settings.primaryBackground,
-            fontFamily: settings.fontFamily 
+            fontFamily: settings.fontFamily
           }}>
-            {/* ===== NAVBAR ===== */}
+            {/* NAVBAR */}
             <div className="rounded-lg overflow-hidden border border-gray-200" style={{ backgroundColor: settings.navbarBackground }}>
               <div className="px-3 py-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -331,8 +330,8 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ===== HERO SECTION ===== */}
-            <div className="mt-2 p-3 rounded-lg text-center" style={{ 
+            {/* HERO */}
+            <div className="mt-2 p-3 rounded-lg text-center" style={{
               background: `linear-gradient(135deg, ${settings.colorPrimary} 0%, ${settings.colorSecondary} 100%)`,
               minHeight: '60px'
             }}>
@@ -340,9 +339,9 @@ export default function SettingsPage() {
                 Selamat Datang di {settings.siteName}
               </h2>
               <p className="text-white/80 text-xs mt-0.5" style={{ fontSize: settings.bodyFontSize }}>
-                Premium beauty services & products for your perfect look
+                Premium beauty services and products for your perfect look
               </p>
-              <button className="mt-1 px-4 py-1 rounded-full text-white text-xs font-semibold shadow-md hover:opacity-90 transition-opacity" style={{ 
+              <button className="mt-1 px-4 py-1 rounded-full text-white text-xs font-semibold shadow-md hover:opacity-90 transition-opacity" style={{
                 backgroundColor: settings.colorButton,
                 fontSize: settings.smallFontSize,
                 borderRadius: getButtonStyle()
@@ -351,11 +350,11 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* ===== FEATURED PRODUCTS ===== */}
+            {/* FEATURED PRODUCTS */}
             <div className="mt-2">
               <div className="flex justify-between items-center mb-1">
                 <h3 className="font-bold text-gray-800 text-xs" style={{ fontSize: settings.smallFontSize, color: settings.headingColor }}>Featured Products</h3>
-                <span className="text-[8px]" style={{ color: settings.colorPrimary, fontSize: settings.smallFontSize }}>View All →</span>
+                <span className="text-[8px]" style={{ color: settings.colorPrimary, fontSize: settings.smallFontSize }}>View All</span>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {[1, 2, 3, 4].map((i) => (
@@ -373,9 +372,9 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ===== COLOR PALETTE ===== */}
+            {/* COLOR PALETTE */}
             <div className="mt-2 pt-1.5 border-t border-gray-200">
-              <p className="text-[7px] text-gray-400 mb-1">🎨 Color Palette</p>
+              <p className="text-[7px] text-gray-400 mb-1">Color Palette</p>
               <div className="flex flex-wrap gap-1">
                 <div className="flex items-center gap-0.5">
                   <span className="text-[6px] text-gray-500">P:</span>
@@ -416,7 +415,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ===== FOOTER PREVIEW ===== */}
+            {/* FOOTER PREVIEW */}
             <div className="mt-2 pt-1.5 border-t border-gray-200" style={{ backgroundColor: settings.secondaryBackground }}>
               <div className="flex justify-between items-center">
                 <div>
@@ -424,7 +423,7 @@ export default function SettingsPage() {
                     {settings.siteName}
                   </span>
                   <p className="text-[7px] text-gray-400 mt-0.5" style={{ fontSize: settings.smallFontSize }}>
-                    {settings.copyrightText || `© 2024 ${settings.siteName}. All rights reserved.`}
+                    {settings.copyrightText || `2024 ${settings.siteName}. All rights reserved.`}
                   </p>
                 </div>
                 <div className="flex gap-1.5">
@@ -454,11 +453,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* ===== STYLE INDICATORS ===== */}
+            {/* STYLE INDICATORS */}
             <div className="mt-1 pt-1 border-t border-gray-200 flex flex-wrap items-center gap-2">
               <span className="text-[7px] text-gray-400">Style:</span>
               <span className="text-[7px] text-gray-600" style={{ fontSize: settings.smallFontSize }}>
-                {settings.fontFamily} • {settings.borderRadius} • {settings.buttonStyle} • {settings.layoutStyle}
+                {settings.fontFamily} / {settings.borderRadius} / {settings.buttonStyle}
               </span>
             </div>
           </div>
@@ -466,7 +465,7 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6 mt-4">
-        {/* ===== BRAND IDENTITY ===== */}
+        {/* BRAND IDENTITY */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Type className="w-5 h-5 text-pink-500" />
@@ -474,7 +473,7 @@ export default function SettingsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nama Website *</label>
+              <label className="block text-sm font-medium text-gray-700">Nama Website</label>
               <input
                 type="text"
                 value={settings.siteName}
@@ -495,18 +494,16 @@ export default function SettingsPage() {
                   <option key={font} value={font}>{font}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Font yang digunakan di seluruh website</p>
             </div>
           </div>
         </div>
 
-        {/* ===== COLORS ===== */}
+        {/* COLORS */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Palette className="w-5 h-5 text-pink-500" />
             Colors
           </h2>
-          <p className="text-sm text-gray-500 mb-3">Atur warna utama website</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Primary</label>
@@ -516,7 +513,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('colorPrimary', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #c4367b</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Secondary</label>
@@ -526,7 +522,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('colorSecondary', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #f5dbe8</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Button</label>
@@ -536,7 +531,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('colorButton', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #aa1d68</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Link Hover</label>
@@ -546,7 +540,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('linkHoverColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #c4367b</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">BG Utama</label>
@@ -556,7 +549,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('primaryBackground', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #ffffff</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">BG Sekunder</label>
@@ -566,7 +558,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('secondaryBackground', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #f9fafb</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Heading Color</label>
@@ -576,7 +567,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('headingColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #111827</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Body Text Color</label>
@@ -586,18 +576,16 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('bodyTextColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #4b5563</p>
             </div>
           </div>
         </div>
 
-        {/* ===== NAVBAR SETTINGS ===== */}
+        {/* NAVBAR SETTINGS */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Menu className="w-5 h-5 text-pink-500" />
             Navbar Settings
           </h2>
-          <p className="text-sm text-gray-500 mb-3">Atur warna navigasi menu</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Navbar Background</label>
@@ -607,7 +595,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('navbarBackground', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #ffffff</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Navbar Text Color</label>
@@ -617,7 +604,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('navbarTextColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #4b5563</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Navbar Hover Color</label>
@@ -627,7 +613,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('navbarHoverColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #c4367b</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Navbar Active Color</label>
@@ -637,12 +622,11 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('navbarActiveColor', e.target.value)}
                 className="mt-1 block w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <p className="text-xs text-gray-400 mt-1">Default: #c4367b</p>
             </div>
           </div>
         </div>
 
-        {/* ===== FONT SIZE SETTINGS ===== */}
+        {/* FONT SIZE */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Type className="w-5 h-5 text-pink-500" />
@@ -660,7 +644,6 @@ export default function SettingsPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Default: 32px</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Body Font Size</label>
@@ -673,7 +656,6 @@ export default function SettingsPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Default: 16px</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Small Font Size</label>
@@ -686,12 +668,11 @@ export default function SettingsPage() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-400 mt-1">Default: 14px</p>
             </div>
           </div>
         </div>
 
-        {/* ===== STYLE SETTINGS ===== */}
+        {/* STYLE SETTINGS */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Image className="w-5 h-5 text-pink-500" />
@@ -749,7 +730,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== IMAGES ===== */}
+        {/* IMAGES */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Image className="w-5 h-5 text-pink-500" />
@@ -789,7 +770,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== CONTACT ===== */}
+        {/* CONTACT */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Phone className="w-5 h-5 text-pink-500" />
@@ -839,13 +820,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== SOCIAL MEDIA ===== */}
+        {/* SOCIAL MEDIA */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Share2 className="w-5 h-5 text-pink-500" />
             Social Media
           </h2>
-          <p className="text-sm text-gray-500 mb-3">Masukkan URL lengkap profile sosial media Anda</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {SOCIAL_PLATFORMS.map((platform) => {
               const Icon = platform.icon
@@ -863,7 +843,7 @@ export default function SettingsPage() {
                     placeholder={platform.placeholder}
                   />
                   {social[platform.key] && (
-                    <p className="text-xs text-green-500 mt-1">✅ Terisi</p>
+                    <p className="text-xs text-green-500 mt-1">Terisi</p>
                   )}
                 </div>
               )
@@ -871,13 +851,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== FEATURE TOGGLES ===== */}
+        {/* FEATURE TOGGLES */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <SettingsIcon className="w-5 h-5 text-pink-500" />
             Feature Toggles
           </h2>
-          <p className="text-sm text-gray-500 mb-3">Aktifkan atau nonaktifkan fitur website</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-2">
               <input
@@ -886,7 +865,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableCart', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">🛒 Keranjang</label>
+              <label className="text-sm text-gray-700">Keranjang</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -895,7 +874,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableWhatsAppOrder', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">��� WhatsApp Order</label>
+              <label className="text-sm text-gray-700">WhatsApp Order</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -904,7 +883,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableGuestCheckout', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">👤 Guest Checkout</label>
+              <label className="text-sm text-gray-700">Guest Checkout</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -913,7 +892,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableReviews', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">⭐ Reviews</label>
+              <label className="text-sm text-gray-700">Reviews</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -922,7 +901,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableTestimonials', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">💬 Testimonials</label>
+              <label className="text-sm text-gray-700">Testimonials</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -931,7 +910,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableBlog', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">📝 Blog</label>
+              <label className="text-sm text-gray-700">Blog</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -940,7 +919,7 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableGallery', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">🖼️ Gallery</label>
+              <label className="text-sm text-gray-700">Gallery</label>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -949,12 +928,12 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('enableFaq', e.target.checked)}
                 className="w-4 h-4 text-pink-500 rounded border-gray-300"
               />
-              <label className="text-sm text-gray-700">❓ FAQ</label>
+              <label className="text-sm text-gray-700">FAQ</label>
             </div>
           </div>
         </div>
 
-        {/* ===== CART SETTINGS ===== */}
+        {/* CART SETTINGS */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-pink-500" />
@@ -969,7 +948,6 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange('minOrderAmount', parseInt(e.target.value) || 0)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
-              <p className="text-xs text-gray-400 mt-1">0 = tidak ada batas</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Max Order Quantity</label>
@@ -992,7 +970,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== FOOTER SETTINGS ===== */}
+        {/* FOOTER SETTINGS */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <FileText className="w-5 h-5 text-pink-500" />
@@ -1006,9 +984,8 @@ export default function SettingsPage() {
                 value={settings.copyrightText}
                 onChange={(e) => handleChange('copyrightText', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder={`© 2024 ${settings.siteName}. All rights reserved.`}
+                placeholder="2024 Beauty Studio. All rights reserved."
               />
-              <p className="text-xs text-gray-400 mt-1">Akan muncul di bagian bawah footer</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Footer Links (JSON)</label>
@@ -1017,14 +994,13 @@ export default function SettingsPage() {
                 value={settings.footerLinks}
                 onChange={(e) => handleChange('footerLinks', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
-                placeholder='[{"label": "Privacy Policy", "href": "/privacy"}, {"label": "Terms", "href": "/terms"}]'
+                placeholder='[{"label": "Privacy Policy", "href": "/privacy"}]'
               />
-              <p className="text-xs text-gray-400 mt-1">Format JSON array untuk link di footer</p>
             </div>
           </div>
         </div>
 
-        {/* ===== SEO ===== */}
+        {/* SEO */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <Search className="w-5 h-5 text-pink-500" />
@@ -1058,7 +1034,7 @@ export default function SettingsPage() {
                 value={settings.metaTitle}
                 onChange={(e) => handleChange('metaTitle', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Beauty Studio - Skincare & Beauty Products"
+                placeholder="Beauty Studio - Skincare and Beauty Products"
               />
             </div>
             <div>
@@ -1094,10 +1070,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== JSON CONFIGURATION ===== */}
+        {/* JSON CONFIGURATION */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Code className="w-5 h-5 text-pink-500" />
+            <FileText className="w-5 h-5 text-pink-500" />
             JSON Configuration
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1108,7 +1084,7 @@ export default function SettingsPage() {
                 value={settings.footerContent}
                 onChange={(e) => handleChange('footerContent', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
-                placeholder='{"copyright": "© 2024 Beauty Studio", "links": [{"label": "Privacy Policy", "href": "/privacy"}]}'
+                placeholder='{"copyright": "2024 Beauty Studio"}'
               />
             </div>
             <div>
@@ -1118,7 +1094,7 @@ export default function SettingsPage() {
                 value={settings.operatingHours}
                 onChange={(e) => handleChange('operatingHours', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
-                placeholder='{"monday": {"open": "09:00", "close": "18:00"}, "tuesday": {"open": "09:00", "close": "18:00"}}'
+                placeholder='{"monday": {"open": "09:00", "close": "18:00"}}'
               />
             </div>
           </div>
