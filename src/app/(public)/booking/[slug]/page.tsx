@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import { ArrowLeft, Clock, DollarSign, CheckCircle, Share2, Star } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle, Share2, Star } from 'lucide-react'
 import ShareButton from '@/components/public/ShareButton'
 
 interface BookingDetailPageProps {
@@ -193,6 +193,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               </p>
             )}
 
+            {/* HAPUS ICON DOLLAR - PAKAI Rp */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <Clock className="w-6 h-6 mx-auto text-gray-400 mb-2" />
@@ -202,7 +203,6 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-center">
-                <DollarSign className="w-6 h-6 mx-auto text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>Harga</p>
                 <p className="font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
                   {formatCurrency(service.price)}
@@ -282,7 +282,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
         </div>
       )}
 
-      {/* Related Services */}
+      {/* ===== RELATED SERVICES - SAMA SEPERTI RELATED PRODUCTS ===== */}
       {transformedRelated.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>

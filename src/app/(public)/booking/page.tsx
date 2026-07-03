@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Clock, DollarSign, Calendar, ArrowRight, Search } from 'lucide-react'
+import { Clock, Calendar, ArrowRight, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Service {
@@ -198,84 +198,86 @@ export default function BookingPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service) => (
-            <div
-              key={service.id}
-              className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
-              style={{ borderColor: `${primaryColor}20` }}
-            >
-              {/* Gambar Layanan */}
-              <Link href={`/booking/${service.slug}`}>
-                <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
-                  {service.imageUrl ? (
-                    <img 
-                      src={service.imageUrl} 
-                      alt={service.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-6xl">🧖</span>
-                    </div>
-                  )}
-                  
-                  {/* Tags di card - SAMA SEPERTI PRODUCT */}
-                  {service.tags && service.tags.length > 0 && (
-                    <div className="absolute top-3 left-3 flex flex-col gap-1">
-                      {service.tags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
-                          style={{ backgroundColor: getTagColor(tag.color) }}
-                        >
-                          {tag.name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Link>
-
-              <div className="p-5">
+          {filteredServices.map((service) => {
+            const serviceTags = service.tags || []
+            return (
+              <div
+                key={service.id}
+                className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
+                style={{ borderColor: `${primaryColor}20` }}
+              >
+                {/* Gambar Layanan */}
                 <Link href={`/booking/${service.slug}`}>
-                  <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors" style={{ fontSize: bodyFontSize }}>
-                    {service.name}
-                  </h3>
-                  <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
-                    {service.category?.name || 'Tanpa Kategori'}
-                  </p>
+                  <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
+                    {service.imageUrl ? (
+                      <img 
+                        src={service.imageUrl} 
+                        alt={service.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-6xl">🧖</span>
+                      </div>
+                    )}
+                    
+                    {/* Tags di card - SAMA SEPERTI PRODUCT */}
+                    {serviceTags.length > 0 && (
+                      <div className="absolute top-3 left-3 flex flex-col gap-1">
+                        {serviceTags.slice(0, 2).map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                            style={{ backgroundColor: getTagColor(tag.color) }}
+                          >
+                            {tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </Link>
 
-                {/* Description */}
-                {service.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2" style={{ fontSize: smallFontSize }}>
-                    {service.description}
-                  </p>
-                )}
+                <div className="p-5">
+                  <Link href={`/booking/${service.slug}`}>
+                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors" style={{ fontSize: bodyFontSize }}>
+                      {service.name}
+                    </h3>
+                    <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
+                      {service.category?.name || 'Tanpa Kategori'}
+                    </p>
+                  </Link>
 
-                {/* Details */}
-                <div className="flex items-center gap-4 text-sm text-gray-500 mt-3" style={{ fontSize: smallFontSize }}>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {service.duration} menit
-                  </span>
-                  <span className="flex items-center gap-1 font-bold" style={{ color: primaryColor }}>
-                    <DollarSign className="w-4 h-4" />
-                    {formatCurrency(service.price)}
-                  </span>
+                  {/* Description */}
+                  {service.description && (
+                    <p className="text-sm text-gray-500 mt-1 line-clamp-2" style={{ fontSize: smallFontSize }}>
+                      {service.description}
+                    </p>
+                  )}
+
+                  {/* Details - HAPUS ICON DOLLAR */}
+                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-3" style={{ fontSize: smallFontSize }}>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {service.duration} menit
+                    </span>
+                    <span className="flex items-center gap-1 font-bold" style={{ color: primaryColor }}>
+                      {formatCurrency(service.price)}
+                    </span>
+                  </div>
+
+                  {/* Button */}
+                  <Link
+                    href={`/booking/${service.slug}`}
+                    className="mt-4 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
+                  >
+                    Lihat Detail <ArrowRight className="w-4 h-4" />
+                  </Link>
                 </div>
-
-                {/* Button */}
-                <Link
-                  href={`/booking/${service.slug}`}
-                  className="mt-4 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
-                  style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
-                >
-                  Lihat Detail <ArrowRight className="w-4 h-4" />
-                </Link>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
