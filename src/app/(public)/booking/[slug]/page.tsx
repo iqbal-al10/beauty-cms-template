@@ -135,6 +135,10 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
     ))
   }
 
+  const averageRating = reviews.length > 0 
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
+    : 0
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl" style={{ fontFamily: fontFamily }}>
       {/* Breadcrumb */}
@@ -185,7 +189,29 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               <h1 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
                 {service.name}
               </h1>
+              {service.category && (
+                <span className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600" style={{ fontSize: smallFontSize }}>
+                  {service.category.icon} {service.category.name}
+                </span>
+              )}
             </div>
+
+            {/* Rating - SAMA SEPERTI PRODUCT */}
+            {reviews.length > 0 && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex text-yellow-400">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${i < Math.round(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
+                  ({reviews.length} reviews)
+                </span>
+              </div>
+            )}
 
             {service.description && (
               <p className="text-gray-600 mb-6 leading-relaxed" style={{ fontSize: bodyFontSize }}>
@@ -193,7 +219,6 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               </p>
             )}
 
-            {/* HAPUS ICON DOLLAR - PAKAI Rp */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-gray-50 rounded-xl p-4 text-center">
                 <Clock className="w-6 h-6 mx-auto text-gray-400 mb-2" />
@@ -259,7 +284,20 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             {reviews.map((review) => (
               <div key={review.id} className="bg-gray-50 p-4 rounded-xl">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="flex">{renderStars(review.rating)}</div>
+                  <div className="flex text-yellow-400">
+                    {Array.from({ length: review.rating }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                      />
+                    ))}
+                    {Array.from({ length: 5 - review.rating }).map((_, i) => (
+                      <Star
+                        key={i + review.rating}
+                        className="w-4 h-4 text-gray-300"
+                      />
+                    ))}
+                  </div>
                   <span className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>
                     {review.customerName}
                   </span>
@@ -282,7 +320,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
         </div>
       )}
 
-      {/* ===== RELATED SERVICES - SAMA SEPERTI RELATED PRODUCTS ===== */}
+      {/* ===== RELATED SERVICES ===== */}
       {transformedRelated.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>

@@ -243,6 +243,7 @@ export default function BookingPage() {
                     <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors" style={{ fontSize: bodyFontSize }}>
                       {service.name}
                     </h3>
+                    {/* KATEGORI - SEKARANG MUNCUL */}
                     <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
                       {service.category?.name || 'Tanpa Kategori'}
                     </p>
@@ -255,7 +256,7 @@ export default function BookingPage() {
                     </p>
                   )}
 
-                  {/* Details - HAPUS ICON DOLLAR */}
+                  {/* Details */}
                   <div className="flex items-center gap-4 text-sm text-gray-500 mt-3" style={{ fontSize: smallFontSize }}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />

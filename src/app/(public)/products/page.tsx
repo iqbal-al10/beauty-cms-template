@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Search, Filter } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Product {
@@ -198,56 +198,56 @@ function ProductsContent() {
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
+      {/* Search & Filter - SAMA SEPERTI BOOKING */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
         <form onSubmit={handleSearch} className="flex-1">
           {categorySlug && (
             <input type="hidden" name="category" value={categorySlug} />
           )}
           <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
             <input
               type="text"
               name="search"
               placeholder="Search products..."
               defaultValue={searchQuery}
-              className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors"
               style={{ 
                 '--tw-ring-color': primaryColor,
                 fontSize: bodyFontSize,
               } as React.CSSProperties}
             />
-            <svg className="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
           </div>
         </form>
+      </div>
 
-        <div className="flex flex-wrap gap-2 items-center justify-center md:justify-end">
-          <a
-            href="/products"
+      {/* Category Filter - SAMA SEPERTI BOOKING */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <a
+          href="/products"
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            !categorySlug
+              ? 'text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          style={!categorySlug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
+        >
+          All
+        </a>
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/products?category=${category.slug}`}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !categorySlug
+              categorySlug === category.slug
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={!categorySlug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
+            style={categorySlug === category.slug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
           >
-            All
-          </a>
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              href={`/products?category=${category.slug}`}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                categorySlug === category.slug
-                  ? 'text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              style={categorySlug === category.slug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
-            >
-              {category.name}
-            </Link>
-          ))}
-        </div>
+            {category.name}
+          </Link>
+        ))}
       </div>
 
       <p className="text-sm text-gray-500 mb-4" style={{ fontSize: smallFontSize }}>
@@ -273,9 +273,8 @@ function ProductsContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => {
             const displayPrice = product.finalPrice || product.price
-            const comparePrice = product.compareAtPrice ?? 0 
-            const hasCompare = comparePrice > displayPrice
-            const discountAmount = hasCompare ? comparePrice - displayPrice : 0
+            const hasCompare = product.compareAtPrice && product.compareAtPrice > displayPrice
+            const discountAmount = hasCompare ? product.compareAtPrice - displayPrice : 0
             const productTags = product.tags || []
             
             return (
@@ -339,7 +338,6 @@ function ProductsContent() {
                     )}
                   </div>
                   
-                  {/* BADGE HEMAT */}
                   {hasCompare && discountAmount > 0 && (
                     <div className="mt-1">
                       <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">

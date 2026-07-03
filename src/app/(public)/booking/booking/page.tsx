@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { CheckCircle, Calendar, Clock, User, Phone, Mail, MessageSquare, ArrowLeft } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, User, Phone, Mail, MessageSquare, ArrowLeft, DollarSign, CreditCard, X } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -13,7 +13,17 @@ interface Service {
   description: string | null
   duration: number
   price: number
-  isActive: boolean  // ← TAMBAHKAN INI
+  isActive: boolean
+}
+
+interface PaymentMethod {
+  id: string
+  name: string
+  type: string
+  accountNumber: string | null
+  accountName: string | null
+  qrCodeUrl: string | null
+  isActive: boolean
 }
 
 function BookingServiceContent() {
@@ -27,6 +37,12 @@ function BookingServiceContent() {
   const [loading, setLoading] = useState(true)
   const [slots, setSlots] = useState<string[]>([])
   const [submitted, setSubmitted] = useState(false)
+  const [bookingData, setBookingData] = useState<any>(null)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
+  const [voucherDiscount, setVoucherDiscount] = useState(0)
+  const [voucherCode, setVoucherCode] = useState('')
+  const [voucherApplied, setVoucherApplied] = useState(false)
+  const [voucherError, setVoucherError] = useState('')
   const [form, setForm] = useState({
     serviceId: serviceIdParam,
     bookingDate: '',
@@ -35,12 +51,14 @@ function BookingServiceContent() {
     whatsapp: '',
     email: '',
     notes: '',
+    paymentMethod: '',
   })
 
   const primaryColor = '#c4367b'
 
   useEffect(() => {
     fetchServices()
+    fetchPaymentMethods()
   }, [])
 
   useEffect(() => {
@@ -64,6 +82,18 @@ function BookingServiceContent() {
       toast.error('Gagal memuat layanan')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const res = await fetch('/api/admin/payments')
+      if (res.ok) {
+        const data = await res.json()
+        setPaymentMethods(data.filter((p: PaymentMethod) => p.isActive))
+      }
+    } catch (error) {
+      console.error('Error fetching payment methods:', error)
     }
   }
 
@@ -95,15 +125,69 @@ function BookingServiceContent() {
     }
   }
 
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError('Masukkan kode voucher')
+      return
+    }
+
+    try {
+      const res = await fetch('/api/vouchers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: voucherCode,
+          productIds: [],
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setVoucherError(data.error || 'Voucher tidak valid')
+        setVoucherApplied(false)
+        setVoucherDiscount(0)
+        return
+      }
+
+      if (data.valid) {
+        setVoucherDiscount(data.discount)
+        setVoucherApplied(true)
+        setVoucherError('')
+        toast.success(`✅ Voucher ${data.code} berhasil! Potongan Rp ${data.discount.toLocaleString()}`)
+      }
+    } catch (error) {
+      console.error('Error applying voucher:', error)
+      setVoucherError('Gagal memvalidasi voucher')
+    }
+  }
+
+  const handleRemoveVoucher = () => {
+    setVoucherApplied(false)
+    setVoucherDiscount(0)
+    setVoucherCode('')
+    setVoucherError('')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+
+    if (!form.paymentMethod) {
+      toast.error('Pilih metode pembayaran')
+      setLoading(false)
+      return
+    }
 
     try {
       const res = await fetch('/api/public/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          voucherCode: voucherApplied ? voucherCode : null,
+          paymentMethod: form.paymentMethod,
+        }),
       })
 
       const data = await res.json()
@@ -111,6 +195,7 @@ function BookingServiceContent() {
       if (res.ok) {
         setSubmitted(true)
         setStep(3)
+        setBookingData(data)
         toast.success('Booking berhasil!')
       } else {
         toast.error(data.error || 'Gagal booking')
@@ -123,7 +208,12 @@ function BookingServiceContent() {
     }
   }
 
-  if (loading) {
+  const getTotalPrice = () => {
+    if (!selectedService) return 0
+    return Math.max(0, selectedService.price - voucherDiscount)
+  }
+
+  if (loading && !submitted) {
     return (
       <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
@@ -131,7 +221,10 @@ function BookingServiceContent() {
     )
   }
 
-  if (submitted) {
+  if (submitted && bookingData) {
+    const adminWhatsapp = '6285710379820'
+    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Pembayaran:* ${form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
+
     return (
       <div className="container mx-auto px-4 py-12 max-w-2xl">
         <div className="bg-green-50 border border-green-200 rounded-2xl p-8 text-center">
@@ -145,12 +238,12 @@ function BookingServiceContent() {
           <div className="bg-white p-6 rounded-xl text-left space-y-3 max-w-md mx-auto">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Layanan</span>
-              <span className="font-medium">{selectedService?.name}</span>
+              <span className="font-medium">{bookingData.service?.name}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Tanggal</span>
               <span className="font-medium">
-                {new Date(form.bookingDate).toLocaleDateString('id-ID', {
+                {new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID', {
                   weekday: 'long',
                   day: 'numeric',
                   month: 'long',
@@ -160,14 +253,38 @@ function BookingServiceContent() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Waktu</span>
-              <span className="font-medium">{form.bookingTime}</span>
+              <span className="font-medium">{bookingData.booking.bookingTime}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Customer</span>
-              <span className="font-medium">{form.customerName}</span>
+              <span className="text-gray-500">Total</span>
+              <span className="font-medium text-pink-500">Rp {bookingData.totalPrice.toLocaleString()}</span>
+            </div>
+            {bookingData.voucherCode && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Voucher</span>
+                <span>- Rp {bookingData.discountAmount?.toLocaleString() || 0}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Metode</span>
+              <span className="font-medium">{form.paymentMethod}</span>
             </div>
           </div>
-          <div className="mt-6 flex gap-4 justify-center">
+
+          {/* Tombol Upload Bukti via WhatsApp */}
+          <div className="mt-6">
+            <a
+              href={`https://wa.me/${adminWhatsapp}?text=${waMessage}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              📱 Kirim Bukti Pembayaran via WhatsApp
+            </a>
+          </div>
+
+          <div className="mt-4 flex gap-4 justify-center">
             <Link
               href="/"
               className="px-6 py-2.5 rounded-lg text-white font-medium transition-colors hover:opacity-90"
@@ -187,6 +304,8 @@ function BookingServiceContent() {
       </div>
     )
   }
+
+  const totalPrice = getTotalPrice()
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -349,6 +468,98 @@ function BookingServiceContent() {
               />
             </div>
 
+            {/* Harga */}
+            {selectedService && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Harga Layanan</span>
+                  <span className="font-bold text-pink-500">Rp {selectedService.price.toLocaleString()}</span>
+                </div>
+                {voucherApplied && voucherDiscount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-green-600 mt-1">
+                    <span>Diskon Voucher</span>
+                    <span>- Rp {voucherDiscount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center font-bold text-lg border-t border-gray-200 pt-2 mt-2">
+                  <span>Total</span>
+                  <span style={{ color: primaryColor }}>Rp {totalPrice.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Voucher */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kode Voucher</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  placeholder="Masukkan kode voucher"
+                  disabled={voucherApplied}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 disabled:bg-gray-100"
+                />
+                {voucherApplied ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveVoucher}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplyVoucher}
+                    className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-lg"
+                  >
+                    Apply
+                  </button>
+                )}
+              </div>
+              {voucherError && (
+                <p className="text-sm text-red-500 mt-1">{voucherError}</p>
+              )}
+              {voucherApplied && (
+                <p className="text-sm text-green-500 mt-1">✅ Voucher terpakai! Potongan Rp {voucherDiscount.toLocaleString()}</p>
+              )}
+            </div>
+
+            {/* Metode Pembayaran */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran *</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {paymentMethods.length === 0 ? (
+                  <p className="text-gray-500 col-span-full text-sm">Belum ada metode pembayaran</p>
+                ) : (
+                  paymentMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
+                        form.paymentMethod === method.id
+                          ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.id}
+                        checked={form.paymentMethod === method.id}
+                        onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+                        className="w-4 h-4 text-pink-500"
+                      />
+                      <div className="flex-1 text-sm">
+                        <p className="font-medium">{method.name}</p>
+                        <p className="text-xs text-gray-500">{method.type}</p>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
             {selectedService && (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-600">
@@ -373,7 +584,7 @@ function BookingServiceContent() {
               </button>
               <button
                 type="submit"
-                disabled={loading || !form.customerName || !form.whatsapp}
+                disabled={loading || !form.customerName || !form.whatsapp || !form.paymentMethod}
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
               >
                 {loading ? 'Memproses...' : 'Konfirmasi Booking'}
