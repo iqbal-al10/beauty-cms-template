@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         total,
         paymentMethod: paymentMethod || '',
-        // Simpan detail payment method
         note: note || '',
         voucherCode: voucherCode || '',
         status: 'PENDING',
@@ -129,11 +128,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Order created: ${order.id}`)
 
+    // Return order dengan detail payment method
     return NextResponse.json({
       ...order,
-      paymentMethodName,
-      paymentAccountNumber,
-      paymentAccountName,
+      paymentMethodName: paymentMethodName || '',
+      paymentAccountNumber: paymentAccountNumber || '',
+      paymentAccountName: paymentAccountName || '',
     }, { status: 201 })
   } catch (error) {
     console.error('❌ Error creating order:', error)

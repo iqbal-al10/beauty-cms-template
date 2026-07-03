@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -36,7 +37,7 @@ interface Order {
   items: OrderItem[]
 }
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const orderId = searchParams.get('orderId')
@@ -216,7 +217,7 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
 
-      {/* Payment Details */}
+      {/* Payment Details - TAMPILKAN METODE YANG DIPILIH */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold text-blue-800 mb-2">💳 Detail Pembayaran</h2>
         <div className="space-y-1 text-sm">
@@ -280,5 +281,17 @@ export default function CheckoutSuccessPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      </div>
+    }>
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }
