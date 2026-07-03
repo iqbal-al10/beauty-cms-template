@@ -400,6 +400,9 @@ model Order {
   discountAmount Float   @default(0)
   total        Float
   paymentMethod String?
+  paymentMethodName String?   // ← TAMBAHKAN
+  paymentAccountNumber String? // ← TAMBAHKAN
+  paymentAccountName String?   // ← TAMBAHKAN
   paymentProof String?
   status       String   @default("PENDING")
   note         String?
