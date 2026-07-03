@@ -16,7 +16,10 @@ export async function GET() {
     return NextResponse.json(tags)
   } catch (error) {
     console.error('Error fetching booking tags:', error)
-    return NextResponse.json({ error: 'Failed to fetch booking tags' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch booking tags' },
+      { status: 500 }
+    )
   }
 }
 
@@ -37,48 +40,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const existing = await prisma.bookingTag.findUnique({
+      where: { slug },
+    })
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Slug already exists' },
+        { status: 400 }
+      )
+    }
+
     const tag = await prisma.bookingTag.create({
       data: {
         name,
         slug,
-        color: color || null,
+        color: color || '#6B7280',
       },
     })
 
-    return NextResponse.json(tag)
+    return NextResponse.json(tag, { status: 201 })
   } catch (error) {
     console.error('Error creating booking tag:', error)
-    return NextResponse.json({ error: 'Failed to create booking tag' }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const { id, name, slug, color } = body
-
-    if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
-    }
-
-    const tag = await prisma.bookingTag.update({
-      where: { id },
-      data: {
-        name,
-        slug,
-        color: color || null,
-      },
-    })
-
-    return NextResponse.json(tag)
-  } catch (error) {
-    console.error('Error updating booking tag:', error)
-    return NextResponse.json({ error: 'Failed to update booking tag' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to create booking tag' },
+      { status: 500 }
+    )
   }
 }
 
@@ -93,7 +79,20 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const existing = await prisma.bookingTag.findUnique({
+      where: { id },
+    })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Tag not found' },
+        { status: 404 }
+      )
     }
 
     await prisma.bookingTag.delete({
@@ -103,6 +102,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting booking tag:', error)
-    return NextResponse.json({ error: 'Failed to delete booking tag' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to delete booking tag' },
+      { status: 500 }
+    )
   }
 }

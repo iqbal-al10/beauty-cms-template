@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
     if (!session) {
@@ -16,7 +16,10 @@ export async function GET() {
     return NextResponse.json(categories)
   } catch (error) {
     console.error('Error fetching booking categories:', error)
-    return NextResponse.json({ error: 'Failed to fetch booking categories' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to fetch booking categories' },
+      { status: 500 }
+    )
   }
 }
 
@@ -37,21 +40,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const existing = await prisma.bookingCategory.findUnique({
+      where: { slug },
+    })
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Slug already exists' },
+        { status: 400 }
+      )
+    }
+
     const category = await prisma.bookingCategory.create({
       data: {
         name,
         slug,
-        description: description || '',
+        description: description || null,
         icon: icon || '📦',
         sortOrder: sortOrder || 0,
         isActive: isActive !== undefined ? isActive : true,
       },
     })
 
-    return NextResponse.json(category)
+    return NextResponse.json(category, { status: 201 })
   } catch (error) {
     console.error('Error creating booking category:', error)
-    return NextResponse.json({ error: 'Failed to create booking category' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to create booking category' },
+      { status: 500 }
+    )
   }
 }
 
@@ -66,7 +82,32 @@ export async function PUT(request: NextRequest) {
     const { id, name, slug, description, icon, sortOrder, isActive } = body
 
     if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const existing = await prisma.bookingCategory.findUnique({
+      where: { id },
+    })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      )
+    }
+
+    if (slug !== existing.slug) {
+      const slugExists = await prisma.bookingCategory.findUnique({
+        where: { slug },
+      })
+      if (slugExists) {
+        return NextResponse.json(
+          { error: 'Slug already exists' },
+          { status: 400 }
+        )
+      }
     }
 
     const category = await prisma.bookingCategory.update({
@@ -74,7 +115,7 @@ export async function PUT(request: NextRequest) {
       data: {
         name,
         slug,
-        description: description || '',
+        description: description || null,
         icon: icon || '📦',
         sortOrder: sortOrder || 0,
         isActive: isActive !== undefined ? isActive : true,
@@ -84,7 +125,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(category)
   } catch (error) {
     console.error('Error updating booking category:', error)
-    return NextResponse.json({ error: 'Failed to update booking category' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to update booking category' },
+      { status: 500 }
+    )
   }
 }
 
@@ -99,7 +143,20 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'ID is required' },
+        { status: 400 }
+      )
+    }
+
+    const existing = await prisma.bookingCategory.findUnique({
+      where: { id },
+    })
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      )
     }
 
     await prisma.bookingCategory.delete({
@@ -109,6 +166,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting booking category:', error)
-    return NextResponse.json({ error: 'Failed to delete booking category' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to delete booking category' },
+      { status: 500 }
+    )
   }
 }
