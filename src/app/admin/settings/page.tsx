@@ -274,6 +274,28 @@ export default function SettingsPage() {
             console.error('Error parsing social links:', e)
           }
         }
+
+        // 🔍 DEBUG: Lihat data hero dari database
+        console.log('🔍 FETCHED SETTINGS - Hero Data:', {
+          heroBadge: data.heroBadge,
+          heroSubtitle: data.heroSubtitle,
+          heroShopButtonText: data.heroShopButtonText,
+          heroShopButtonLink: data.heroShopButtonLink,
+          heroBookButtonText: data.heroBookButtonText,
+          heroBookButtonLink: data.heroBookButtonLink,
+          heroSlide1Title: data.heroSlide1Title,
+          heroSlide1Desc: data.heroSlide1Desc,
+          heroSlide1Button: data.heroSlide1Button,
+          heroSlide1Link: data.heroSlide1Link,
+          heroSlide1BgStart: data.heroSlide1BgStart,
+          heroSlide1BgEnd: data.heroSlide1BgEnd,
+          heroSlide2Title: data.heroSlide2Title,
+          heroSlide2Desc: data.heroSlide2Desc,
+          heroSlide2Button: data.heroSlide2Button,
+          heroSlide2Link: data.heroSlide2Link,
+          heroSlide2BgStart: data.heroSlide2BgStart,
+          heroSlide2BgEnd: data.heroSlide2BgEnd,
+        })
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
@@ -323,6 +345,32 @@ export default function SettingsPage() {
         footerLinks,
       }
 
+      // 🔍 DEBUG: Lihat payload yang akan dikirim
+      console.log('🔍 SENDING PAYLOAD - Hero Data:', {
+        heroBadge: payload.heroBadge,
+        heroSubtitle: payload.heroSubtitle,
+        heroShopButtonText: payload.heroShopButtonText,
+        heroShopButtonLink: payload.heroShopButtonLink,
+        heroBookButtonText: payload.heroBookButtonText,
+        heroBookButtonLink: payload.heroBookButtonLink,
+        heroSlide1Icon: payload.heroSlide1Icon,
+        heroSlide1Label: payload.heroSlide1Label,
+        heroSlide1Title: payload.heroSlide1Title,
+        heroSlide1Desc: payload.heroSlide1Desc,
+        heroSlide1Button: payload.heroSlide1Button,
+        heroSlide1Link: payload.heroSlide1Link,
+        heroSlide1BgStart: payload.heroSlide1BgStart,
+        heroSlide1BgEnd: payload.heroSlide1BgEnd,
+        heroSlide2Icon: payload.heroSlide2Icon,
+        heroSlide2Label: payload.heroSlide2Label,
+        heroSlide2Title: payload.heroSlide2Title,
+        heroSlide2Desc: payload.heroSlide2Desc,
+        heroSlide2Button: payload.heroSlide2Button,
+        heroSlide2Link: payload.heroSlide2Link,
+        heroSlide2BgStart: payload.heroSlide2BgStart,
+        heroSlide2BgEnd: payload.heroSlide2BgEnd,
+      })
+
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -336,6 +384,10 @@ export default function SettingsPage() {
       }
 
       toast.success('Pengaturan berhasil disimpan!')
+      
+      // 🔍 DEBUG: Lihat response dari server
+      console.log('🔍 SAVE RESPONSE:', data)
+      
     } catch (error: any) {
       console.error('Error saving settings:', error)
       toast.error('Gagal menyimpan pengaturan')
@@ -402,29 +454,31 @@ export default function SettingsPage() {
 
   return (
     <div>
-      {/* ===== HEADER FIXED ===== */}
-      <div className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm -mx-6 px-6 py-4 border-b border-gray-200">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <SettingsIcon className="w-6 h-6 text-pink-500" />
-            Setting Management
-          </h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsPreviewOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-            >
-              <Eye className="w-4 h-4" />
-              Preview Homepage
-            </button>
-            <button
-              onClick={handleReset}
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Reset ke Default
-            </button>
-          </div>
+      {/* ===== JUDUL (TIDAK FIXED) ===== */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <SettingsIcon className="w-6 h-6 text-pink-500" />
+          Setting Management
+        </h1>
+      </div>
+
+      {/* ===== TOMBOL FIXED (HANYA TOMBOL) ===== */}
+      <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="flex justify-end items-center gap-3">
+          <button
+            onClick={() => setIsPreviewOpen(true)}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Eye className="w-4 h-4" />
+            Preview Homepage
+          </button>
+          <button
+            onClick={handleReset}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Reset ke Default
+          </button>
         </div>
       </div>
 
@@ -1291,7 +1345,7 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              {/* ===== FOOTER - TAMBAHAN BARU ===== */}
+              {/* ===== FOOTER ===== */}
               <footer 
                 className="border-t"
                 style={{ 

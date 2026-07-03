@@ -859,10 +859,96 @@ export default function BookingsPage() {
     )
   }
 
+  // ===== RENDER HEADER BUTTON =====
+  const renderHeaderButton = () => {
+    switch (activeTab) {
+      case 'services':
+        return (
+          <button
+            onClick={() => {
+              setEditingService(null)
+              setServiceForm({
+                name: '',
+                slug: '',
+                description: '',
+                duration: 60,
+                price: '',
+                categoryId: '',
+                imageUrl: '',
+                isFeatured: false,
+                isActive: true,
+                metaTitle: '',
+                metaDescription: '',
+                canonicalUrl: '',
+                ogImageUrl: '',
+                tagIds: [],
+                promoIds: [],
+              })
+              setShowServiceForm(!showServiceForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Layanan
+          </button>
+        )
+      case 'categories':
+        return (
+          <button
+            onClick={() => {
+              setEditingCategory(null)
+              setCategoryForm({
+                name: '',
+                slug: '',
+                description: '',
+                icon: '📦',
+                sortOrder: categories.length,
+                isActive: true,
+              })
+              setShowCategoryForm(!showCategoryForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Kategori Booking
+          </button>
+        )
+      case 'tags':
+        return (
+          <button
+            onClick={() => {
+              setEditingTag(null)
+              setTagForm({ name: '', slug: '', color: 'bg-red-500' })
+              setShowTagForm(!showTagForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Tag Booking
+          </button>
+        )
+      case 'promos':
+        return (
+          <button
+            onClick={() => {
+              setEditingPromo(null)
+              setPromoForm({ code: '', discount: '', startDate: '', endDate: '', isActive: true })
+              setSelectedServiceIds([])
+              setShowPromoForm(!showPromoForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Voucher
+          </button>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div>
+      {/* ===== HEADER WITH BUTTON ===== */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">📅 Booking</h1>
+        {renderHeaderButton()}
       </div>
 
       {/* TABS */}
@@ -884,7 +970,7 @@ export default function BookingsPage() {
       {/* ===== TAB 1: SERVICES ===== */}
       {activeTab === 'services' && (
         <>
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4 mb-6">
             <div className="flex flex-wrap gap-2 flex-1">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -898,7 +984,8 @@ export default function BookingsPage() {
               </div>
               <div className="relative">
                 <Filter className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                <select                  value={filterCategory}
+                <select
+                  value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
                   className="pl-9 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 appearance-none"
                 >
@@ -909,9 +996,6 @@ export default function BookingsPage() {
                 </select>
               </div>
             </div>
-            <button onClick={() => { setEditingService(null); setServiceForm({ name: '', slug: '', description: '', duration: 60, price: '', categoryId: '', imageUrl: '', isFeatured: false, isActive: true, metaTitle: '', metaDescription: '', canonicalUrl: '', ogImageUrl: '', tagIds: [], promoIds: [] }); setShowServiceForm(!showServiceForm) }} className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap">
-              <Plus className="w-5 h-5" /> Tambah Layanan
-            </button>
           </div>
 
           {selectedIds.length > 0 && (
@@ -1232,11 +1316,6 @@ export default function BookingsPage() {
       {/* ===== TAB 2: CATEGORIES ===== */}
       {activeTab === 'categories' && (
         <>
-          <div className="flex justify-end mb-6">
-            <button onClick={() => { setEditingCategory(null); setCategoryForm({ name: '', slug: '', description: '', icon: '📦', sortOrder: categories.length, isActive: true }); setShowCategoryForm(!showCategoryForm) }} className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-              <Plus className="w-5 h-5" /> Tambah Kategori Booking
-            </button>
-          </div>
           {showCategoryForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingCategory ? 'Edit Kategori Booking' : 'Tambah Kategori Booking'}</h2>
@@ -1291,7 +1370,6 @@ export default function BookingsPage() {
       {/* ===== TAB 3: TAGS ===== */}
       {activeTab === 'tags' && (
         <>
-          <div className="flex justify-end mb-6"><button onClick={() => { setEditingTag(null); setTagForm({ name: '', slug: '', color: 'bg-red-500' }); setShowTagForm(!showTagForm) }} className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"><Plus className="w-5 h-5" /> Tambah Tag Booking</button></div>
           {showTagForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingTag ? 'Edit Tag Booking' : 'Tambah Tag Booking'}</h2>
@@ -1324,12 +1402,6 @@ export default function BookingsPage() {
       {/* ===== TAB 4: VOUCHERS (PROMOS) ===== */}
       {activeTab === 'promos' && (
         <>
-          <div className="flex justify-end mb-6">
-            <button onClick={() => { setEditingPromo(null); setPromoForm({ code: '', discount: '', startDate: '', endDate: '', isActive: true }); setSelectedServiceIds([]); setShowPromoForm(!showPromoForm) }} className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-              <Plus className="w-5 h-5" /> Tambah Voucher
-            </button>
-          </div>
-
           {showPromoForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingPromo ? 'Edit Voucher' : 'Tambah Voucher'}</h2>

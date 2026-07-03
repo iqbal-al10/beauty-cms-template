@@ -643,10 +643,69 @@ export default function ProductsPage() {
     )
   }
 
+  // ===== RENDER HEADER BUTTON =====
+  const renderHeaderButton = () => {
+    switch (activeTab) {
+      case 'products':
+        return (
+          <Link
+            href="/admin/products/new"
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Produk
+          </Link>
+        )
+      case 'categories':
+        return (
+          <button
+            onClick={() => {
+              setEditingCategory(null)
+              setCategoryForm({ name: '', slug: '', sortOrder: categories.length, isActive: true })
+              setShowCategoryForm(!showCategoryForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Kategori
+          </button>
+        )
+      case 'tags':
+        return (
+          <button
+            onClick={() => {
+              setEditingTag(null)
+              setTagForm({ name: '', slug: '', color: 'bg-red-500' })
+              setShowTagForm(!showTagForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Tag
+          </button>
+        )
+      case 'promos':
+        return (
+          <button
+            onClick={() => {
+              setEditingPromo(null)
+              setPromoForm({ code: '', discount: '', startDate: '', endDate: '', isActive: true })
+              setSelectedProductIds([])
+              setShowPromoForm(!showPromoForm)
+            }}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+          >
+            <Plus className="w-5 h-5" /> Tambah Voucher
+          </button>
+        )
+      default:
+        return null
+    }
+  }
+
   return (
     <div>
+      {/* ===== HEADER WITH BUTTON ===== */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">📦 Products</h1>
+        {renderHeaderButton()}
       </div>
 
       {/* TABS */}
@@ -668,7 +727,7 @@ export default function ProductsPage() {
       {/* ===== TAB 1: PRODUCTS ===== */}
       {activeTab === 'products' && (
         <>
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4 mb-6">
             <div className="flex flex-wrap gap-2 flex-1">
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
@@ -694,12 +753,6 @@ export default function ProductsPage() {
                 </select>
               </div>
             </div>
-            <Link
-              href="/admin/products/new"
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5" /> Tambah Produk
-            </Link>
           </div>
 
           {selectedIds.length > 0 && (
@@ -874,19 +927,6 @@ export default function ProductsPage() {
       {/* ===== TAB 2: CATEGORIES ===== */}
       {activeTab === 'categories' && (
         <>
-          <div className="flex justify-end mb-6">
-            <button 
-              onClick={() => { 
-                setEditingCategory(null); 
-                setCategoryForm({ name: '', slug: '', sortOrder: categories.length, isActive: true }); 
-                setShowCategoryForm(!showCategoryForm) 
-              }} 
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" /> Tambah Kategori
-            </button>
-          </div>
-
           {showCategoryForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingCategory ? 'Edit Kategori' : 'Tambah Kategori'}</h2>
@@ -1004,19 +1044,6 @@ export default function ProductsPage() {
       {/* ===== TAB 3: TAGS ===== */}
       {activeTab === 'tags' && (
         <>
-          <div className="flex justify-end mb-6">
-            <button 
-              onClick={() => { 
-                setEditingTag(null); 
-                setTagForm({ name: '', slug: '', color: 'bg-red-500' }); 
-                setShowTagForm(!showTagForm) 
-              }} 
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" /> Tambah Tag
-            </button>
-          </div>
-
           {showTagForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingTag ? 'Edit Tag' : 'Tambah Tag'}</h2>
@@ -1134,20 +1161,6 @@ export default function ProductsPage() {
       {/* ===== TAB 4: VOUCHERS (PROMOS) ===== */}
       {activeTab === 'promos' && (
         <>
-          <div className="flex justify-end mb-6">
-            <button 
-              onClick={() => { 
-                setEditingPromo(null); 
-                setPromoForm({ code: '', discount: '', startDate: '', endDate: '', isActive: true }); 
-                setSelectedProductIds([]); 
-                setShowPromoForm(!showPromoForm) 
-              }} 
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-            >
-              <Plus className="w-5 h-5" /> Tambah Voucher
-            </button>
-          </div>
-
           {showPromoForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingPromo ? 'Edit Voucher' : 'Tambah Voucher'}</h2>

@@ -361,10 +361,46 @@ export default function ReviewsPage() {
     )
   }
 
+  // ===== RENDER HEADER BUTTON =====
+  const renderHeaderButton = () => {
+    return (
+      <button
+        onClick={() => {
+          if (activeTab === 'product') {
+            setEditingProduct(null)
+            setProductForm({
+              productId: '',
+              customerName: '',
+              rating: 5,
+              comment: '',
+              isPublished: true,
+            })
+            setShowProductForm(!showProductForm)
+          } else {
+            setEditingService(null)
+            setServiceForm({
+              serviceId: '',
+              customerName: '',
+              rating: 5,
+              comment: '',
+              isPublished: true,
+            })
+            setShowServiceForm(!showServiceForm)
+          }
+        }}
+        className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
+      >
+        <Plus className="w-5 h-5" /> Add Review
+      </button>
+    )
+  }
+
   return (
     <div>
+      {/* ===== HEADER WITH BUTTON ===== */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Reviews</h1>
+        {renderHeaderButton()}
       </div>
 
       {/* TABS */}
@@ -396,25 +432,7 @@ export default function ReviewsPage() {
       {/* ===== TAB 1: PRODUCT REVIEWS ===== */}
       {activeTab === 'product' && (
         <>
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                setEditingProduct(null)
-                setProductForm({
-                  productId: '',
-                  customerName: '',
-                  rating: 5,
-                  comment: '',
-                  isPublished: true,
-                })
-                setShowProductForm(!showProductForm)
-              }}
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Add Review
-            </button>
-          </div>
+          {/* Tombol sudah di header, jadi tidak ada tombol di sini */}
 
           {showProductForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
@@ -562,25 +580,7 @@ export default function ReviewsPage() {
       {/* ===== TAB 2: SERVICE REVIEWS ===== */}
       {activeTab === 'service' && (
         <>
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => {
-                setEditingService(null)
-                setServiceForm({
-                  serviceId: '',
-                  customerName: '',
-                  rating: 5,
-                  comment: '',
-                  isPublished: true,
-                })
-                setShowServiceForm(!showServiceForm)
-              }}
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Add Review
-            </button>
-          </div>
+          {/* Tombol sudah di header, jadi tidak ada tombol di sini */}
 
           {showServiceForm && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
