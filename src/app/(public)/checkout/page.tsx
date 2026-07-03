@@ -39,7 +39,6 @@ interface ShippingCost {
   freeShippingThreshold: number
 }
 
-// Content component yang menggunakan useSearchParams
 function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -70,7 +69,6 @@ function CheckoutContent() {
   })
 
   useEffect(() => {
-    // Load customer data from localStorage
     const customerData = localStorage.getItem('beauty_customer')
     if (customerData) {
       try {
@@ -87,11 +85,9 @@ function CheckoutContent() {
       } catch (e) {}
     }
 
-    // Check if coming from product detail (single product)
     if (productId) {
       fetchSingleProduct(productId, initialQuantity)
     } else {
-      // Load cart from localStorage
       const saved = localStorage.getItem('beauty_cart')
       if (saved) {
         const items = JSON.parse(saved)
@@ -232,8 +228,6 @@ function CheckoutContent() {
         setVoucherApplied(true)
         setVoucherError('')
         toast.success(`✅ Voucher ${data.code} berhasil! Potongan Rp ${discountValue.toLocaleString()}`)
-        
-        console.log('💰 Voucher applied:', { code: data.code, discount: discountValue })
       }
     } catch (error) {
       console.error('Error applying voucher:', error)
@@ -250,11 +244,9 @@ function CheckoutContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('🔄 Submit button clicked')
     
     setErrorMessage('')
 
-    // Validasi form
     if (!form.customerName.trim()) {
       const msg = 'Nama lengkap wajib diisi'
       setErrorMessage(msg)
@@ -277,7 +269,6 @@ function CheckoutContent() {
       const msg = 'Silakan pilih metode pembayaran terlebih dahulu'
       setErrorMessage(msg)
       toast.error(msg)
-      document.getElementById('payment-method-section')?.scrollIntoView({ behavior: 'smooth' })
       return
     }
 
@@ -289,13 +280,8 @@ function CheckoutContent() {
       const appliedDiscount = voucherApplied ? voucherDiscount : 0
       const total = subtotal + shipping - appliedDiscount
 
-      console.log('💰 Order calculation:', {
-        subtotal,
-        shipping,
-        voucherDiscount: appliedDiscount,
-        voucherApplied,
-        total,
-      })
+      // Get selected payment method details
+      const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
 
       const orderData = {
         customerName: form.customerName,
@@ -309,6 +295,9 @@ function CheckoutContent() {
         discountAmount: appliedDiscount,
         total,
         paymentMethod: form.paymentMethod,
+        paymentMethodName: selectedPayment?.name || '',
+        paymentAccountNumber: selectedPayment?.accountNumber || '',
+        paymentAccountName: selectedPayment?.accountName || '',
         note: form.note || '',
         voucherCode: voucherApplied ? voucherCode : '',
         items: cartItems.map(item => ({
@@ -319,8 +308,6 @@ function CheckoutContent() {
           compareAtPrice: item.compareAtPrice || null,
         })),
       }
-
-      console.log('📦 Order data:', JSON.stringify(orderData, null, 2))
 
       const res = await fetch('/api/orders', {
         method: 'POST',
@@ -334,7 +321,6 @@ function CheckoutContent() {
         throw new Error(data.error || 'Gagal membuat pesanan')
       }
 
-      // Save customer data to localStorage
       localStorage.setItem('beauty_customer', JSON.stringify({
         customerName: form.customerName,
         customerWhatsapp: form.customerWhatsapp,
@@ -344,7 +330,6 @@ function CheckoutContent() {
         postalCode: form.postalCode,
       }))
 
-      // Clear cart if not single product
       if (!productId) {
         localStorage.removeItem('beauty_cart')
         window.dispatchEvent(new Event('cartUpdate'))
@@ -394,7 +379,6 @@ function CheckoutContent() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
             {/* Customer Info */}
@@ -515,20 +499,20 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* Payment Method */}
+            {/* Payment Method - DENGAN DETAIL */}
             <div id="payment-method-section">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Metode Pembayaran *
                 <span className="text-red-500 ml-1">(wajib dipilih)</span>
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {paymentMethods.length === 0 ? (
                   <p className="text-gray-500 col-span-full">Belum ada metode pembayaran. Silakan hubungi admin.</p>
                 ) : (
                   paymentMethods.map((method) => (
                     <label
                       key={method.id}
-                      className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+                      className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
                         form.paymentMethod === method.id
                           ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500'
                           : 'border-gray-200 hover:border-gray-300'
@@ -540,13 +524,25 @@ function CheckoutContent() {
                         value={method.id}
                         checked={form.paymentMethod === method.id}
                         onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-                        className="w-4 h-4 text-pink-500"
+                        className="w-4 h-4 text-pink-500 mt-1"
                       />
                       <div className="flex-1">
-                        <p className="font-medium text-gray-800 text-sm">{method.name}</p>
+                        <p className="font-medium text-gray-800">{method.name}</p>
                         <p className="text-xs text-gray-500">{method.type}</p>
                         {method.accountNumber && (
-                          <p className="text-xs text-gray-400">No: {method.accountNumber}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            No Rekening/Akun: <span className="font-mono">{method.accountNumber}</span>
+                          </p>
+                        )}
+                        {method.accountName && (
+                          <p className="text-xs text-gray-600">
+                            a.n: {method.accountName}
+                          </p>
+                        )}
+                        {method.qrCodeUrl && method.type === 'QRIS' && (
+                          <div className="mt-2">
+                            <img src={method.qrCodeUrl} alt="QRIS" className="w-20 h-20 object-contain" />
+                          </div>
                         )}
                       </div>
                     </label>
@@ -607,7 +603,6 @@ function CheckoutContent() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
                         
-                        {/* Quantity Control */}
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -627,7 +622,6 @@ function CheckoutContent() {
                           <span className="text-xs text-gray-400 ml-1">/ {item.stock} tersedia</span>
                         </div>
                         
-                        {/* Harga dengan coret */}
                         <div className="flex flex-wrap items-center gap-2 mt-1">
                           <p className="text-sm font-bold text-pink-500">
                             Rp {displayPrice.toLocaleString()}
@@ -639,7 +633,6 @@ function CheckoutContent() {
                           )}
                         </div>
                         
-                        {/* Hemat per item */}
                         {hasCompare && savings > 0 && (
                           <p className="text-xs text-green-600">
                             Hemat Rp {savings.toLocaleString()} / item
@@ -651,7 +644,6 @@ function CheckoutContent() {
                       </p>
                     </div>
                     
-                    {/* Total per item dengan coret */}
                     {hasCompare && compareTotal > itemTotal && (
                       <div className="text-right text-xs text-gray-400 mt-1">
                         <span className="line-through">Rp {compareTotal.toLocaleString()}</span>
@@ -710,7 +702,6 @@ function CheckoutContent() {
   )
 }
 
-// Main page dengan Suspense
 export default function CheckoutPage() {
   return (
     <Suspense fallback={

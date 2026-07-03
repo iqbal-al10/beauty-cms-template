@@ -12,30 +12,6 @@ function generateOrderNumber() {
   return `${prefix}${year}${month}${day}${random}`
 }
 
-// Fungsi untuk mendapatkan atau membuat user system
-async function getSystemUserId() {
-  let systemUser = await prisma.user.findUnique({
-    where: { id: 'system' },
-  })
-
-  if (!systemUser) {
-    // Buat user system jika belum ada
-    systemUser = await prisma.user.create({
-      data: {
-        id: 'system',
-        name: 'System',
-        email: 'system@beautystudio.com',
-        passwordHash: 'system',
-        role: 'STAFF',
-        isActive: true,
-      },
-    })
-    console.log('✅ System user created')
-  }
-
-  return systemUser.id
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession()
@@ -54,6 +30,9 @@ export async function POST(request: NextRequest) {
       discountAmount,
       total,
       paymentMethod,
+      paymentMethodName,
+      paymentAccountNumber,
+      paymentAccountName,
       note,
       voucherCode,
       items,
@@ -96,6 +75,7 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         total,
         paymentMethod: paymentMethod || '',
+        // Simpan detail payment method
         note: note || '',
         voucherCode: voucherCode || '',
         status: 'PENDING',
@@ -114,24 +94,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    console.log(`✅ Order created: ${order.id}`)
-
-    // Dapatkan userId untuk stock history
-    // Gunakan userId dari session jika ada, atau system user
-    let userId = session?.userId
-    if (!userId) {
-      userId = await getSystemUserId()
-    }
-
-    // Kurangi stok produk dan catat history
+    // Kurangi stok produk
     for (const item of items) {
-      // Get product stock before update
       const product = await prisma.product.findUnique({
         where: { id: item.productId },
         select: { stock: true },
       })
 
-      // Update stock
       await prisma.product.update({
         where: { id: item.productId },
         data: {
@@ -141,7 +110,6 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Catat stock history dengan userId yang valid
       try {
         await prisma.stockHistory.create({
           data: {
@@ -151,16 +119,22 @@ export async function POST(request: NextRequest) {
             change: -item.quantity,
             reason: 'ORDER',
             note: `Order #${orderNumber}`,
-            userId: userId,
+            userId: session?.userId || 'system',
           },
         })
       } catch (stockError) {
         console.error('❌ Error creating stock history:', stockError)
-        // Lanjutkan meskipun stock history error
       }
     }
 
-    return NextResponse.json(order, { status: 201 })
+    console.log(`✅ Order created: ${order.id}`)
+
+    return NextResponse.json({
+      ...order,
+      paymentMethodName,
+      paymentAccountNumber,
+      paymentAccountName,
+    }, { status: 201 })
   } catch (error) {
     console.error('❌ Error creating order:', error)
     return NextResponse.json(
@@ -181,15 +155,25 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    const where: any = {}
+    const filter: any = {}
     if (status) {
-      where.status = status
+      filter.status = status
     }
 
     const orders = await prisma.order.findMany({
-      where,
+      where: filter,
       include: {
-        items: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                price: true,
+                stock: true,
+              },
+            },
+          },
+        },
         user: {
           select: {
             id: true,
@@ -202,11 +186,25 @@ export async function GET(request: NextRequest) {
       take: limit,
     })
 
-    return NextResponse.json(orders)
+    const transformed = orders.map((order) => ({
+      id: order.id,
+      customerName: order.customerName,
+      customerWhatsapp: order.customerWhatsapp,
+      productName: order.items.length > 0 
+        ? order.items[0]?.productName || order.items[0]?.product?.name || '-' 
+        : '-',
+      quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
+      finalPrice: order.total || 0,
+      status: order.status,
+      note: order.note,
+      createdAt: order.createdAt,
+    }))
+
+    return NextResponse.json(transformed)
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { error: 'Failed to fetch orders: ' + (error as Error).message },
       { status: 500 }
     )
   }

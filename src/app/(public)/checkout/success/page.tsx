@@ -1,6 +1,5 @@
 'use client'
 
-import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -28,14 +27,16 @@ interface Order {
   discountAmount: number
   total: number
   paymentMethod: string
+  paymentMethodName: string
+  paymentAccountNumber: string
+  paymentAccountName: string
   status: string
   note: string | null
   createdAt: string
   items: OrderItem[]
 }
 
-// Content component yang menggunakan useSearchParams
-function CheckoutSuccessContent() {
+export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const orderId = searchParams.get('orderId')
@@ -92,13 +93,9 @@ function CheckoutSuccessContent() {
     })
   }
 
-  const getPaymentInstruction = (paymentMethodName: string) => {
-    return `Silakan transfer ke rekening yang tertera sesuai dengan nominal yang harus dibayar. Setelah transfer, kirim bukti transfer ke WhatsApp admin.`
-  }
-
   const getWhatsAppMessage = () => {
     if (!order) return ''
-    const message = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A%0A📎 *Berikut bukti pembayaran saya.*%0A%0ATerima kasih.`
+    const message = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A💳 *Metode:* ${order.paymentMethodName || order.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*%0A%0ATerima kasih.`
     return message
   }
 
@@ -154,7 +151,7 @@ function CheckoutSuccessContent() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Metode Pembayaran</span>
-            <span className="font-medium">{order.paymentMethod || '-'}</span>
+            <span className="font-medium">{order.paymentMethodName || order.paymentMethod || '-'}</span>
           </div>
         </div>
 
@@ -216,20 +213,26 @@ function CheckoutSuccessContent() {
         </div>
       </div>
 
-      {/* Payment Instructions */}
-      {order.paymentMethod && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
-          <h2 className="text-lg font-semibold text-blue-800 mb-2">💳 Instruksi Pembayaran</h2>
-          <p className="text-sm text-blue-700">{getPaymentInstruction(order.paymentMethod)}</p>
-          <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
-            <p className="text-sm font-medium">Nominal yang harus dibayar:</p>
-            <p className="text-2xl font-bold text-pink-500">Rp {order.total.toLocaleString()}</p>
-          </div>
-          <p className="text-xs text-blue-600 mt-3">
-            ⚠️ Gunakan nominal yang sesuai untuk memudahkan verifikasi
-          </p>
+      {/* Payment Details - DENGAN DETAIL METODE */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+        <h2 className="text-lg font-semibold text-blue-800 mb-2">💳 Detail Pembayaran</h2>
+        <div className="space-y-1 text-sm">
+          <p><span className="text-gray-600">Metode:</span> <span className="font-medium">{order.paymentMethodName || order.paymentMethod || '-'}</span></p>
+          {order.paymentAccountNumber && (
+            <p><span className="text-gray-600">No Rekening/Akun:</span> <span className="font-mono font-medium">{order.paymentAccountNumber}</span></p>
+          )}
+          {order.paymentAccountName && (
+            <p><span className="text-gray-600">a.n:</span> <span className="font-medium">{order.paymentAccountName}</span></p>
+          )}
         </div>
-      )}
+        <div className="mt-4 p-4 bg-white rounded-lg border border-blue-200">
+          <p className="text-sm font-medium">Nominal yang harus dibayar:</p>
+          <p className="text-2xl font-bold text-pink-500">Rp {order.total.toLocaleString()}</p>
+        </div>
+        <p className="text-xs text-blue-600 mt-3">
+          ⚠️ Gunakan nominal yang sesuai untuk memudahkan verifikasi
+        </p>
+      </div>
 
       {/* WhatsApp Payment Proof Button */}
       {cleanWhatsapp && (
@@ -274,18 +277,5 @@ function CheckoutSuccessContent() {
         </Link>
       </div>
     </div>
-  )
-}
-
-// Main page dengan Suspense
-export default function CheckoutSuccessPage() {
-  return (
-    <Suspense fallback={
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
-      </div>
-    }>
-      <CheckoutSuccessContent />
-    </Suspense>
   )
 }

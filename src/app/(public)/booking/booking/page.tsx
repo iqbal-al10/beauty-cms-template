@@ -179,6 +179,9 @@ function BookingServiceContent() {
       return
     }
 
+    // Get selected payment method details
+    const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
+
     try {
       const res = await fetch('/api/public/bookings', {
         method: 'POST',
@@ -187,6 +190,9 @@ function BookingServiceContent() {
           ...form,
           voucherCode: voucherApplied ? voucherCode : null,
           paymentMethod: form.paymentMethod,
+          paymentMethodName: selectedPayment?.name || '',
+          paymentAccountNumber: selectedPayment?.accountNumber || '',
+          paymentAccountName: selectedPayment?.accountName || '',
         }),
       })
 
@@ -223,7 +229,8 @@ function BookingServiceContent() {
 
   if (submitted && bookingData) {
     const adminWhatsapp = '6285710379820'
-    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Pembayaran:* ${form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
+    const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
+    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Metode:* ${selectedPayment?.name || form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
 
     return (
       <div className="container mx-auto px-4 py-12 max-w-2xl">
@@ -266,9 +273,21 @@ function BookingServiceContent() {
               </div>
             )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Metode</span>
-              <span className="font-medium">{form.paymentMethod}</span>
+              <span className="text-gray-500">Metode Pembayaran</span>
+              <span className="font-medium">{selectedPayment?.name || form.paymentMethod}</span>
             </div>
+            {selectedPayment?.accountNumber && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">No Rekening/Akun</span>
+                <span className="font-mono font-medium">{selectedPayment.accountNumber}</span>
+              </div>
+            )}
+            {selectedPayment?.accountName && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">a.n</span>
+                <span className="font-medium">{selectedPayment.accountName}</span>
+              </div>
+            )}
           </div>
 
           {/* Tombol Upload Bukti via WhatsApp */}
@@ -526,17 +545,17 @@ function BookingServiceContent() {
               )}
             </div>
 
-            {/* Metode Pembayaran */}
+            {/* Metode Pembayaran - DENGAN DETAIL */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran *</label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {paymentMethods.length === 0 ? (
                   <p className="text-gray-500 col-span-full text-sm">Belum ada metode pembayaran</p>
                 ) : (
                   paymentMethods.map((method) => (
                     <label
                       key={method.id}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
+                      className={`flex items-start gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
                         form.paymentMethod === method.id
                           ? 'border-pink-500 bg-pink-50 ring-2 ring-pink-500'
                           : 'border-gray-200 hover:border-gray-300'
@@ -548,11 +567,26 @@ function BookingServiceContent() {
                         value={method.id}
                         checked={form.paymentMethod === method.id}
                         onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
-                        className="w-4 h-4 text-pink-500"
+                        className="w-4 h-4 text-pink-500 mt-1"
                       />
                       <div className="flex-1 text-sm">
                         <p className="font-medium">{method.name}</p>
                         <p className="text-xs text-gray-500">{method.type}</p>
+                        {method.accountNumber && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            No: <span className="font-mono">{method.accountNumber}</span>
+                          </p>
+                        )}
+                        {method.accountName && (
+                          <p className="text-xs text-gray-600">
+                            a.n: {method.accountName}
+                          </p>
+                        )}
+                        {method.qrCodeUrl && method.type === 'QRIS' && (
+                          <div className="mt-2">
+                            <img src={method.qrCodeUrl} alt="QRIS" className="w-16 h-16 object-contain" />
+                          </div>
+                        )}
                       </div>
                     </label>
                   ))
