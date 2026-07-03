@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Edit, Trash2, Eye, Layers, RefreshCw, Check, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Layers, RefreshCw, Check, X, Image as ImageIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ===== INTERFACES =====
@@ -21,6 +21,7 @@ interface BlogPost {
   metaDescription: string | null
   canonicalUrl: string | null
   ogImageUrl: string | null
+  coverImageUrl: string | null
 }
 
 interface BlogCategory {
@@ -33,17 +34,29 @@ interface BlogCategory {
   _count?: { posts: number }
 }
 
+interface MediaFile {
+  id: string
+  url: string
+  fileName: string
+  folder: string | null
+}
+
 type TabType = 'posts' | 'categories'
 
 export default function BlogPage() {
   const [activeTab, setActiveTab] = useState<TabType>('posts')
+
+  // ===== MEDIA PICKER STATE =====
+  const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  const [mediaSearch, setMediaSearch] = useState('')
+  const [mediaLoading, setMediaLoading] = useState(false)
 
   // ===== POST STATE =====
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [loadingPosts, setLoadingPosts] = useState(true)
   const [showPostForm, setShowPostForm] = useState(false)
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null)
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [postForm, setPostForm] = useState({
     title: '',
     slug: '',
@@ -52,6 +65,7 @@ export default function BlogPage() {
     status: 'DRAFT',
     publishedAt: '',
     categoryId: '',
+    coverImageUrl: '',
     metaTitle: '',
     metaDescription: '',
     canonicalUrl: '',
@@ -103,9 +117,25 @@ export default function BlogPage() {
     }
   }
 
+  const fetchMediaFiles = async () => {
+    try {
+      setMediaLoading(true)
+      const res = await fetch('/api/admin/media?limit=50')
+      if (res.ok) {
+        const data = await res.json()
+        setMediaFiles(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching media files:', error)
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchPosts()
     fetchCategories()
+    fetchMediaFiles()
   }, [])
 
   // ===== GENERATE SLUG =====
@@ -172,6 +202,7 @@ export default function BlogPage() {
       status: post.status,
       publishedAt: post.publishedAt ? post.publishedAt.split('T')[0] : '',
       categoryId: post.categoryId || '',
+      coverImageUrl: post.coverImageUrl || '',
       metaTitle: post.metaTitle || '',
       metaDescription: post.metaDescription || '',
       canonicalUrl: post.canonicalUrl || '',
@@ -191,12 +222,12 @@ export default function BlogPage() {
       status: 'DRAFT',
       publishedAt: '',
       categoryId: '',
+      coverImageUrl: '',
       metaTitle: '',
       metaDescription: '',
       canonicalUrl: '',
       ogImageUrl: '',
     })
-    setSelectedTagIds([])
   }
 
   const togglePostStatus = async (id: string, currentStatus: string, title: string) => {
@@ -268,7 +299,9 @@ export default function BlogPage() {
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!confirm(`Yakin ingin menghapus kategori "${name}"?`)) return
     try {
-      const res = await fetch(`/api/admin/blog-categories/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/blog-categories/${id}`, {
+        method: 'DELETE',
+      })
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || 'Failed to delete')
@@ -308,22 +341,36 @@ export default function BlogPage() {
   const toggleCategoryActive = async (id: string, currentStatus: boolean, name: string) => {
     try {
       const category = categories.find(c => c.id === id)
-      if (!category) return
+      if (!category) {
+        toast.error('Kategori tidak ditemukan')
+        return
+      }
+      
       const newStatus = !currentStatus
+      
       const res = await fetch(`/api/admin/blog-categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...category, isActive: newStatus }),
+        body: JSON.stringify({
+          name: category.name,
+          slug: category.slug,
+          description: category.description || '',
+          sortOrder: category.sortOrder,
+          isActive: newStatus,
+        }),
       })
+
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || 'Failed to update')
       }
+
       toast.success(`Kategori "${name}" ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}`)
-      fetchCategories()
+      
+      await fetchCategories()
     } catch (error: any) {
-      console.error('Error:', error)
-      toast.error(error.message || 'Gagal mengubah status')
+      console.error('Error toggling category:', error)
+      toast.error(error.message || 'Gagal mengubah status kategori')
     }
   }
 
@@ -339,6 +386,83 @@ export default function BlogPage() {
   // Count posts per category
   const getPostCount = (categoryId: string) => {
     return posts.filter(p => p.categoryId === categoryId && p.status === 'PUBLISHED').length
+  }
+
+  // ===== MEDIA PICKER COMPONENT =====
+  const MediaPicker = () => {
+    const filteredMedia = mediaFiles.filter(file => 
+      file.fileName.toLowerCase().includes(mediaSearch.toLowerCase())
+    )
+
+    const handleSelectImage = (url: string) => {
+      // Tentukan field mana yang akan diisi berdasarkan konteks
+      // Kita akan gunakan untuk coverImageUrl (prioritas utama)
+      setPostForm(prev => ({ ...prev, coverImageUrl: url }))
+      setShowMediaPicker(false)
+      toast.success('Gambar berhasil dipilih!')
+    }
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+          <div className="flex justify-between items-center p-4 border-b">
+            <h2 className="text-lg font-semibold text-gray-800">Pilih Gambar dari Media</h2>
+            <button
+              onClick={() => setShowMediaPicker(false)}
+              className="p-1 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="p-4">
+            <input
+              type="text"
+              placeholder="Cari gambar..."
+              value={mediaSearch}
+              onChange={(e) => setMediaSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {mediaLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+              </div>
+            ) : filteredMedia.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Belum ada gambar di media</p>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                {filteredMedia.map((file) => (
+                  <button
+                    key={file.id}
+                    onClick={() => handleSelectImage(file.url)}
+                    className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden hover:ring-2 hover:ring-pink-500 transition-all"
+                  >
+                    <img 
+                      src={file.url} 
+                      alt={file.fileName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                      {file.fileName}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 border-t text-sm text-gray-500">
+            Total: {filteredMedia.length} gambar
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loadingPosts || loadingCategories) {
@@ -365,12 +489,12 @@ export default function BlogPage() {
                 status: 'DRAFT',
                 publishedAt: '',
                 categoryId: '',
+                coverImageUrl: '',
                 metaTitle: '',
                 metaDescription: '',
                 canonicalUrl: '',
                 ogImageUrl: '',
               })
-              setSelectedTagIds([])
               setShowPostForm(!showPostForm)
             }}
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -514,6 +638,38 @@ export default function BlogPage() {
                     className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                   />
                 </div>
+
+                {/* ===== COVER IMAGE - DENGAN MEDIA PICKER ===== */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Cover Image</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={postForm.coverImageUrl}
+                      onChange={(e) => setPostForm({ ...postForm, coverImageUrl: e.target.value })}
+                      className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                      placeholder="https://example.com/cover-image.jpg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        fetchMediaFiles()
+                        setShowMediaPicker(true)
+                      }}
+                      className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      Pilih
+                    </button>
+                  </div>
+                  {postForm.coverImageUrl && (
+                    <div className="mt-2">
+                      <img src={postForm.coverImageUrl} alt="Cover Preview" className="w-32 h-32 object-cover rounded-lg border" />
+                    </div>
+                  )}
+                </div>
+
+                {/* ===== SEO FIELDS ===== */}
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
                   <div className="space-y-3">
@@ -549,16 +705,35 @@ export default function BlogPage() {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700">OG Image URL</label>
-                      <input
-                        type="text"
-                        value={postForm.ogImageUrl || ''}
-                        onChange={(e) => setPostForm({ ...postForm, ogImageUrl: e.target.value })}
-                        className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                        placeholder="https://example.com/og-image.jpg"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={postForm.ogImageUrl || ''}
+                          onChange={(e) => setPostForm({ ...postForm, ogImageUrl: e.target.value })}
+                          className="flex-1 mt-1 block px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                          placeholder="https://example.com/og-image.jpg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            fetchMediaFiles()
+                            setShowMediaPicker(true)
+                          }}
+                          className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors text-sm"
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                          Pilih
+                        </button>
+                      </div>
+                      {postForm.ogImageUrl && (
+                        <div className="mt-2">
+                          <img src={postForm.ogImageUrl} alt="OG Preview" className="w-32 h-32 object-cover rounded-lg border" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
+
                 <div className="flex gap-2">
                   <button
                     type="submit"
@@ -661,7 +836,7 @@ export default function BlogPage() {
         </>
       )}
 
-      {/* ===== TAB 2: CATEGORIES (Seperti Products/Bookings) ===== */}
+      {/* ===== TAB 2: CATEGORIES ===== */}
       {activeTab === 'categories' && (
         <>
           {showCategoryForm && (
@@ -834,6 +1009,9 @@ export default function BlogPage() {
           </div>
         </>
       )}
+
+      {/* ===== MEDIA PICKER MODAL ===== */}
+      {showMediaPicker && <MediaPicker />}
     </div>
   )
 }

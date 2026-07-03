@@ -235,10 +235,14 @@ export default function HomePage() {
           fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
         ])
 
+        // 🔥 PERBAIKAN: Settings - merge data dari API ke state
         if (settingsRes && (settingsRes as Response).ok) {
           const data = await (settingsRes as Response).json()
-          setSettings({ ...DEFAULT_SETTINGS, ...data })
+          console.log('🔍 PUBLIC - Settings from API:', data)
+          // Merge data dari API ke state, jangan timpa dengan DEFAULT_SETTINGS
+          setSettings(prev => ({ ...prev, ...data }))
         } else {
+          // Jika gagal, gunakan DEFAULT_SETTINGS
           setSettings(DEFAULT_SETTINGS)
         }
 
@@ -331,8 +335,6 @@ export default function HomePage() {
     )
   }
 
-  const currentSlideData = slides[currentSlide]
-
   return (
     <div style={{ fontFamily: fontFamily }}>
       {/* ===== HERO SECTION - 2 KOLOM ===== */}
@@ -389,7 +391,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* ===== KANAN: CAROUSEL PROMO (Tanpa Panah, Diperbesar 30%, Menyatu) ===== */}
+            {/* ===== KANAN: CAROUSEL PROMO ===== */}
             <div className="relative w-full max-w-xl mx-auto lg:mx-0 lg:ml-auto">
               <div className="relative overflow-hidden rounded-2xl">
                 {/* Slide Container */}

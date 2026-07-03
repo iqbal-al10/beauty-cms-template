@@ -74,7 +74,6 @@ export async function PUT(
       )
     }
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -85,7 +84,6 @@ export async function PUT(
       )
     }
 
-    // Check unique code (if changed)
     if (code !== existing.code) {
       const codeExists = await prisma.promo.findUnique({
         where: { code: code.toUpperCase() },
@@ -98,12 +96,12 @@ export async function PUT(
       }
     }
 
-    // Update promo
     const promo = await prisma.promo.update({
       where: { id },
       data: {
         code: code.toUpperCase(),
         discount: parseFloat(discount),
+        type: 'PRODUCT',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
@@ -132,7 +130,7 @@ export async function PUT(
   } catch (error) {
     console.error('Error updating promo:', error)
     return NextResponse.json(
-      { error: 'Failed to update promo: ' + (error as Error).message },
+      { error: 'Failed to update promo' },
       { status: 500 }
     )
   }
@@ -150,7 +148,6 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -161,7 +158,6 @@ export async function DELETE(
       )
     }
 
-    // Delete promo (cascade will delete relations)
     await prisma.promo.delete({
       where: { id },
     })
@@ -170,7 +166,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting promo:', error)
     return NextResponse.json(
-      { error: 'Failed to delete promo: ' + (error as Error).message },
+      { error: 'Failed to delete promo' },
       { status: 500 }
     )
   }

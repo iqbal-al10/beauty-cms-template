@@ -247,6 +247,7 @@ model BlogCategory {
   slug        String    @unique
   description String?
   sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)  // ← FIELD INI PENTING!
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   posts       BlogPost[]
@@ -299,6 +300,7 @@ model Promo {
   id            String    @id @default(cuid())
   code          String    @unique
   discount      Float
+  type          String    @default("PRODUCT")
   startDate     DateTime
   endDate       DateTime
   isActive      Boolean   @default(true)

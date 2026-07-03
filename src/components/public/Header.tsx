@@ -73,6 +73,7 @@ export default function Header({ settings }: HeaderProps) {
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
     { href: '/booking', label: 'Booking' },
+    { href: '/blog', label: 'Blog' }, // ← TAMBAHKAN BLOG
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ]

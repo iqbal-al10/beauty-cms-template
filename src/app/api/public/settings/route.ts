@@ -8,7 +8,6 @@ export async function GET() {
     })
 
     if (!settings) {
-      // Return default settings jika tidak ada di database
       return NextResponse.json({
         siteName: 'Beauty Studio',
         colorPrimary: '#c4367b',
@@ -27,10 +26,32 @@ export async function GET() {
         address: null,
         socialLinks: {},
         gaTrackingId: null,
+        // Hero fields default
+        heroBadge: '⭐ Premium Beauty Services',
+        heroSubtitle: 'Discover premium beauty services and products for your perfect look',
+        heroShopButtonText: 'Shop Now',
+        heroShopButtonLink: '/products',
+        heroBookButtonText: 'Book Now',
+        heroBookButtonLink: '/booking',
+        heroSlide1Icon: '🔥',
+        heroSlide1Label: 'Limited Time Offer',
+        heroSlide1Title: 'FLASH SALE 50% OFF',
+        heroSlide1Desc: 'Grab your favorite products at unbeatable prices',
+        heroSlide1Button: 'Grab Now',
+        heroSlide1Link: '/products',
+        heroSlide1BgStart: '#f97316',
+        heroSlide1BgEnd: '#db2777',
+        heroSlide2Icon: '📅',
+        heroSlide2Label: 'Book Now & Get Special Offer',
+        heroSlide2Title: 'FREE Consultation',
+        heroSlide2Desc: 'Book your appointment today and get free consultation',
+        heroSlide2Button: 'Book Now',
+        heroSlide2Link: '/booking',
+        heroSlide2BgStart: '#8b5cf6',
+        heroSlide2BgEnd: '#ec4899',
       })
     }
 
-    // Return hanya field yang dibutuhkan untuk public
     return NextResponse.json({
       siteName: settings.siteName,
       colorPrimary: settings.colorPrimary,
@@ -49,10 +70,34 @@ export async function GET() {
       address: settings.address,
       socialLinks: settings.socialLinks,
       gaTrackingId: settings.gaTrackingId,
+      // ===== HERO CONTENT =====
+      heroBadge: settings.heroBadge,
+      heroSubtitle: settings.heroSubtitle,
+      heroShopButtonText: settings.heroShopButtonText,
+      heroShopButtonLink: settings.heroShopButtonLink,
+      heroBookButtonText: settings.heroBookButtonText,
+      heroBookButtonLink: settings.heroBookButtonLink,
+      // ===== HERO SLIDE 1 =====
+      heroSlide1Icon: settings.heroSlide1Icon,
+      heroSlide1Label: settings.heroSlide1Label,
+      heroSlide1Title: settings.heroSlide1Title,
+      heroSlide1Desc: settings.heroSlide1Desc,
+      heroSlide1Button: settings.heroSlide1Button,
+      heroSlide1Link: settings.heroSlide1Link,
+      heroSlide1BgStart: settings.heroSlide1BgStart,
+      heroSlide1BgEnd: settings.heroSlide1BgEnd,
+      // ===== HERO SLIDE 2 =====
+      heroSlide2Icon: settings.heroSlide2Icon,
+      heroSlide2Label: settings.heroSlide2Label,
+      heroSlide2Title: settings.heroSlide2Title,
+      heroSlide2Desc: settings.heroSlide2Desc,
+      heroSlide2Button: settings.heroSlide2Button,
+      heroSlide2Link: settings.heroSlide2Link,
+      heroSlide2BgStart: settings.heroSlide2BgStart,
+      heroSlide2BgEnd: settings.heroSlide2BgEnd,
     })
   } catch (error) {
     console.error('Error fetching settings:', error)
-    // Return default settings on error
     return NextResponse.json({
       siteName: 'Beauty Studio',
       colorPrimary: '#c4367b',
@@ -71,6 +116,28 @@ export async function GET() {
       address: null,
       socialLinks: {},
       gaTrackingId: null,
+      heroBadge: '⭐ Premium Beauty Services',
+      heroSubtitle: 'Discover premium beauty services and products for your perfect look',
+      heroShopButtonText: 'Shop Now',
+      heroShopButtonLink: '/products',
+      heroBookButtonText: 'Book Now',
+      heroBookButtonLink: '/booking',
+      heroSlide1Icon: '🔥',
+      heroSlide1Label: 'Limited Time Offer',
+      heroSlide1Title: 'FLASH SALE 50% OFF',
+      heroSlide1Desc: 'Grab your favorite products at unbeatable prices',
+      heroSlide1Button: 'Grab Now',
+      heroSlide1Link: '/products',
+      heroSlide1BgStart: '#f97316',
+      heroSlide1BgEnd: '#db2777',
+      heroSlide2Icon: '📅',
+      heroSlide2Label: 'Book Now & Get Special Offer',
+      heroSlide2Title: 'FREE Consultation',
+      heroSlide2Desc: 'Book your appointment today and get free consultation',
+      heroSlide2Button: 'Book Now',
+      heroSlide2Link: '/booking',
+      heroSlide2BgStart: '#8b5cf6',
+      heroSlide2BgEnd: '#ec4899',
     })
   }
 }

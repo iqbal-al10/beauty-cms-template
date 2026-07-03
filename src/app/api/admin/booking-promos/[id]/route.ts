@@ -74,7 +74,6 @@ export async function PUT(
       )
     }
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -85,10 +84,9 @@ export async function PUT(
       )
     }
 
-    // Check unique code (if changed)
     if (code !== existing.code) {
       const codeExists = await prisma.promo.findUnique({
-        where: { code },
+        where: { code: code.toUpperCase() },
       })
       if (codeExists) {
         return NextResponse.json(
@@ -98,12 +96,13 @@ export async function PUT(
       }
     }
 
-    // Update promo
+    // 🔥 PASTIKAN TYPE TETAP "BOOKING"
     const promo = await prisma.promo.update({
       where: { id },
       data: {
         code: code.toUpperCase(),
         discount: parseFloat(discount),
+        type: 'BOOKING',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
@@ -150,7 +149,6 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -161,7 +159,6 @@ export async function DELETE(
       )
     }
 
-    // Delete promo (cascade will delete relations)
     await prisma.promo.delete({
       where: { id },
     })

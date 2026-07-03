@@ -9,12 +9,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // 🔥 HANYA TAMPILKAN TYPE "BOOKING"
     const promos = await prisma.promo.findMany({
-      where: {
-        services: {
-          some: {}, // Hanya ambil promo yang terhubung ke service
-        },
-      },
+      where: { type: 'BOOKING' },
       include: {
         services: {
           select: {
@@ -50,7 +47,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { code, discount, startDate, endDate, isActive, serviceIds } = body
 
-    // Validasi
     if (!code) {
       return NextResponse.json(
         { error: 'Kode voucher harus diisi' },
@@ -76,9 +72,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check unique code
     const existing = await prisma.promo.findUnique({
-      where: { code },
+      where: { code: code.toUpperCase() },
     })
     if (existing) {
       return NextResponse.json(
@@ -87,11 +82,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create promo with services
+    // 🔥 SIMPAN DENGAN TYPE "BOOKING"
     const promo = await prisma.promo.create({
       data: {
         code: code.toUpperCase(),
         discount: parseFloat(discount),
+        type: 'BOOKING',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
@@ -142,7 +138,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -153,10 +148,9 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check unique code (if changed)
     if (code !== existing.code) {
       const codeExists = await prisma.promo.findUnique({
-        where: { code },
+        where: { code: code.toUpperCase() },
       })
       if (codeExists) {
         return NextResponse.json(
@@ -166,12 +160,13 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Update promo
+    // 🔥 PASTIKAN TYPE TETAP "BOOKING"
     const promo = await prisma.promo.update({
       where: { id },
       data: {
         code: code.toUpperCase(),
         discount: parseFloat(discount),
+        type: 'BOOKING',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         isActive: isActive !== undefined ? isActive : true,
@@ -223,7 +218,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Check if promo exists
     const existing = await prisma.promo.findUnique({
       where: { id },
     })
@@ -234,7 +228,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Delete promo (cascade will delete relations)
     await prisma.promo.delete({
       where: { id },
     })

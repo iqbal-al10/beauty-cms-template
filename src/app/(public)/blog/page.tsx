@@ -55,6 +55,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
     }),
     prisma.blogPost.count({ where: filter }),
     prisma.blogCategory.findMany({
+      where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
     }),
   ])
@@ -79,8 +80,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <form action="/blog" method="GET" className="flex-1">
+      {/* ===== SEARCH ===== */}
+      <div className="mb-4">
+        <form action="/blog" method="GET" className="w-full">
           {categorySlug && (
             <input type="hidden" name="category" value={categorySlug} />
           )}
@@ -100,34 +102,35 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             </svg>
           </div>
         </form>
+      </div>
 
-        <div className="flex flex-wrap gap-2 items-center justify-center md:justify-end">
-          <a
-            href="/blog"
+      {/* ===== FILTER KATEGORI (SEPERTI PRODUCTS) ===== */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <a
+          href="/blog"
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            !categorySlug
+              ? 'text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          style={!categorySlug ? { backgroundColor: primaryColor } : {}}
+        >
+          All
+        </a>
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/blog?category=${category.slug}`}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !categorySlug
+              categorySlug === category.slug
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={!categorySlug ? { backgroundColor: primaryColor } : {}}
+            style={categorySlug === category.slug ? { backgroundColor: primaryColor } : {}}
           >
-            All
-          </a>
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              href={`/blog?category=${category.slug}`}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                categorySlug === category.slug
-                  ? 'text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              style={categorySlug === category.slug ? { backgroundColor: primaryColor } : {}}
-            >
-              {category.name}
-            </Link>
-          ))}
-        </div>
+            {category.name}
+          </Link>
+        ))}
       </div>
 
       <p className="text-sm text-gray-500 mb-6">

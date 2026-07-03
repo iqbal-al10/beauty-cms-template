@@ -115,6 +115,10 @@ export async function PUT(
       }
     }
 
+    // 🔥 FILTER: Hapus null/undefined dari arrays
+    const validTagIds = (tagIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
+    const validPromoIds = (promoIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
+
     // Hapus relasi lama
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
@@ -140,14 +144,14 @@ export async function PUT(
         canonicalUrl: canonicalUrl || null,
         ogImageUrl: ogImageUrl || null,
         tags: {
-          create: tagIds?.map((tagId: string) => ({
+          create: validTagIds.map((tagId: string) => ({
             tag: { connect: { id: tagId } },
-          })) || [],
+          })),
         },
         promos: {
-          create: promoIds?.map((promoId: string) => ({
+          create: validPromoIds.map((promoId: string) => ({
             promo: { connect: { id: promoId } },
-          })) || [],
+          })),
         },
       },
       include: {
@@ -193,7 +197,6 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Check if service exists
     const existing = await prisma.service.findUnique({
       where: { id },
     })
@@ -204,7 +207,6 @@ export async function DELETE(
       )
     }
 
-    // Hapus relasi - gunakan model yang benar: PromoBooking
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })
@@ -212,7 +214,6 @@ export async function DELETE(
       where: { serviceId: id },
     })
 
-    // Hapus service
     await prisma.service.delete({
       where: { id },
     })

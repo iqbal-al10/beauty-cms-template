@@ -455,7 +455,7 @@ export default function SettingsPage() {
   return (
     <div>
       {/* ===== JUDUL (TIDAK FIXED) ===== */}
-      <div className="mb-6">
+      <div className="mb-2">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <SettingsIcon className="w-6 h-6 text-pink-500" />
           Setting Management
@@ -463,7 +463,7 @@ export default function SettingsPage() {
       </div>
 
       {/* ===== TOMBOL FIXED (HANYA TOMBOL) ===== */}
-      <div className="sticky top-0 z-20 -mx-6 px-6 py-3 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
+      <div className="sticky top-[-20px] z-20 -mx-6 px-6 py-1 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
         <div className="flex justify-end items-center gap-3">
           <button
             onClick={() => setIsPreviewOpen(true)}

@@ -90,7 +90,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check slug unique
     const existing = await prisma.service.findUnique({
       where: { slug },
     })
@@ -100,6 +99,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // 🔥 FILTER: Hapus null/undefined dari arrays
+    const validTagIds = (tagIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
+    const validPromoIds = (promoIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
 
     const service = await prisma.service.create({
       data: {
@@ -117,14 +120,14 @@ export async function POST(request: NextRequest) {
         canonicalUrl: canonicalUrl || null,
         ogImageUrl: ogImageUrl || null,
         tags: {
-          create: tagIds?.map((tagId: string) => ({
+          create: validTagIds.map((tagId: string) => ({
             tag: { connect: { id: tagId } },
-          })) || [],
+          })),
         },
         promos: {
-          create: promoIds?.map((promoId: string) => ({
+          create: validPromoIds.map((promoId: string) => ({
             promo: { connect: { id: promoId } },
-          })) || [],
+          })),
         },
       },
       include: {
@@ -192,7 +195,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check if service exists
     const existing = await prisma.service.findUnique({
       where: { id },
     })
@@ -203,7 +205,6 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Check slug unique (if changed)
     if (slug !== existing.slug) {
       const slugExists = await prisma.service.findUnique({
         where: { slug },
@@ -216,7 +217,10 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Hapus relasi lama - gunakan model yang benar: PromoBooking
+    // 🔥 FILTER: Hapus null/undefined dari arrays
+    const validTagIds = (tagIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
+    const validPromoIds = (promoIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
+
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })
@@ -241,14 +245,14 @@ export async function PUT(request: NextRequest) {
         canonicalUrl: canonicalUrl || null,
         ogImageUrl: ogImageUrl || null,
         tags: {
-          create: tagIds?.map((tagId: string) => ({
+          create: validTagIds.map((tagId: string) => ({
             tag: { connect: { id: tagId } },
-          })) || [],
+          })),
         },
         promos: {
-          create: promoIds?.map((promoId: string) => ({
+          create: validPromoIds.map((promoId: string) => ({
             promo: { connect: { id: promoId } },
-          })) || [],
+          })),
         },
       },
       include: {
@@ -299,7 +303,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Check if service exists
     const existing = await prisma.service.findUnique({
       where: { id },
     })
@@ -310,7 +313,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Hapus relasi - gunakan model yang benar: PromoBooking
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })
@@ -318,7 +320,6 @@ export async function DELETE(request: NextRequest) {
       where: { serviceId: id },
     })
 
-    // Hapus service
     await prisma.service.delete({
       where: { id },
     })
