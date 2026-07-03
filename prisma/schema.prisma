@@ -70,6 +70,34 @@ model Settings {
   siteDescription     String?
   siteKeywords        String?
   
+  // ===== HERO CONTENT =====
+  heroBadge          String?  @default("⭐ Premium Beauty Services")
+  heroSubtitle       String?  @default("Discover premium beauty services and products for your perfect look")
+  heroShopButtonText String?  @default("Shop Now")
+  heroShopButtonLink String?  @default("/products")
+  heroBookButtonText String?  @default("Book Now")
+  heroBookButtonLink String?  @default("/booking")
+  
+  // ===== HERO SLIDE 1 =====
+  heroSlide1Icon     String?  @default("🔥")
+  heroSlide1Label    String?  @default("Limited Time Offer")
+  heroSlide1Title    String?  @default("FLASH SALE 50% OFF")
+  heroSlide1Desc     String?  @default("Grab your favorite products at unbeatable prices")
+  heroSlide1Button   String?  @default("Grab Now")
+  heroSlide1Link     String?  @default("/products")
+  heroSlide1BgStart  String?  @default("#f97316")
+  heroSlide1BgEnd    String?  @default("#db2777")
+  
+  // ===== HERO SLIDE 2 =====
+  heroSlide2Icon     String?  @default("📅")
+  heroSlide2Label    String?  @default("Book Now & Get Special Offer")
+  heroSlide2Title    String?  @default("FREE Consultation")
+  heroSlide2Desc     String?  @default("Book your appointment today and get free consultation")
+  heroSlide2Button   String?  @default("Book Now")
+  heroSlide2Link     String?  @default("/booking")
+  heroSlide2BgStart  String?  @default("#8b5cf6")
+  heroSlide2BgEnd    String?  @default("#ec4899")
+  
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -400,9 +428,9 @@ model Order {
   discountAmount Float   @default(0)
   total        Float
   paymentMethod String?
-  paymentMethodName String?   // ← TAMBAHKAN
-  paymentAccountNumber String? // ← TAMBAHKAN
-  paymentAccountName String?   // ← TAMBAHKAN
+  paymentMethodName String?
+  paymentAccountNumber String?
+  paymentAccountName String?
   paymentProof String?
   status       String   @default("PENDING")
   note         String?

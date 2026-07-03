@@ -76,6 +76,31 @@ interface Settings {
   bodyFontSize: string
   smallFontSize: string
   fontFamily: string
+  // Hero Content
+  heroBadge: string
+  heroSubtitle: string
+  heroShopButtonText: string
+  heroShopButtonLink: string
+  heroBookButtonText: string
+  heroBookButtonLink: string
+  // Hero Slide 1
+  heroSlide1Icon: string
+  heroSlide1Label: string
+  heroSlide1Title: string
+  heroSlide1Desc: string
+  heroSlide1Button: string
+  heroSlide1Link: string
+  heroSlide1BgStart: string
+  heroSlide1BgEnd: string
+  // Hero Slide 2
+  heroSlide2Icon: string
+  heroSlide2Label: string
+  heroSlide2Title: string
+  heroSlide2Desc: string
+  heroSlide2Button: string
+  heroSlide2Link: string
+  heroSlide2BgStart: string
+  heroSlide2BgEnd: string
 }
 
 const PRESET_COLORS = [
@@ -110,6 +135,28 @@ const DEFAULT_SETTINGS: Settings = {
   bodyFontSize: '16px',
   smallFontSize: '14px',
   fontFamily: 'Inter',
+  heroBadge: '⭐ Premium Beauty Services',
+  heroSubtitle: 'Discover premium beauty services and products for your perfect look',
+  heroShopButtonText: 'Shop Now',
+  heroShopButtonLink: '/products',
+  heroBookButtonText: 'Book Now',
+  heroBookButtonLink: '/booking',
+  heroSlide1Icon: '🔥',
+  heroSlide1Label: 'Limited Time Offer',
+  heroSlide1Title: 'FLASH SALE 50% OFF',
+  heroSlide1Desc: 'Grab your favorite products at unbeatable prices',
+  heroSlide1Button: 'Grab Now',
+  heroSlide1Link: '/products',
+  heroSlide1BgStart: '#f97316',
+  heroSlide1BgEnd: '#db2777',
+  heroSlide2Icon: '📅',
+  heroSlide2Label: 'Book Now & Get Special Offer',
+  heroSlide2Title: 'FREE Consultation',
+  heroSlide2Desc: 'Book your appointment today and get free consultation',
+  heroSlide2Button: 'Book Now',
+  heroSlide2Link: '/booking',
+  heroSlide2BgStart: '#8b5cf6',
+  heroSlide2BgEnd: '#ec4899',
 }
 
 export default function HomePage() {
@@ -120,15 +167,49 @@ export default function HomePage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [latestBlogs, setLatestBlogs] = useState<BlogPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentSlide, setCurrentSlide] = useState(0)
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
   const secondaryColor = settings?.colorSecondary || '#f5dbe8'
   const buttonColor = settings?.colorButton || '#c4367b'
 
+  // Build slides from settings
+  const slides = [
+    {
+      id: 'slide1',
+      icon: settings.heroSlide1Icon || '🔥',
+      label: settings.heroSlide1Label || 'Limited Time Offer',
+      title: settings.heroSlide1Title || 'FLASH SALE 50% OFF',
+      description: settings.heroSlide1Desc || 'Grab your favorite products at unbeatable prices',
+      buttonText: settings.heroSlide1Button || 'Grab Now',
+      buttonLink: settings.heroSlide1Link || '/products',
+      bgStart: settings.heroSlide1BgStart || '#f97316',
+      bgEnd: settings.heroSlide1BgEnd || '#db2777',
+    },
+    {
+      id: 'slide2',
+      icon: settings.heroSlide2Icon || '📅',
+      label: settings.heroSlide2Label || 'Book Now & Get Special Offer',
+      title: settings.heroSlide2Title || 'FREE Consultation',
+      description: settings.heroSlide2Desc || 'Book your appointment today and get free consultation',
+      buttonText: settings.heroSlide2Button || 'Book Now',
+      buttonLink: settings.heroSlide2Link || '/booking',
+      bgStart: settings.heroSlide2BgStart || '#8b5cf6',
+      bgEnd: settings.heroSlide2BgEnd || '#ec4899',
+    },
+  ]
+
+  // Auto-slide effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [slides.length])
+
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch data secara paralel dengan timeout
         const fetchWithTimeout = (url: string, timeout = 5000) => {
           return Promise.race([
             fetch(url),
@@ -154,7 +235,6 @@ export default function HomePage() {
           fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
         ])
 
-        // Settings - selalu ada fallback
         if (settingsRes && (settingsRes as Response).ok) {
           const data = await (settingsRes as Response).json()
           setSettings({ ...DEFAULT_SETTINGS, ...data })
@@ -162,31 +242,26 @@ export default function HomePage() {
           setSettings(DEFAULT_SETTINGS)
         }
 
-        // Products
         if (productsRes && (productsRes as Response).ok) {
           const data = await (productsRes as Response).json()
           setFeaturedProducts(data.data || [])
         }
 
-        // Services
         if (servicesRes && (servicesRes as Response).ok) {
           const data = await (servicesRes as Response).json()
           setFeaturedServices(data || [])
         }
 
-        // Promos
         if (promosRes && (promosRes as Response).ok) {
           const data = await (promosRes as Response).json()
           setActivePromos(data || [])
         }
 
-        // Testimonials
         if (testimonialsRes && (testimonialsRes as Response).ok) {
           const data = await (testimonialsRes as Response).json()
           setTestimonials(data || [])
         }
 
-        // Blogs
         if (blogsRes && (blogsRes as Response).ok) {
           const data = await (blogsRes as Response).json()
           setLatestBlogs(data || [])
@@ -244,6 +319,10 @@ export default function HomePage() {
     }
   }
 
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -252,9 +331,11 @@ export default function HomePage() {
     )
   }
 
+  const currentSlideData = slides[currentSlide]
+
   return (
     <div style={{ fontFamily: fontFamily }}>
-      {/* Hero Section */}
+      {/* ===== HERO SECTION - 2 KOLOM ===== */}
       <section 
         className="relative min-h-[70vh] flex items-center overflow-hidden"
         style={{
@@ -271,41 +352,104 @@ export default function HomePage() {
           />
         ) : null}
         <div className="absolute inset-0 bg-black/20" />
+        
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-white/20">
-              <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
-              <span className="text-white text-sm font-medium" style={{ fontSize: smallFontSize }}>Premium Beauty Services</span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            {/* ===== KIRI: TEKS ===== */}
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-white/20">
+                <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+                <span className="text-white text-sm font-medium" style={{ fontSize: smallFontSize }}>
+                  {settings.heroBadge || '⭐ Premium Beauty Services'}
+                </span>
+              </div>
+              <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: headingFontSize }}>
+                {siteName}
+              </h1>
+              <p className="text-xl text-white/90 mb-8 drop-shadow-md max-w-lg mx-auto lg:mx-0" style={{ fontSize: bodyFontSize }}>
+                {settings.heroSubtitle || 'Discover premium beauty services and products for your perfect look'}
+              </p>
+              <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
+                <Link
+                  href={settings.heroShopButtonLink || '/products'}
+                  className="px-8 py-3 rounded-full text-white font-semibold text-lg transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-lg active:scale-95"
+                  style={{ backgroundColor: buttonColor, fontSize: bodyFontSize }}
+                >
+                  {settings.heroShopButtonText || 'Shop Now'}
+                </Link>
+                <Link
+                  href={settings.heroBookButtonLink || '/booking'}
+                  className="px-8 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-semibold text-lg border border-white/30 hover:bg-white/30 transition-all"
+                  style={{ fontSize: bodyFontSize }}
+                >
+                  {settings.heroBookButtonText || 'Book Now'}
+                </Link>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: headingFontSize }}>
-              {siteName}
-            </h1>
-            <p className="text-xl text-white/90 mb-8 drop-shadow-md max-w-lg" style={{ fontSize: bodyFontSize }}>
-              Discover premium beauty services and products for your perfect look
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/products"
-                className="px-8 py-3 rounded-full text-white font-semibold text-lg transition-all hover:opacity-90 hover:-translate-y-0.5 shadow-lg active:scale-95"
-                style={{ backgroundColor: buttonColor, fontSize: bodyFontSize }}
-              >
-                Shop Now
-              </Link>
-              <Link
-                href="/booking"
-                className="px-8 py-3 rounded-full bg-white/20 backdrop-blur-sm text-white font-semibold text-lg border border-white/30 hover:bg-white/30 transition-all"
-                style={{ fontSize: bodyFontSize }}
-              >
-                Book Now
-              </Link>
+
+            {/* ===== KANAN: CAROUSEL PROMO (Tanpa Panah, Diperbesar 30%, Menyatu) ===== */}
+            <div className="relative w-full max-w-xl mx-auto lg:mx-0 lg:ml-auto">
+              <div className="relative overflow-hidden rounded-2xl">
+                {/* Slide Container */}
+                <div 
+                  className="transition-transform duration-700 ease-in-out"
+                  style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                >
+                  <div className="flex">
+                    {slides.map((slide) => (
+                      <div
+                        key={slide.id}
+                        className="w-full flex-shrink-0 p-10 min-h-[380px] flex flex-col justify-center items-center text-center text-white"
+                        style={{
+                          background: `linear-gradient(135deg, ${slide.bgStart} 0%, ${slide.bgEnd} 100%)`,
+                        }}
+                      >
+                        <span className="text-7xl mb-4">{slide.icon}</span>
+                        <span className="inline-block px-4 py-1 text-sm font-semibold bg-white/20 backdrop-blur-sm rounded-full mb-3">
+                          {slide.label}
+                        </span>
+                        <h3 className="text-4xl md:text-5xl font-bold mb-2" style={{ fontSize: headingFontSize }}>
+                          {slide.title}
+                        </h3>
+                        <p className="text-white/80 text-lg mb-6" style={{ fontSize: bodyFontSize }}>
+                          {slide.description}
+                        </p>
+                        <Link
+                          href={slide.buttonLink}
+                          className="inline-block px-10 py-3.5 rounded-full bg-white text-gray-900 font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg active:scale-95"
+                          style={{ fontSize: bodyFontSize }}
+                        >
+                          {slide.buttonText} →
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dots Indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {slides.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`w-3 h-3 rounded-full transition-all ${
+                        index === currentSlide
+                          ? 'bg-white w-10'
+                          : 'bg-white/50 hover:bg-white/70'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* ===== FEATURED PRODUCTS ===== */}
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center mb-12">
@@ -427,7 +571,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Services */}
+      {/* ===== FEATURED SERVICES ===== */}
       {featuredServices.length > 0 && (
         <section className="py-16 bg-gray-50">
           <div className="container mx-auto px-4">
@@ -524,61 +668,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Promo Banner */}
-      {activePromos.length > 0 && (
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            {activePromos.map((promo) => (
-              <div
-                key={promo.id}
-                className="rounded-2xl overflow-hidden relative"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`,
-                }}
-              >
-                <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-10" />
-                <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex-1 text-center md:text-left text-white">
-                    <span className="inline-block px-4 py-1 text-xs font-semibold bg-white/20 backdrop-blur-sm rounded-full mb-4" style={{ fontSize: smallFontSize }}>
-                      🔥 Limited Time Offer
-                    </span>
-                    <h3 className="text-3xl md:text-4xl font-bold mb-2" style={{ fontSize: headingFontSize }}>
-                      {promo.title}
-                    </h3>
-                    {promo.discountValue && (
-                      <p className="text-4xl md:text-5xl font-extrabold mb-4" style={{ fontSize: headingFontSize }}>
-                        {promo.discountType === 'PERCENTAGE' 
-                          ? `${promo.discountValue}% OFF` 
-                          : `Rp ${promo.discountValue.toLocaleString()} OFF`}
-                      </p>
-                    )}
-                    <Link
-                      href="/promo"
-                      className="inline-block px-8 py-3 rounded-full bg-white text-gray-900 font-semibold transition-all hover:scale-105 hover:shadow-lg active:scale-95"
-                      style={{ fontSize: bodyFontSize }}
-                    >
-                      Grab Now
-                    </Link>
-                  </div>
-                  {promo.bannerUrl && (
-                    <div className="flex-shrink-0">
-                      <Image
-                        src={promo.bannerUrl}
-                        alt={promo.title}
-                        width={280}
-                        height={200}
-                        className="rounded-lg object-cover shadow-xl"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Testimonials */}
+      {/* ===== TESTIMONIALS ===== */}
       {testimonials.length > 0 && (
         <section className="py-16" style={{ backgroundColor: `${secondaryColor}30` }}>
           <div className="container mx-auto px-4">
@@ -634,7 +724,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Latest Blog */}
+      {/* ===== LATEST BLOG ===== */}
       {latestBlogs.length > 0 && (
         <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
@@ -718,7 +808,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* CTA Section */}
+      {/* ===== CTA SECTION ===== */}
       <section 
         className="py-16"
         style={{
