@@ -58,6 +58,7 @@ export async function generateMetadata({ params }: BookingDetailPageProps) {
 export default async function BookingDetailPage({ params }: BookingDetailPageProps) {
   const { slug } = await params
 
+  // PASTIKAN include reviews
   const service = await prisma.service.findUnique({
     where: { slug },
     include: {
@@ -100,6 +101,8 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
   const tags = service.tags?.map((st) => st.tag) || []
   const reviews = service.reviews || []
 
+  console.log(`📝 Reviews for ${service.name}:`, reviews.length)
+
   const relatedServices = await prisma.service.findMany({
     where: {
       categoryId: service.categoryId,
@@ -128,7 +131,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
 
   return (
     <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
-      {/* Breadcrumb - SAMA SEPERTI PRODUCT */}
+      {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2" style={{ fontSize: smallFontSize }}>
         <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
@@ -174,7 +177,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           <h1 className="text-3xl font-bold text-gray-800 mb-2" style={{ fontSize: headingFontSize }}>{service.name}</h1>
           <p className="text-gray-500 mb-4" style={{ fontSize: bodyFontSize }}>{service.category?.name}</p>
 
-          {/* RATING - SAMA SEPERTI PRODUCT */}
+          {/* RATING - TAMPILKAN JIKA ADA REVIEW */}
           {reviews.length > 0 && (
             <div className="flex items-center gap-2 mb-4">
               <div className="flex text-yellow-400">
@@ -214,7 +217,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             </div>
           )}
 
-          {/* TOMBOL - SAMA SEPERTI PRODUCT */}
+          {/* TOMBOL */}
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/booking/booking?service=${service.id}`}
@@ -240,7 +243,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             )}
           </div>
 
-          {/* SHARE - SAMA SEPERTI PRODUCT */}
+          {/* SHARE */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-500 mb-2" style={{ fontSize: smallFontSize }}>Share this service:</p>
             <div className="flex gap-2">
@@ -263,7 +266,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
         </div>
       </div>
 
-      {/* RELATED SERVICES - SAMA SEPERTI PRODUCT */}
+      {/* RELATED SERVICES */}
       {transformedRelated.length > 0 && (
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Layanan Terkait</h2>
@@ -318,7 +321,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
         </div>
       )}
 
-      {/* REVIEWS - SAMA SEPERTI PRODUCT */}
+      {/* REVIEWS - TAMPILKAN JIKA ADA */}
       {reviews.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Customer Reviews</h2>

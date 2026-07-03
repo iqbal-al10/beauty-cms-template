@@ -7,6 +7,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
 
     const order = await prisma.order.findUnique({
@@ -15,6 +20,13 @@ export async function GET(
         items: {
           include: {
             product: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
           },
         },
       },
@@ -37,7 +49,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -49,47 +61,93 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { status, paymentProof, approvedBy } = body
+    const { action, paymentProof } = body
 
-    const existing = await prisma.order.findUnique({
+    if (!action) {
+      return NextResponse.json(
+        { error: 'Action is required (approve/reject/paid)' },
+        { status: 400 }
+      )
+    }
+
+    const order = await prisma.order.findUnique({
       where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
     })
 
-    if (!existing) {
+    if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       )
     }
 
-    const updateData: any = {}
-    if (status) {
-      updateData.status = status
-      if (status === 'PAID') {
-        updateData.paidAt = new Date()
-      }
-      if (status === 'APPROVED' || status === 'REJECTED') {
-        updateData.approvedBy = approvedBy || session.userId
-        updateData.approvedAt = new Date()
-      }
+    let newStatus = order.status
+    if (action === 'approve') {
+      newStatus = 'APPROVED'
+    } else if (action === 'reject') {
+      newStatus = 'REJECTED'
+    } else if (action === 'paid') {
+      newStatus = 'PAID'
+    } else {
+      return NextResponse.json(
+        { error: 'Invalid action. Use "approve", "reject", or "paid"' },
+        { status: 400 }
+      )
     }
+
+    const updateData: any = {
+      status: newStatus,
+      approvedBy: session.userId,
+      approvedAt: new Date(),
+    }
+
     if (paymentProof) {
       updateData.paymentProof = paymentProof
     }
 
-    const order = await prisma.order.update({
+    if (action === 'paid') {
+      updateData.paidAt = new Date()
+    }
+
+    const updatedOrder = await prisma.order.update({
       where: { id },
       data: updateData,
       include: {
-        items: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
       },
     })
 
-    return NextResponse.json(order)
+    // Log activity
+    await prisma.activityLog.create({
+      data: {
+        userId: session.userId,
+        action: action.toUpperCase(),
+        entityType: 'Order',
+        entityId: order.id,
+        metadata: {
+          orderNumber: order.orderNumber,
+          status: newStatus,
+          customerName: order.customerName,
+        },
+      },
+    })
+
+    return NextResponse.json(updatedOrder)
   } catch (error) {
     console.error('Error updating order:', error)
     return NextResponse.json(
-      { error: 'Failed to update order' },
+      { error: 'Failed to update order: ' + (error as Error).message },
       { status: 500 }
     )
   }

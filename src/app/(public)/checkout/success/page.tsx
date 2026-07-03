@@ -62,6 +62,7 @@ function CheckoutSuccessContent() {
         throw new Error('Order not found')
       }
       const data = await res.json()
+      console.log('📦 Order data:', data)
       setOrder(data)
     } catch (error) {
       console.error('Error fetching order:', error)
@@ -122,6 +123,7 @@ function CheckoutSuccessContent() {
     )
   }
 
+  // Gunakan paymentMethodName, fallback ke paymentMethod jika kosong
   const methodName = order.paymentMethodName || order.paymentMethod || '-'
 
   return (
@@ -217,7 +219,7 @@ function CheckoutSuccessContent() {
         </div>
       </div>
 
-      {/* Payment Details - TAMPILKAN METODE YANG DIPILIH */}
+      {/* Payment Details */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold text-blue-800 mb-2">💳 Detail Pembayaran</h2>
         <div className="space-y-1 text-sm">

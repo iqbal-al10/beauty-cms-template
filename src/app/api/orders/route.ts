@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderNumber()
     console.log(`📋 Creating order #${orderNumber}`)
 
-    // Create order
+    // Create order dengan semua field termasuk payment detail
     const order = await prisma.order.create({
       data: {
         orderNumber,
@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         total,
         paymentMethod: paymentMethod || '',
+        paymentMethodName: paymentMethodName || '',
+        paymentAccountNumber: paymentAccountNumber || '',
+        paymentAccountName: paymentAccountName || '',
         note: note || '',
         voucherCode: voucherCode || '',
         status: 'PENDING',
@@ -127,14 +130,10 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`✅ Order created: ${order.id}`)
+    console.log(`✅ Payment Method Name: ${paymentMethodName}`)
 
-    // Return order dengan detail payment method
-    return NextResponse.json({
-      ...order,
-      paymentMethodName: paymentMethodName || '',
-      paymentAccountNumber: paymentAccountNumber || '',
-      paymentAccountName: paymentAccountName || '',
-    }, { status: 201 })
+    // Return order dengan semua data
+    return NextResponse.json(order, { status: 201 })
   } catch (error) {
     console.error('❌ Error creating order:', error)
     return NextResponse.json(
@@ -198,6 +197,9 @@ export async function GET(request: NextRequest) {
       status: order.status,
       note: order.note,
       createdAt: order.createdAt,
+      paymentMethodName: order.paymentMethodName || '',
+      paymentAccountNumber: order.paymentAccountNumber || '',
+      paymentAccountName: order.paymentAccountName || '',
     }))
 
     return NextResponse.json(transformed)

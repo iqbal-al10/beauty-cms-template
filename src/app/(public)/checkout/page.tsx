@@ -503,7 +503,7 @@ function CheckoutContent() {
             <div id="payment-method-section">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Metode Pembayaran *
-                <span className="text-red-500 ml-1">(wajib dipilih)</span>
+                <span className="text-red-500 ml-1"></span>
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {paymentMethods.length === 0 ? (
