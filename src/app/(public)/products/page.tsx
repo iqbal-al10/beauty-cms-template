@@ -198,7 +198,7 @@ function ProductsContent() {
         </p>
       </div>
 
-      {/* Search & Filter - SAMA SEPERTI BOOKING */}
+      {/* Search */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <form onSubmit={handleSearch} className="flex-1">
           {categorySlug && (
@@ -221,7 +221,7 @@ function ProductsContent() {
         </form>
       </div>
 
-      {/* Category Filter - SAMA SEPERTI BOOKING */}
+      {/* Category Filter */}
       <div className="flex flex-wrap gap-2 mb-6">
         <a
           href="/products"
@@ -274,7 +274,8 @@ function ProductsContent() {
           {products.map((product) => {
             const displayPrice = product.finalPrice || product.price
             const hasCompare = product.compareAtPrice && product.compareAtPrice > displayPrice
-            const discountAmount = hasCompare ? product.compareAtPrice - displayPrice : 0
+            // FIX: Gunakan fallback 0 jika compareAtPrice null
+            const discountAmount = hasCompare ? (product.compareAtPrice || 0) - displayPrice : 0
             const productTags = product.tags || []
             
             return (

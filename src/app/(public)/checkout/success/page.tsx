@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle, Download, Printer, Home, ShoppingBag, MessageCircle } from 'lucide-react'
+import { CheckCircle, Home, ShoppingBag, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface OrderItem {
@@ -95,7 +95,8 @@ export default function CheckoutSuccessPage() {
 
   const getWhatsAppMessage = () => {
     if (!order) return ''
-    const message = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A💳 *Metode:* ${order.paymentMethodName || order.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*%0A%0ATerima kasih.`
+    const methodName = order.paymentMethodName || order.paymentMethod || '-'
+    const message = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A💳 *Metode:* ${methodName}%0A%0A📎 *Berikut bukti pembayaran saya.*%0A%0ATerima kasih.`
     return message
   }
 
@@ -119,6 +120,8 @@ export default function CheckoutSuccessPage() {
       </div>
     )
   }
+
+  const methodName = order.paymentMethodName || order.paymentMethod || '-'
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -151,7 +154,7 @@ export default function CheckoutSuccessPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Metode Pembayaran</span>
-            <span className="font-medium">{order.paymentMethodName || order.paymentMethod || '-'}</span>
+            <span className="font-medium">{methodName}</span>
           </div>
         </div>
 
@@ -213,11 +216,11 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
 
-      {/* Payment Details - DENGAN DETAIL METODE */}
+      {/* Payment Details */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
         <h2 className="text-lg font-semibold text-blue-800 mb-2">💳 Detail Pembayaran</h2>
         <div className="space-y-1 text-sm">
-          <p><span className="text-gray-600">Metode:</span> <span className="font-medium">{order.paymentMethodName || order.paymentMethod || '-'}</span></p>
+          <p><span className="text-gray-600">Metode:</span> <span className="font-medium">{methodName}</span></p>
           {order.paymentAccountNumber && (
             <p><span className="text-gray-600">No Rekening/Akun:</span> <span className="font-mono font-medium">{order.paymentAccountNumber}</span></p>
           )}

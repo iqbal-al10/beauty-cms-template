@@ -154,8 +154,9 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
       </nav>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-        {/* Gambar dan Info */}
-        <div className="flex flex-col md:flex-row gap-6 mb-6">
+        {/* Gambar dan Info - SAMA SEPERTI PRODUCT DETAIL */}
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* GAMBAR - 1/3 LEBAR, PENUH */}
           <div className="md:w-1/3">
             <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl aspect-square flex items-center justify-center relative overflow-hidden">
               {service.imageUrl ? (
@@ -184,6 +185,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             </div>
           </div>
 
+          {/* INFO - 2/3 LEBAR */}
           <div className="md:w-2/3">
             <div className="flex items-start justify-between mb-4">
               <h1 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
@@ -196,7 +198,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               )}
             </div>
 
-            {/* Rating - SAMA SEPERTI PRODUCT */}
+            {/* RATING - SAMA SEPERTI PRODUCT */}
             {reviews.length > 0 && (
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex text-yellow-400">
