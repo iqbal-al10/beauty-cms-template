@@ -32,7 +32,35 @@ export default function CartPage() {
       const saved = localStorage.getItem('beauty_cart')
       if (saved) {
         const items = JSON.parse(saved)
-        setCartItems(items)
+        
+        // 🔍 DEBUG: Lihat data asli dari localStorage
+        console.log('🔍 CART - RAW DATA from localStorage:', items)
+        
+        // 🔥 PERBAIKAN: Pastikan compareAtPrice selalu ada dengan fallback
+        const enrichedItems = items.map((item: any) => ({
+          ...item,
+          compareAtPrice: item.compareAtPrice ?? null,
+          finalPrice: item.finalPrice ?? item.price,
+        }))
+        
+        // 🔍 DEBUG: Lihat data setelah di-enrich
+        console.log('📦 CART - ENRICHED ITEMS:', enrichedItems)
+        console.log('🔍 CART - CompareAtPrice details:', enrichedItems.map((item: any) => ({
+          name: item.name,
+          compareAtPrice: item.compareAtPrice,
+          type: typeof item.compareAtPrice,
+          price: item.price,
+          hasCompare: item.compareAtPrice && item.compareAtPrice > (item.finalPrice || item.price),
+        })))
+        
+        // 🔥 PASTIKAN STATE TERUPDATE
+        setCartItems(enrichedItems)
+        
+        // 🔍 DEBUG: Cek state setelah set (pakai setTimeout karena setState async)
+        setTimeout(() => {
+          console.log('📦 CART - STATE AFTER SET:', cartItems)
+        }, 100)
+        
       } else {
         setCartItems([])
       }
@@ -91,8 +119,23 @@ export default function CartPage() {
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cartItems.reduce((sum, item) => sum + (item.finalPrice || item.price) * item.quantity, 0)
-  const shipping = subtotal > 0 ? 20000 : 0
-  const total = subtotal + shipping
+  const total = subtotal
+  
+  // 🔥 HITUNG TOTAL HEMAT
+  const totalSavings = cartItems.reduce((sum, item) => {
+    const displayPrice = item.finalPrice || item.price
+    const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
+    if (hasCompare) {
+      return sum + ((item.compareAtPrice || 0) - displayPrice) * item.quantity
+    }
+    return sum
+  }, 0)
+
+  // 🔍 DEBUG: Cek cartItems setiap kali berubah
+  useEffect(() => {
+    console.log('📦 CART - cartItems STATE UPDATED:', cartItems)
+    console.log('💰 CART - Total Savings:', totalSavings)
+  }, [cartItems])
 
   if (loading) {
     return (
@@ -145,6 +188,17 @@ export default function CartPage() {
                 {cartItems.map((item) => {
                   const displayPrice = item.finalPrice || item.price
                   const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
+                  const saving = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
+                  
+                  // 🔍 DEBUG: Log per item saat render di Cart
+                  console.log(`🔍 CART - RENDERING ITEM: ${item.name}`, {
+                    displayPrice,
+                    compareAtPrice: item.compareAtPrice,
+                    hasCompare,
+                    saving,
+                    price: item.price,
+                    item: item, // Log full item
+                  })
                   
                   return (
                     <div key={item.id} className="p-4 flex items-center gap-4">
@@ -179,6 +233,12 @@ export default function CartPage() {
                             </p>
                           )}
                         </div>
+                        {/* 🔥 TAMPILKAN HEMAT PER ITEM DI CART */}
+                        {hasCompare && saving > 0 && (
+                          <p className="text-xs text-green-600 font-medium mt-0.5">
+                            💰 Hemat Rp {saving.toLocaleString()}
+                          </p>
+                        )}
                       </div>
 
                       {/* Quantity */}
@@ -214,7 +274,7 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* Summary */}
+          {/* Summary - TAMBAHKAN TOTAL HEMAT */}
           <div className="lg:w-80 flex-shrink-0">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan</h2>
@@ -224,12 +284,15 @@ export default function CartPage() {
                   <span className="text-gray-500">Subtotal</span>
                   <span className="font-medium">Rp {subtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Ongkos Kirim</span>
-                  <span className="font-medium">
-                    {shipping > 0 ? `Rp ${shipping.toLocaleString()}` : 'Gratis'}
-                  </span>
-                </div>
+                
+                {/* 🔥 TAMBAHKAN TOTAL HEMAT DI RINGKASAN */}
+                {totalSavings > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>💰 Total Hemat</span>
+                    <span>- Rp {totalSavings.toLocaleString()}</span>
+                  </div>
+                )}
+                
                 <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold text-lg">
                   <span>Total</span>
                   <span style={{ color: '#c4367b' }}>Rp {total.toLocaleString()}</span>

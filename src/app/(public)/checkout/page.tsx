@@ -56,6 +56,7 @@ function CheckoutContent() {
   const [voucherError, setVoucherError] = useState('')
   const [singleProduct, setSingleProduct] = useState<CartItem | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
+  const [isShippingLoading, setIsShippingLoading] = useState(false)
 
   const [form, setForm] = useState({
     customerName: '',
@@ -70,41 +71,73 @@ function CheckoutContent() {
 
   useEffect(() => {
     const customerData = localStorage.getItem('beauty_customer')
+    let savedCity = ''
+    
     if (customerData) {
       try {
         const data = JSON.parse(customerData)
-        setForm(prev => ({
-          ...prev,
+        const updatedForm = {
           customerName: data.customerName || '',
           customerWhatsapp: data.customerWhatsapp || '',
           address: data.address || '',
           city: data.city || '',
           province: data.province || '',
           postalCode: data.postalCode || '',
-        }))
+          note: '',
+          paymentMethod: '',
+        }
+        setForm(updatedForm)
+        savedCity = data.city || ''
       } catch (e) {}
     }
 
     if (productId) {
-      fetchSingleProduct(productId, initialQuantity)
+      fetchSingleProduct(productId, initialQuantity, savedCity)
     } else {
       const saved = localStorage.getItem('beauty_cart')
       if (saved) {
-        const items = JSON.parse(saved)
-        if (items.length === 0) {
+        try {
+          const items = JSON.parse(saved)
+          if (items.length === 0) {
+            router.push('/cart')
+            return
+          }
+          
+          // 🔍 DEBUG: Lihat data asli dari localStorage
+          console.log('🔍 RAW DATA from localStorage:', items)
+          
+          // Pastikan compareAtPrice selalu ada
+          const enrichedItems = items.map((item: any) => ({
+            ...item,
+            compareAtPrice: item.compareAtPrice ?? null,
+            finalPrice: item.finalPrice ?? item.price,
+          }))
+          
+          // 🔍 DEBUG: Lihat data setelah di-enrich
+          console.log('📦 ENRICHED ITEMS:', enrichedItems)
+          console.log('🔍 CompareAtPrice details:', enrichedItems.map((item: any) => ({
+            name: item.name,
+            compareAtPrice: item.compareAtPrice,
+            type: typeof item.compareAtPrice,
+            price: item.price,
+            hasCompare: item.compareAtPrice && item.compareAtPrice > (item.finalPrice || item.price),
+          })))
+          
+          setCartItems(enrichedItems)
+        } catch (error) {
+          console.error('Error parsing cart:', error)
           router.push('/cart')
           return
         }
-        setCartItems(items)
       } else {
         router.push('/cart')
         return
       }
-      fetchData()
+      fetchData(savedCity)
     }
   }, [productId])
 
-  const fetchSingleProduct = async (id: string, quantity: number) => {
+  const fetchSingleProduct = async (id: string, quantity: number, savedCity: string) => {
     try {
       const res = await fetch(`/api/public/product-by-id?id=${id}`)
       if (!res.ok) {
@@ -114,21 +147,27 @@ function CheckoutContent() {
       }
       const product = await res.json()
       
+      // 🔍 DEBUG: Lihat data dari API
+      console.log('🔍 PRODUCT FROM API:', product)
+      console.log('🔍 compareAtPrice from API:', product.compareAtPrice)
+      
       const item: CartItem = {
         id: product.id,
         name: product.name,
         slug: product.slug,
         price: product.price,
-        compareAtPrice: product.compareAtPrice || null,
+        compareAtPrice: product.compareAtPrice ?? null,
         finalPrice: product.price,
         quantity: Math.min(quantity, product.stock || 1),
         imageUrl: product.imageUrl || null,
         stock: product.stock || 0,
       }
       
+      console.log('📦 SINGLE PRODUCT ITEM:', item)
+      
       setSingleProduct(item)
       setCartItems([item])
-      fetchData()
+      fetchData(savedCity)
     } catch (error) {
       console.error('Error fetching product:', error)
       toast.error('Gagal memuat produk')
@@ -136,7 +175,7 @@ function CheckoutContent() {
     }
   }
 
-  const fetchData = async () => {
+  const fetchData = async (savedCity: string = '') => {
     try {
       const [paymentsRes] = await Promise.all([
         fetch('/api/admin/payments'),
@@ -146,11 +185,35 @@ function CheckoutContent() {
         const data = await paymentsRes.json()
         setPaymentMethods(data.filter((p: PaymentMethod) => p.isActive))
       }
+
+      if (savedCity && savedCity.trim().length > 2) {
+        await fetchShippingCost(savedCity)
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
       toast.error('Gagal memuat data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchShippingCost = async (city: string) => {
+    if (!city || city.trim().length < 3) return
+    
+    setIsShippingLoading(true)
+    try {
+      const res = await fetch(`/api/shipping?city=${encodeURIComponent(city)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setShippingCost(data)
+      } else {
+        setShippingCost(null)
+      }
+    } catch (error) {
+      console.error('Error fetching shipping:', error)
+      setShippingCost(null)
+    } finally {
+      setIsShippingLoading(false)
     }
   }
 
@@ -182,18 +245,7 @@ function CheckoutContent() {
 
   const handleCityChange = async (city: string) => {
     setForm(prev => ({ ...prev, city }))
-    
-    if (city.trim().length > 2) {
-      try {
-        const res = await fetch(`/api/shipping?city=${encodeURIComponent(city)}`)
-        if (res.ok) {
-          const data = await res.json()
-          setShippingCost(data)
-        }
-      } catch (error) {
-        console.error('Error fetching shipping:', error)
-      }
-    }
+    await fetchShippingCost(city)
   }
 
   const handleApplyVoucher = async () => {
@@ -280,7 +332,6 @@ function CheckoutContent() {
       const appliedDiscount = voucherApplied ? voucherDiscount : 0
       const total = subtotal + shipping - appliedDiscount
 
-      // Get selected payment method details
       const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
 
       const orderData = {
@@ -360,7 +411,6 @@ function CheckoutContent() {
   const totalItems = calculateTotalItems()
   const appliedDiscount = voucherApplied ? voucherDiscount : 0
   const total = subtotal + shipping - appliedDiscount
-  const isFreeShipping = totalItems >= 12
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -436,6 +486,9 @@ function CheckoutContent() {
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                       placeholder="Contoh: Mojokerto"
                     />
+                    {isShippingLoading && (
+                      <p className="text-xs text-gray-400 mt-1">⏳ Mengecek ongkir...</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Provinsi</label>
@@ -499,7 +552,7 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* Payment Method - DENGAN DETAIL */}
+            {/* Payment Method */}
             <div id="payment-method-section">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">
                 Metode Pembayaran *
@@ -590,6 +643,16 @@ function CheckoutContent() {
                 const compareTotal = hasCompare ? (item.compareAtPrice || 0) * item.quantity : 0
                 const savings = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
                 
+                // 🔍 DEBUG: Log per item saat render
+                console.log(`🔍 RENDERING ITEM: ${item.name}`, {
+                  displayPrice,
+                  compareAtPrice: item.compareAtPrice,
+                  hasCompare,
+                  savings,
+                  itemTotal,
+                  compareTotal
+                })
+                
                 return (
                   <div key={item.id} className="border-b border-gray-100 pb-3 last:border-0">
                     <div className="flex gap-3">
@@ -633,8 +696,9 @@ function CheckoutContent() {
                           )}
                         </div>
                         
+                        {/* 🔥 TAMPILKAN HEMAT */}
                         {hasCompare && savings > 0 && (
-                          <p className="text-xs text-green-600">
+                          <p className="text-xs text-green-600 font-medium">
                             Hemat Rp {savings.toLocaleString()} / item
                           </p>
                         )}
@@ -644,10 +708,10 @@ function CheckoutContent() {
                       </p>
                     </div>
                     
+                    {/* 🔥 TAMPILKAN TOTAL HEMAT */}
                     {hasCompare && compareTotal > itemTotal && (
-                      <div className="text-right text-xs text-gray-400 mt-1">
-                        <span className="line-through">Rp {compareTotal.toLocaleString()}</span>
-                        <span className="text-green-600 ml-2">Hemat Rp {(compareTotal - itemTotal).toLocaleString()}</span>
+                      <div className="text-right text-xs text-green-600 font-medium mt-1">
+                        Hemat Rp {(compareTotal - itemTotal).toLocaleString()} dari total
                       </div>
                     )}
                   </div>
@@ -665,11 +729,7 @@ function CheckoutContent() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">Ongkir ({shippingCost.zone})</span>
                   <span className="font-medium">
-                    {isFreeShipping ? (
-                      <span className="text-green-500">GRATIS</span>
-                    ) : (
-                      `Rp ${shipping.toLocaleString()}`
-                    )}
+                    Rp {shipping.toLocaleString()}
                   </span>
                 </div>
               )}
@@ -677,7 +737,6 @@ function CheckoutContent() {
               {shippingCost && (
                 <div className="flex justify-between text-xs text-gray-400">
                   <span>Estimasi: {shippingCost.estimate}</span>
-                  {isFreeShipping && <span className="text-green-500">✅ Gratis ongkir (12 produk)</span>}
                 </div>
               )}
 
