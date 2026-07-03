@@ -70,7 +70,6 @@ export async function PATCH(
       )
     }
 
-    // Get order dengan items
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
@@ -89,7 +88,6 @@ export async function PATCH(
       )
     }
 
-    // Cek apakah sudah diproses
     if (order.status !== 'PENDING') {
       return NextResponse.json(
         { error: `Order already ${order.status.toLowerCase()}` },
@@ -109,7 +107,6 @@ export async function PATCH(
       )
     }
 
-    // Update order
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
@@ -174,7 +171,6 @@ export async function DELETE(
       )
     }
 
-    // Delete order items first (cascade)
     await prisma.orderItem.deleteMany({
       where: { orderId: id },
     })

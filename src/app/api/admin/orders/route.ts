@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
         },
         user: {
           select: {
+            id: true,
             name: true,
             email: true,
           },
@@ -48,7 +49,9 @@ export async function GET(request: NextRequest) {
       id: order.id,
       customerName: order.customerName,
       customerWhatsapp: order.customerWhatsapp,
-      productName: order.items.length > 0 ? order.items[0]?.productName || order.items[0]?.product?.name || '-' : '-',
+      productName: order.items.length > 0 
+        ? order.items[0]?.productName || order.items[0]?.product?.name || '-' 
+        : '-',
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       finalPrice: order.total || 0,
       status: order.status,
@@ -66,79 +69,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const session = await getServerSession()
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-    const body = await request.json()
-    const { action } = body
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Order ID is required' },
-        { status: 400 }
-      )
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: { items: true },
-    })
-
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      )
-    }
-
-    let newStatus = order.status
-    if (action === 'approve') {
-      newStatus = 'APPROVED'
-    } else if (action === 'reject') {
-      newStatus = 'REJECTED'
-    } else {
-      return NextResponse.json(
-        { error: 'Invalid action. Use "approve" or "reject"' },
-        { status: 400 }
-      )
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id },
-      data: {
-        status: newStatus,
-        approvedBy: session.userId,
-        approvedAt: new Date(),
-      },
-    })
-
-    // Log activity
-    await prisma.activityLog.create({
-      data: {
-        userId: session.userId,
-        action: action.toUpperCase(),
-        entityType: 'Order',
-        entityId: order.id,
-        metadata: { orderNumber: order.orderNumber, status: newStatus },
-      },
-    })
-
-    return NextResponse.json(updatedOrder)
-  } catch (error) {
-    console.error('Error updating order:', error)
-    return NextResponse.json(
-      { error: 'Failed to update order: ' + (error as Error).message },
-      { status: 500 }
-    )
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession()
@@ -147,8 +77,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('📦 Received order data:', JSON.stringify(body, null, 2))
-
     const {
       customerName,
       customerWhatsapp,
@@ -219,8 +147,6 @@ export async function POST(request: NextRequest) {
         items: true,
       },
     })
-
-    console.log(`✅ Order created: ${order.id}`)
 
     // Kurangi stok produk
     for (const item of items) {
