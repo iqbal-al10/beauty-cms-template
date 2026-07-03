@@ -153,6 +153,19 @@ model Service {
   bookings    Booking[]
   tags        ServiceBookingTag[]
   promos      PromoBooking[]
+  reviews     ServiceReview[]  // ← TAMBAHKAN INI
+}
+
+model ServiceReview {
+  id          String   @id @default(cuid())
+  serviceId   String
+  customerName String
+  rating      Int
+  comment     String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 
 model Booking {
@@ -418,7 +431,527 @@ model OrderItem {
 model PaymentMethod {
   id            String   @id @default(cuid())
   name          String
-  type          String   // BANK, QRIS, EWALLET
+  type          String
+  accountNumber String?
+  accountName   String?
+  qrCodeUrl     String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String
+  category    String
+  amount      Float
+  description String?
+  orderId     String?
+  bookingId   String?
+  userId      String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  title       String
+  amount      Float
+  category    String
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  sessionId  String     @unique
+  items      CartItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id         String   @id @default(cuid())
+  cartId     String
+  productId  String
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model BookingCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  icon        String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  services    Service[]
+}
+
+model BookingTag {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  slug       String   @unique
+  color      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  services   ServiceBookingTag[]
+}
+
+model ServiceBookingTag {
+  id         String     @id @default(cuid())
+  serviceId  String
+  tagId      String
+  createdAt  DateTime   @default(now())
+  service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  tag        BookingTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+}
+EOFcat > prisma/schema.prisma << 'EOF'
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Settings {
+  id                 String   @id @default(cuid())
+  siteName           String   @default("Beauty Studio")
+  colorPrimary       String   @default("#c4367b")
+  colorSecondary     String   @default("#f5dbe8")
+  colorButton        String   @default("#aa1d68")
+  fontFamily         String   @default("Inter")
+  logoUrl            String?
+  faviconUrl         String?
+  heroBannerUrl      String?
+  whatsappNumber     String?
+  email              String?
+  address            String?
+  footerContent      Json?
+  operatingHours     Json?
+  googleMapsEmbedUrl String?
+  socialLinks        Json?
+  gaTrackingId       String?
+  metaTitle          String?
+  metaDescription    String?
+  defaultOgImage     String?
+  
+  // Footer Settings
+  copyrightText      String?
+  footerLinks        Json?
+  
+  // Shipping Settings
+  shippingZones       Json?
+  freeShippingThreshold Int?   @default(300000)
+  
+  primaryBackground   String   @default("#ffffff")
+  secondaryBackground String   @default("#f9fafb")
+  headingColor        String   @default("#111827")
+  bodyTextColor       String   @default("#4b5563")
+  linkHoverColor      String   @default("#c4367b")
+  borderRadius        String   @default("medium")
+  buttonStyle         String   @default("rounded")
+  layoutStyle         String   @default("full-width")
+  navStyle            String   @default("sticky")
+  
+  navbarBackground    String   @default("#ffffff")
+  navbarTextColor     String   @default("#4b5563")
+  navbarHoverColor    String   @default("#c4367b")
+  navbarActiveColor   String   @default("#c4367b")
+  
+  headingFontSize     String   @default("32px")
+  bodyFontSize        String   @default("16px")
+  smallFontSize       String   @default("14px")
+  
+  enableCart          Boolean  @default(true)
+  enableWhatsAppOrder Boolean  @default(true)
+  enableGuestCheckout Boolean  @default(true)
+  enableReviews       Boolean  @default(true)
+  enableTestimonials  Boolean  @default(true)
+  enableBlog          Boolean  @default(true)
+  enableGallery       Boolean  @default(true)
+  enableFaq           Boolean  @default(true)
+  
+  minOrderAmount      Int      @default(0)
+  maxOrderQuantity    Int      @default(99)
+  cartExpiryDays      Int      @default(7)
+  
+  siteDescription     String?
+  siteKeywords        String?
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model User {
+  id               String        @id @default(cuid())
+  name             String
+  email            String        @unique
+  passwordHash     String
+  role             String        @default("STAFF")
+  isActive         Boolean       @default(true)
+  lastLoginAt      DateTime?
+  resetToken       String?       @unique
+  resetTokenExpiry DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  activityLogs     ActivityLog[]
+  stockHistories   StockHistory[]
+  orders           Order[]
+  transactions     Transaction[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  sortOrder Int       @default(0)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Product {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  description     String?
+  price           Float
+  compareAtPrice  Float?
+  stock           Int            @default(0)
+  status          String         @default("DRAFT")
+  isFeatured      Boolean        @default(false)
+  categoryId      String
+  imageUrl        String?
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+  ogImageUrl      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  category        Category       @relation(fields: [categoryId], references: [id])
+  promos          PromoProduct[]
+  reviews         Review[]
+  tags            ProductTag[]
+  stockHistories  StockHistory[]
+  orders          OrderItem[]
+  cartItems       CartItem[]
+}
+
+model Service {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  duration    Int
+  price       Float
+  categoryId  String?
+  category    BookingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  imageUrl    String?
+  isFeatured  Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  metaTitle   String?
+  metaDescription String?
+  canonicalUrl  String?
+  ogImageUrl    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+  tags        ServiceBookingTag[]
+  promos      PromoBooking[]
+  reviews     ServiceReview[]  // ← TAMBAHKAN INI
+}
+
+model ServiceReview {
+  id          String   @id @default(cuid())
+  serviceId   String
+  customerName String
+  rating      Int
+  comment     String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model Booking {
+  id           String   @id @default(cuid())
+  customerName String
+  whatsapp     String
+  email        String?
+  bookingDate  DateTime
+  bookingTime  String
+  serviceId    String?
+  notes        String?
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  service      Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+}
+
+model Testimonial {
+  id               String   @id @default(cuid())
+  customerName     String
+  customerPhotoUrl String?
+  rating           Int
+  reviewText       String
+  isPublished      Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model BlogPost {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  content       String
+  excerpt       String?
+  coverImageUrl String?
+  status        String    @default("DRAFT")
+  publishedAt   DateTime?
+  categoryId    String?
+  metaTitle     String?
+  metaDescription String?
+  canonicalUrl  String?
+  ogImageUrl    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  category      BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags          BlogTag[]
+}
+
+model BlogCategory {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  posts       BlogPost[]
+}
+
+model BlogTag {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  posts     BlogPost[]
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  whatsapp  String?
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BeforeAfter {
+  id             String   @id @default(cuid())
+  title          String
+  category       String
+  beforeImageUrl String
+  afterImageUrl  String
+  description    String?
+  sortOrder      Int      @default(0)
+  isPublished    Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Promo {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discount      Float
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  products      PromoProduct[]
+  services      PromoBooking[]
+}
+
+model PromoProduct {
+  id        String   @id @default(cuid())
+  promoId   String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  promo     Promo    @relation(fields: [promoId], references: [id], onDelete: Cascade)
+}
+
+model PromoBooking {
+  id        String   @id @default(cuid())
+  promoId   String
+  serviceId String
+  createdAt DateTime @default(now())
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  promo     Promo    @relation(fields: [promoId], references: [id], onDelete: Cascade)
+}
+
+model MediaFile {
+  id         String   @id @default(cuid())
+  url        String
+  fileName   String
+  fileType   String
+  sizeBytes  Int
+  folder     String?
+  altText    String?
+  uploadedAt DateTime @default(now())
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Visitor {
+  id        String   @id @default(cuid())
+  page      String
+  visitorId String
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  page      String
+  visitorId String
+  sessionId String
+  referrer  String?
+  createdAt DateTime @default(now())
+}
+
+model VideoContent {
+  id           String   @id @default(cuid())
+  title        String
+  sourceType   String
+  url          String
+  thumbnailUrl String?
+  sortOrder    Int      @default(0)
+  isPublished  Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  productId   String
+  customerName String
+  rating      Int
+  comment     String?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductTag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  color     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model StockHistory {
+  id        String   @id @default(cuid())
+  productId String
+  oldStock  Int
+  newStock  Int
+  change    Int
+  reason    String?
+  note      String?
+  userId    String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id           String   @id @default(cuid())
+  orderNumber  String   @unique
+  customerName String
+  customerWhatsapp String
+  address      String?
+  city         String?
+  province     String?
+  postalCode   String?
+  shippingCost Float    @default(0)
+  subtotal     Float
+  discountAmount Float   @default(0)
+  total        Float
+  paymentMethod String?
+  paymentProof String?
+  status       String   @default("PENDING")
+  note         String?
+  voucherCode  String?
+  approvedBy   String?
+  approvedAt   DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  items        OrderItem[]
+  user         User?    @relation(fields: [approvedBy], references: [id], onDelete: SetNull)
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String
+  productName String
+  quantity   Int
+  price      Float
+  total      Float
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model PaymentMethod {
+  id            String   @id @default(cuid())
+  name          String
+  type          String
   accountNumber String?
   accountName   String?
   qrCodeUrl     String?

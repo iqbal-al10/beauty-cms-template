@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
-import { ArrowLeft, Clock, DollarSign, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Clock, DollarSign, CheckCircle, Share2, Star } from 'lucide-react'
 import ShareButton from '@/components/public/ShareButton'
 
 interface BookingDetailPageProps {
@@ -72,6 +72,10 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           promo: true,
         },
       },
+      reviews: {
+        where: { isPublished: true },
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 
@@ -94,6 +98,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
   }
 
   const tags = service.tags?.map((st) => st.tag) || []
+  const reviews = service.reviews || []
 
   const relatedServices = await prisma.service.findMany({
     where: {
@@ -107,6 +112,9 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           tag: true,
         },
       },
+      reviews: {
+        where: { isPublished: true },
+      },
     },
     take: 4,
   })
@@ -117,6 +125,15 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
   }))
 
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/booking/${service.slug}`
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }).map((_, i) => (
+      <Star
+        key={i}
+        className={`w-4 h-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+      />
+    ))
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl" style={{ fontFamily: fontFamily }}>
@@ -231,6 +248,39 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           )}
         </div>
       </div>
+
+      {/* ===== SERVICE REVIEWS ===== */}
+      {reviews.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>
+            Customer Reviews ({reviews.length})
+          </h2>
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <div key={review.id} className="bg-gray-50 p-4 rounded-xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex">{renderStars(review.rating)}</div>
+                  <span className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>
+                    {review.customerName}
+                  </span>
+                  <span className="text-xs text-gray-400" style={{ fontSize: smallFontSize }}>
+                    {new Date(review.createdAt).toLocaleDateString('id-ID', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+                {review.comment && (
+                  <p className="text-gray-600 text-sm" style={{ fontSize: bodyFontSize }}>
+                    {review.comment}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Related Services */}
       {transformedRelated.length > 0 && (
