@@ -1,9 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import Header from '@/components/public/Header'
 import Footer from '@/components/public/Footer'
-import type { Settings } from '@prisma/client'  // 🔥 TAMBAHKAN INI
-
-// 🔥 HAPUS SELURUH INTERFACE Settings yang didefinisikan manual (baris 5-30)
+import type { Settings } from '@prisma/client'
 
 export default async function PublicLayout({
   children,
@@ -19,6 +17,9 @@ export default async function PublicLayout({
 
     if (data) {
       settings = {
+        id: data.id,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
         siteName: data.siteName || 'Beauty Studio',
         colorPrimary: data.colorPrimary || '#c4367b',
         colorSecondary: data.colorSecondary || '#f5dbe8',
@@ -54,7 +55,6 @@ export default async function PublicLayout({
         metaTitle: data.metaTitle || null,
         metaDescription: data.metaDescription || null,
         defaultOgImage: data.defaultOgImage || null,
-        // 🔥 TAMBAHKAN SEMUA FIELD YANG DIBUTUHKAN OLEH HEADER/FOOTER
         aboutHeroTitle: data.aboutHeroTitle || null,
         aboutHeroSubtitle: data.aboutHeroSubtitle || null,
         aboutStoryTitle: data.aboutStoryTitle || null,
@@ -91,23 +91,10 @@ export default async function PublicLayout({
         heroSlide2BgEnd: data.heroSlide2BgEnd || null,
         shippingZones: data.shippingZones || null,
         freeShippingThreshold: data.freeShippingThreshold || 300000,
-        primaryBackground: data.primaryBackground || '#ffffff',
-        secondaryBackground: data.secondaryBackground || '#f9fafb',
-        headingColor: data.headingColor || '#111827',
-        bodyTextColor: data.bodyTextColor || '#4b5563',
         linkHoverColor: data.linkHoverColor || '#c4367b',
         borderRadius: data.borderRadius || 'medium',
         buttonStyle: data.buttonStyle || 'rounded',
         layoutStyle: data.layoutStyle || 'full-width',
-        navStyle: data.navStyle || 'sticky',
-        navbarBackground: data.navbarBackground || '#ffffff',
-        navbarTextColor: data.navbarTextColor || '#4b5563',
-        navbarHoverColor: data.navbarHoverColor || '#c4367b',
-        navbarActiveColor: data.navbarActiveColor || '#c4367b',
-        headingFontSize: data.headingFontSize || '32px',
-        bodyFontSize: data.bodyFontSize || '16px',
-        smallFontSize: data.smallFontSize || '14px',
-        enableCart: data.enableCart !== undefined ? data.enableCart : true,
         enableWhatsAppOrder: data.enableWhatsAppOrder !== undefined ? data.enableWhatsAppOrder : true,
         enableGuestCheckout: data.enableGuestCheckout !== undefined ? data.enableGuestCheckout : true,
         enableReviews: data.enableReviews !== undefined ? data.enableReviews : true,
