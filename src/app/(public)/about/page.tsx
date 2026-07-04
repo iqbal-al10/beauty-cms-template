@@ -80,7 +80,7 @@ export default async function AboutPage() {
       </div>
 
       {/* Team */}
-      {aboutTeam && aboutTeam.length > 0 && (
+      {Array.isArray(aboutTeam) && aboutTeam.length > 0 && (
         <div className="mb-16">
           <h2 className="font-bold text-gray-800 text-center mb-8" style={{ fontSize: headingFontSize }}>
             {aboutTeamTitle}
