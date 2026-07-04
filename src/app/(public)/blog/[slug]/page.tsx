@@ -90,7 +90,10 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
       status: 'PUBLISHED',
     },
     take: 4,
-    include: { category: true },
+    include: { 
+      category: true,
+      tags: true,
+    },
   })
 
   const formatDate = (date: Date | null) => {
@@ -252,7 +255,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
                     {related.coverImageUrl ? (
                       <img 
                         src={related.coverImageUrl} 
-                        alt={related.name || related.title}
+                        alt={related.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     ) : (
