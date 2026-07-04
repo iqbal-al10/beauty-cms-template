@@ -1,14 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import Header from '@/components/public/Header'
 import Footer from '@/components/public/Footer'
-import type { Settings } from '@prisma/client'
 
 export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  let settings: Settings | null = null
+  let settings: any = null  // 🔥 PAKAI any
 
   try {
     const data = await prisma.settings.findUnique({
