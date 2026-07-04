@@ -973,7 +973,7 @@ export default function DashboardPage() {
                 <YAxis stroke="#888" fontSize={12} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} 
-                  formatter={tooltipFormatter}
+                  formatter={tooltipFormatter as any}
                   labelFormatter={(label) => {
                     return `Tanggal: ${new Date(label).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
                   }}
