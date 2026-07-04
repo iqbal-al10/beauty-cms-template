@@ -64,6 +64,7 @@ interface Settings {
   siteKeywords: string
   copyrightText: string
   footerLinks: any
+  footerServices: any
   // Hero Content
   heroBadge: string
   heroSubtitle: string
@@ -89,6 +90,20 @@ interface Settings {
   heroSlide2Link: string
   heroSlide2BgStart: string
   heroSlide2BgEnd: string
+  // About Page
+  aboutHeroTitle: string
+  aboutHeroSubtitle: string
+  aboutStoryTitle: string
+  aboutStoryContent: string
+  aboutMission: string
+  aboutVision: string
+  aboutTeamTitle: string
+  aboutTeam: any
+  // Contact Page
+  contactHeroTitle: string
+  contactHeroSubtitle: string
+  contactFormTitle: string
+  contactSuccessMessage: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -104,7 +119,15 @@ const DEFAULT_SETTINGS: Settings = {
   email: '',
   address: '',
   footerContent: null,
-  operatingHours: null,
+  operatingHours: {
+    Monday: '09:00 - 21:00',
+    Tuesday: '09:00 - 21:00',
+    Wednesday: '09:00 - 21:00',
+    Thursday: '09:00 - 21:00',
+    Friday: '09:00 - 21:00',
+    Saturday: '09:00 - 21:00',
+    Sunday: '10:00 - 18:00',
+  },
   googleMapsEmbedUrl: '',
   socialLinks: null,
   gaTrackingId: '',
@@ -142,6 +165,7 @@ const DEFAULT_SETTINGS: Settings = {
   siteKeywords: '',
   copyrightText: '',
   footerLinks: null,
+  footerServices: ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
   heroBadge: '⭐ Premium Beauty Services',
   heroSubtitle: 'Discover premium beauty services and products for your perfect look',
   heroShopButtonText: 'Shop Now',
@@ -164,6 +188,20 @@ const DEFAULT_SETTINGS: Settings = {
   heroSlide2Link: '/booking',
   heroSlide2BgStart: '#8b5cf6',
   heroSlide2BgEnd: '#ec4899',
+  // About
+  aboutHeroTitle: 'About Us',
+  aboutHeroSubtitle: 'Learn more about our journey',
+  aboutStoryTitle: 'Our Story',
+  aboutStoryContent: 'We are passionate about bringing beauty to everyone...',
+  aboutMission: 'To bring beauty and confidence to every individual',
+  aboutVision: 'To be the leading beauty destination in the region',
+  aboutTeamTitle: 'Meet Our Team',
+  aboutTeam: null,
+  // Contact
+  contactHeroTitle: 'Contact Us',
+  contactHeroSubtitle: "We'd love to hear from you",
+  contactFormTitle: 'Send Us a Message',
+  contactSuccessMessage: 'Thank you for your message! We will get back to you soon.',
 }
 
 const FONT_OPTIONS = ['Inter', 'Poppins', 'Roboto', 'Open Sans', 'Lato', 'Montserrat']
@@ -274,28 +312,6 @@ export default function SettingsPage() {
             console.error('Error parsing social links:', e)
           }
         }
-
-        // 🔍 DEBUG: Lihat data hero dari database
-        console.log('🔍 FETCHED SETTINGS - Hero Data:', {
-          heroBadge: data.heroBadge,
-          heroSubtitle: data.heroSubtitle,
-          heroShopButtonText: data.heroShopButtonText,
-          heroShopButtonLink: data.heroShopButtonLink,
-          heroBookButtonText: data.heroBookButtonText,
-          heroBookButtonLink: data.heroBookButtonLink,
-          heroSlide1Title: data.heroSlide1Title,
-          heroSlide1Desc: data.heroSlide1Desc,
-          heroSlide1Button: data.heroSlide1Button,
-          heroSlide1Link: data.heroSlide1Link,
-          heroSlide1BgStart: data.heroSlide1BgStart,
-          heroSlide1BgEnd: data.heroSlide1BgEnd,
-          heroSlide2Title: data.heroSlide2Title,
-          heroSlide2Desc: data.heroSlide2Desc,
-          heroSlide2Button: data.heroSlide2Button,
-          heroSlide2Link: data.heroSlide2Link,
-          heroSlide2BgStart: data.heroSlide2BgStart,
-          heroSlide2BgEnd: data.heroSlide2BgEnd,
-        })
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
@@ -312,6 +328,16 @@ export default function SettingsPage() {
     toast.success('Pengaturan direset ke default')
   }
 
+  const safeParseJSON = (value: any): any => {
+    if (value === null || value === undefined) return null
+    if (typeof value !== 'string') return value
+    try {
+      return JSON.parse(value)
+    } catch {
+      return null
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -319,23 +345,10 @@ export default function SettingsPage() {
     try {
       const socialLinks = { ...social }
       
-      const footerContent = settings.footerContent 
-        ? (typeof settings.footerContent === 'string' 
-            ? JSON.parse(settings.footerContent) 
-            : settings.footerContent)
-        : null
-      
-      const operatingHours = settings.operatingHours 
-        ? (typeof settings.operatingHours === 'string' 
-            ? JSON.parse(settings.operatingHours) 
-            : settings.operatingHours)
-        : null
-      
-      const footerLinks = settings.footerLinks 
-        ? (typeof settings.footerLinks === 'string' 
-            ? JSON.parse(settings.footerLinks) 
-            : settings.footerLinks)
-        : null
+      const footerContent = safeParseJSON(settings.footerContent)
+      const operatingHours = safeParseJSON(settings.operatingHours)
+      const footerLinks = safeParseJSON(settings.footerLinks)
+      const footerServices = safeParseJSON(settings.footerServices)
 
       const payload = {
         ...settings,
@@ -343,33 +356,8 @@ export default function SettingsPage() {
         operatingHours,
         socialLinks: socialLinks,
         footerLinks,
+        footerServices: footerServices || ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
       }
-
-      // 🔍 DEBUG: Lihat payload yang akan dikirim
-      console.log('🔍 SENDING PAYLOAD - Hero Data:', {
-        heroBadge: payload.heroBadge,
-        heroSubtitle: payload.heroSubtitle,
-        heroShopButtonText: payload.heroShopButtonText,
-        heroShopButtonLink: payload.heroShopButtonLink,
-        heroBookButtonText: payload.heroBookButtonText,
-        heroBookButtonLink: payload.heroBookButtonLink,
-        heroSlide1Icon: payload.heroSlide1Icon,
-        heroSlide1Label: payload.heroSlide1Label,
-        heroSlide1Title: payload.heroSlide1Title,
-        heroSlide1Desc: payload.heroSlide1Desc,
-        heroSlide1Button: payload.heroSlide1Button,
-        heroSlide1Link: payload.heroSlide1Link,
-        heroSlide1BgStart: payload.heroSlide1BgStart,
-        heroSlide1BgEnd: payload.heroSlide1BgEnd,
-        heroSlide2Icon: payload.heroSlide2Icon,
-        heroSlide2Label: payload.heroSlide2Label,
-        heroSlide2Title: payload.heroSlide2Title,
-        heroSlide2Desc: payload.heroSlide2Desc,
-        heroSlide2Button: payload.heroSlide2Button,
-        heroSlide2Link: payload.heroSlide2Link,
-        heroSlide2BgStart: payload.heroSlide2BgStart,
-        heroSlide2BgEnd: payload.heroSlide2BgEnd,
-      })
 
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -384,13 +372,9 @@ export default function SettingsPage() {
       }
 
       toast.success('Pengaturan berhasil disimpan!')
-      
-      // 🔍 DEBUG: Lihat response dari server
-      console.log('🔍 SAVE RESPONSE:', data)
-      
     } catch (error: any) {
       console.error('Error saving settings:', error)
-      toast.error('Gagal menyimpan pengaturan')
+      toast.error(error.message || 'Gagal menyimpan pengaturan')
     } finally {
       setSaving(false)
     }
@@ -449,36 +433,33 @@ export default function SettingsPage() {
   const hasSocial = (key: string) => social[key] && social[key].trim() !== ''
   const currentSlideData = slides[currentSlide]
 
-  // Build social links for footer preview
   const socialLinksForPreview = SOCIAL_PLATFORMS.filter(p => hasSocial(p.key))
 
   return (
     <div>
-      {/* ===== JUDUL (TIDAK FIXED) ===== */}
-      <div className="mb-2">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <SettingsIcon className="w-6 h-6 text-pink-500" />
-          Setting Management
-        </h1>
-      </div>
-
-      {/* ===== TOMBOL FIXED (HANYA TOMBOL) ===== */}
-      <div className="sticky top-[-20px] z-20 -mx-6 px-6 py-1 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200">
-        <div className="flex justify-end items-center gap-3">
-          <button
-            onClick={() => setIsPreviewOpen(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <Eye className="w-4 h-4" />
-            Preview Homepage
-          </button>
-          <button
-            onClick={handleReset}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Reset ke Default
-          </button>
+      {/* ===== HEADER FIXED ===== */}
+      <div className="sticky top-[-20.75px] z-20 bg-gray-50/95 backdrop-blur-sm -mx-6 px-6 py-2 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <SettingsIcon className="w-6 h-6 text-pink-500" />
+            Setting Management
+          </h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPreviewOpen(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Eye className="w-4 h-4" />
+              Preview Homepage
+            </button>
+            <button
+              onClick={handleReset}
+              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-1 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reset ke Default
+            </button>
+          </div>
         </div>
       </div>
 
@@ -845,6 +826,285 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* ===== ABOUT PAGE SETTINGS ===== */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-pink-500" />
+            About Page Settings
+          </h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Hero Title</label>
+                <input
+                  type="text"
+                  value={safeValue(settings.aboutHeroTitle)}
+                  onChange={(e) => handleChange('aboutHeroTitle', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="About Us"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Hero Subtitle</label>
+                <input
+                  type="text"
+                  value={safeValue(settings.aboutHeroSubtitle)}
+                  onChange={(e) => handleChange('aboutHeroSubtitle', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="Learn more about our journey"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Story Title</label>
+              <input
+                type="text"
+                value={safeValue(settings.aboutStoryTitle)}
+                onChange={(e) => handleChange('aboutStoryTitle', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Our Story"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Story Content</label>
+              <textarea
+                rows={4}
+                value={safeValue(settings.aboutStoryContent)}
+                onChange={(e) => handleChange('aboutStoryContent', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="We are passionate about bringing beauty to everyone..."
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Mission</label>
+                <textarea
+                  rows={2}
+                  value={safeValue(settings.aboutMission)}
+                  onChange={(e) => handleChange('aboutMission', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="To bring beauty and confidence to every individual"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Vision</label>
+                <textarea
+                  rows={2}
+                  value={safeValue(settings.aboutVision)}
+                  onChange={(e) => handleChange('aboutVision', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="To be the leading beauty destination in the region"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Team Title</label>
+              <input
+                type="text"
+                value={safeValue(settings.aboutTeamTitle)}
+                onChange={(e) => handleChange('aboutTeamTitle', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Meet Our Team"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Team Members (JSON)</label>
+              <textarea
+                rows={4}
+                value={safeValue(settings.aboutTeam ? JSON.stringify(settings.aboutTeam, null, 2) : '')}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value)
+                    handleChange('aboutTeam', parsed)
+                  } catch {
+                    handleChange('aboutTeam', e.target.value)
+                  }
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
+                placeholder='[{"name":"John Doe","role":"Founder","image":"https://..."}]'
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Format: {`[{"name":"John Doe","role":"Founder","image":"https://..."}]`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== CONTACT PAGE SETTINGS ===== */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Mail className="w-5 h-5 text-pink-500" />
+            Contact Page Settings
+          </h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Hero Title</label>
+                <input
+                  type="text"
+                  value={safeValue(settings.contactHeroTitle)}
+                  onChange={(e) => handleChange('contactHeroTitle', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="Contact Us"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Hero Subtitle</label>
+                <input
+                  type="text"
+                  value={safeValue(settings.contactHeroSubtitle)}
+                  onChange={(e) => handleChange('contactHeroSubtitle', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="We&apos;d love to hear from you"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Form Title</label>
+              <input
+                type="text"
+                value={safeValue(settings.contactFormTitle)}
+                onChange={(e) => handleChange('contactFormTitle', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Send Us a Message"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Success Message</label>
+              <input
+                type="text"
+                value={safeValue(settings.contactSuccessMessage)}
+                onChange={(e) => handleChange('contactSuccessMessage', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Thank you for your message!"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={safeValue(settings.whatsappNumber)}
+                  onChange={(e) => handleChange('whatsappNumber', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="6281234567890"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  type="email"
+                  value={safeValue(settings.email)}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="info@beautystudio.com"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Address</label>
+              <input
+                type="text"
+                value={safeValue(settings.address)}
+                onChange={(e) => handleChange('address', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Jl. Contoh No. 123, Kota"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Google Maps Embed URL</label>
+              <input
+                type="url"
+                value={safeValue(settings.googleMapsEmbedUrl)}
+                onChange={(e) => handleChange('googleMapsEmbedUrl', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="https://www.google.com/maps/embed?pb=..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Operating Hours (JSON)</label>
+              <textarea
+                rows={8}
+                value={safeValue(settings.operatingHours ? JSON.stringify(settings.operatingHours, null, 2) : '')}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value)
+                    handleChange('operatingHours', parsed)
+                  } catch {
+                    handleChange('operatingHours', e.target.value)
+                  }
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
+                placeholder='{"Monday":"09:00 - 21:00","Tuesday":"09:00 - 21:00","Wednesday":"09:00 - 21:00","Thursday":"09:00 - 21:00","Friday":"09:00 - 21:00","Saturday":"09:00 - 21:00","Sunday":"10:00 - 18:00"}'
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Format: {`{ "Monday": "09:00 - 21:00", "Tuesday": "09:00 - 21:00" }`}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== FOOTER SETTINGS ===== */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-pink-500" />
+            Footer Settings
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Copyright Text</label>
+              <input
+                type="text"
+                value={safeValue(settings.copyrightText)}
+                onChange={(e) => handleChange('copyrightText', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="© 2024 Beauty Studio. All rights reserved."
+              />
+              <p className="text-xs text-gray-400 mt-1">Akan muncul di footer</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Footer Services (JSON Array)</label>
+              <textarea
+                rows={6}
+                value={safeValue(settings.footerServices ? JSON.stringify(settings.footerServices, null, 2) : '')}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value)
+                    handleChange('footerServices', parsed)
+                  } catch {
+                    handleChange('footerServices', e.target.value)
+                  }
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
+                placeholder='["Facial Treatment", "Body Care", "Hair Care", "Nail Art", "Makeup"]'
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Format: {`["Service 1", "Service 2", "Service 3"]`}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Footer Links (JSON)</label>
+              <textarea
+                rows={4}
+                value={safeValue(settings.footerLinks ? JSON.stringify(settings.footerLinks, null, 2) : '')}
+                onChange={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value)
+                    handleChange('footerLinks', parsed)
+                  } catch {
+                    handleChange('footerLinks', e.target.value)
+                  }
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 font-mono text-sm"
+                placeholder='[{"label":"Privacy Policy","href":"/privacy"},{"label":"Terms","href":"/terms"}]'
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Format: {`[{"label":"Privacy","href":"/privacy"}]`}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* ===== NAVBAR SETTINGS ===== */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -1022,56 +1282,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== CONTACT INFO ===== */}
-        <div className="border-b border-gray-200 pb-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <Phone className="w-5 h-5 text-pink-500" />
-            Contact Information
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">WhatsApp Number</label>
-              <input
-                type="text"
-                value={safeValue(settings.whatsappNumber)}
-                onChange={(e) => handleChange('whatsappNumber', e.target.value)}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="6281234567890"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                value={safeValue(settings.email)}
-                onChange={(e) => handleChange('email', e.target.value)}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="info@beautystudio.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Address</label>
-              <input
-                type="text"
-                value={safeValue(settings.address)}
-                onChange={(e) => handleChange('address', e.target.value)}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Jl. Contoh No. 123, Kota"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Google Maps Embed URL</label>
-              <input
-                type="url"
-                value={safeValue(settings.googleMapsEmbedUrl)}
-                onChange={(e) => handleChange('googleMapsEmbedUrl', e.target.value)}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://www.google.com/maps/embed?pb=..."
-              />
-            </div>
-          </div>
-        </div>
-
         {/* ===== SEO ===== */}
         <div className="border-b border-gray-200 pb-4">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -1122,25 +1332,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ===== COPYRIGHT & FOOTER ===== */}
-        <div className="border-b border-gray-200 pb-4">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-pink-500" />
-            Footer Settings
-          </h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Copyright Text</label>
-            <input
-              type="text"
-              value={safeValue(settings.copyrightText)}
-              onChange={(e) => handleChange('copyrightText', e.target.value)}
-              className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-              placeholder="© 2024 Beauty Studio. All rights reserved."
-            />
-            <p className="text-xs text-gray-400 mt-1">Akan muncul di footer</p>
-          </div>
-        </div>
-
         {/* ===== SAVE BUTTON ===== */}
         <div className="flex items-center justify-end gap-4 pt-2">
           <button
@@ -1178,7 +1369,6 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Modal Body - Preview Homepage */}
             <div className="flex-1 overflow-y-auto" style={{ fontFamily: settings.fontFamily || 'Inter' }}>
               {/* ===== HERO SECTION ===== */}
               <section 
@@ -1200,7 +1390,6 @@ export default function SettingsPage() {
                 
                 <div className="container mx-auto px-4 relative z-10">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                    {/* KIRI: TEKS */}
                     <div className="text-center lg:text-left">
                       <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-white/20">
                         <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
@@ -1234,7 +1423,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    {/* KANAN: CAROUSEL */}
                     <div className="relative w-full max-w-xl mx-auto lg:mx-0 lg:ml-auto">
                       <div className="relative overflow-hidden rounded-2xl">
                         <div 
@@ -1272,7 +1460,6 @@ export default function SettingsPage() {
                           </div>
                         </div>
 
-                        {/* Dots */}
                         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                           {slides.map((_, index) => (
                             <button
@@ -1291,7 +1478,6 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              {/* ===== FEATURED PRODUCTS PLACEHOLDER ===== */}
               <section className="py-12 bg-white">
                 <div className="container mx-auto px-4">
                   <div className="flex justify-between items-center mb-8">
@@ -1321,7 +1507,6 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              {/* ===== CTA SECTION ===== */}
               <section 
                 className="py-12"
                 style={{
@@ -1345,7 +1530,6 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              {/* ===== FOOTER ===== */}
               <footer 
                 className="border-t"
                 style={{ 
@@ -1355,7 +1539,6 @@ export default function SettingsPage() {
               >
                 <div className="container mx-auto px-4 py-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Brand */}
                     <div>
                       <h3 className="text-lg font-bold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.headingFontSize || '32px' }}>
                         {settings.siteName || 'Beauty Studio'}
@@ -1364,8 +1547,6 @@ export default function SettingsPage() {
                         {settings.address || 'Premium beauty services for your perfect look'}
                       </p>
                     </div>
-
-                    {/* Contact */}
                     <div>
                       <h4 className="font-semibold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.bodyFontSize || '16px' }}>
                         Contact
@@ -1381,35 +1562,33 @@ export default function SettingsPage() {
                         </p>
                       )}
                     </div>
-
-                    {/* Social Links */}
-                    {socialLinksForPreview.length > 0 && (
-                      <div>
-                        <h4 className="font-semibold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.bodyFontSize || '16px' }}>
-                          Follow Us
-                        </h4>
-                        <div className="flex gap-3">
-                          {socialLinksForPreview.map((platform) => {
-                            const Icon = platform.icon
-                            return (
-                              <a
-                                key={platform.key}
-                                href={social[platform.key]}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
-                                style={{ backgroundColor: `${settings.colorPrimary || '#c4367b'}15`, color: settings.colorPrimary || '#c4367b' }}
-                              >
-                                <Icon className="w-4 h-4" />
-                              </a>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    <div>
+                      {socialLinksForPreview.length > 0 && (
+                        <>
+                          <h4 className="font-semibold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.bodyFontSize || '16px' }}>
+                            Follow Us
+                          </h4>
+                          <div className="flex gap-3">
+                            {socialLinksForPreview.map((platform) => {
+                              const Icon = platform.icon
+                              return (
+                                <a
+                                  key={platform.key}
+                                  href={social[platform.key]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                                  style={{ backgroundColor: `${settings.colorPrimary || '#c4367b'}15`, color: settings.colorPrimary || '#c4367b' }}
+                                >
+                                  <Icon className="w-4 h-4" />
+                                </a>
+                              )
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Copyright */}
                   <div className="border-t mt-6 pt-4 text-center text-sm" style={{ borderColor: `${settings.colorPrimary || '#c4367b'}20`, color: settings.bodyTextColor || '#4b5563', fontSize: settings.smallFontSize || '14px' }}>
                     {settings.copyrightText || `© ${new Date().getFullYear()} ${settings.siteName || 'Beauty Studio'}. All rights reserved.`}
                   </div>
@@ -1417,7 +1596,6 @@ export default function SettingsPage() {
               </footer>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50/80 flex-shrink-0">
               <p className="text-xs text-gray-400">
                 <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5"></span>

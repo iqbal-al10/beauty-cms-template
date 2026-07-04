@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 // Helper untuk generate slot waktu berdasarkan operating hours
 function generateTimeSlots(open: string, close: string, intervalMinutes: number = 60): string[] {
   const slots: string[] = []
+  
   const [openHour, openMinute] = open.split(':').map(Number)
   const [closeHour, closeMinute] = close.split(':').map(Number)
   
@@ -22,6 +23,69 @@ function generateTimeSlots(open: string, close: string, intervalMinutes: number 
   }
   
   return slots
+}
+
+// Parse operating hours dari berbagai format
+function parseOperatingHours(operatingHours: any): Record<string, { open: string; close: string; isClosed: boolean }> {
+  const result: Record<string, { open: string; close: string; isClosed: boolean }> = {}
+  
+  if (!operatingHours) return result
+  
+  if (typeof operatingHours === 'string') {
+    try {
+      operatingHours = JSON.parse(operatingHours)
+    } catch {
+      return result
+    }
+  }
+  
+  if (typeof operatingHours !== 'object' || Array.isArray(operatingHours)) {
+    return result
+  }
+  
+  const dayMapping: Record<string, string> = {
+    'sunday': 'sunday',
+    'monday': 'monday',
+    'tuesday': 'tuesday',
+    'wednesday': 'wednesday',
+    'thursday': 'thursday',
+    'friday': 'friday',
+    'saturday': 'saturday',
+  }
+  
+  for (const [day, value] of Object.entries(operatingHours)) {
+    const normalizedDay = day.toLowerCase().trim()
+    const dayKey = dayMapping[normalizedDay]
+    if (!dayKey) continue
+    
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed.toLowerCase() === 'closed' || trimmed === '') {
+        result[dayKey] = { open: 'closed', close: 'closed', isClosed: true }
+      } else {
+        const parts = trimmed.split('-').map(s => s.trim())
+        if (parts.length === 2) {
+          const open = parts[0]
+          const close = parts[1]
+          if (/^\d{1,2}:\d{2}$/.test(open) && /^\d{1,2}:\d{2}$/.test(close)) {
+            result[dayKey] = { open, close, isClosed: false }
+          }
+        }
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      const open = (value as any).open
+      const close = (value as any).close
+      if (open && close) {
+        result[dayKey] = { 
+          open, 
+          close, 
+          isClosed: open.toLowerCase() === 'closed' || close.toLowerCase() === 'closed' 
+        }
+      }
+    }
+  }
+  
+  return result
 }
 
 export async function GET(request: NextRequest) {
@@ -55,31 +119,36 @@ export async function GET(request: NextRequest) {
       where: { id: 'default' },
     })
 
-    // Parse operating hours
-    let operatingHours: any = {}
-    try {
-      operatingHours = settings?.operatingHours || {}
-    } catch (e) {
-      operatingHours = {}
-    }
+    const operatingHours = settings?.operatingHours || {}
+    const parsedHours = parseOperatingHours(operatingHours)
 
-    // Get day of week from date
+    // Get day of week from date (lowercase)
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-    const daySchedule = operatingHours[dayOfWeek]
-
-    // Jika tidak ada jadwal untuk hari itu
-    if (!daySchedule || daySchedule.open === 'closed' || daySchedule.close === 'closed') {
-      return NextResponse.json({ slots: [] })
+    
+    const daySchedule = parsedHours[dayOfWeek]
+    
+    // Jika hari itu tutup
+    if (!daySchedule || daySchedule.isClosed || daySchedule.open === 'closed' || daySchedule.close === 'closed') {
+      return NextResponse.json({ 
+        slots: [],
+        isClosed: true,
+        message: `Maaf, kami tutup pada hari ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}`
+      })
     }
 
-    // Generate slots berdasarkan operating hours (interval 1 jam)
-    const allSlots = generateTimeSlots(daySchedule.open, daySchedule.close, 60)
+    // Generate slots
+    const intervalMinutes = Math.max(30, service.duration || 60)
+    const allSlots = generateTimeSlots(daySchedule.open, daySchedule.close, intervalMinutes)
 
-    // Get existing bookings for that date
+    // 🔥 PERBAIKAN: Hanya ambil booking dengan status yang aktif
+    // PENDING, APPROVED, RESCHEDULED, COMPLETED → slot tidak tersedia
+    // REJECTED → slot tersedia (karena dibatalkan)
     const existingBookings = await prisma.booking.findMany({
       where: {
         bookingDate: new Date(date),
-        status: { not: 'REJECTED' },
+        status: { 
+          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED']
+        },
       },
       select: { bookingTime: true },
     })
@@ -89,7 +158,11 @@ export async function GET(request: NextRequest) {
     // Filter slots yang masih available
     const availableSlots = allSlots.filter(slot => !bookedSlots.has(slot))
 
-    return NextResponse.json({ slots: availableSlots })
+    return NextResponse.json({ 
+      slots: availableSlots,
+      isClosed: false,
+      message: null
+    })
   } catch (error) {
     console.error('Error fetching slots:', error)
     return NextResponse.json(
@@ -114,7 +187,6 @@ export async function POST(request: NextRequest) {
       paymentMethod,
     } = body
 
-    // Validasi
     if (!serviceId || !bookingDate || !bookingTime || !customerName || !whatsapp) {
       return NextResponse.json(
         { error: 'Service, date, time, customer name, and WhatsApp are required' },
@@ -122,7 +194,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get service untuk harga
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
       select: { price: true, name: true, duration: true },
@@ -139,7 +210,6 @@ export async function POST(request: NextRequest) {
     let discountAmount = 0
     let appliedVoucherCode = null
 
-    // Apply voucher jika ada
     if (voucherCode) {
       const promo = await prisma.promo.findUnique({
         where: { code: voucherCode.toUpperCase() },
@@ -152,12 +222,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cek apakah slot sudah di-book
+    // Cek apakah slot sudah di-book oleh status aktif
     const existingBooking = await prisma.booking.findFirst({
       where: {
         bookingDate: new Date(bookingDate),
         bookingTime,
-        status: { not: 'REJECTED' },
+        status: { 
+          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED']
+        },
       },
     })
 
@@ -168,7 +240,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create booking
     const booking = await prisma.booking.create({
       data: {
         serviceId,

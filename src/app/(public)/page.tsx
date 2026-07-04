@@ -670,62 +670,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ===== TESTIMONIALS ===== */}
-      {testimonials.length > 0 && (
-        <section className="py-16" style={{ backgroundColor: `${secondaryColor}30` }}>
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
-                What Our Customers Say
-              </h2>
-              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Real reviews from real people</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {testimonials.map((testimonial) => (
-                <div
-                  key={testimonial.id}
-                  className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-                  style={{ borderColor: `${primaryColor}20` }}
-                >
-                  <div className="flex text-yellow-400 mb-3">
-                    {Array.from({ length: testimonial.rating }).map((_, i) => (
-                      <svg key={i} className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    ))}
-                  </div>
-                  <p className="text-gray-600 mb-4 line-clamp-4 italic" style={{ fontSize: bodyFontSize }}>
-                    "{testimonial.reviewText}"
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      {testimonial.customerName.charAt(0)}
-                    </div>
-                    <p className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>
-                      {testimonial.customerName}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="text-center mt-8">
-              <Link
-                href="/testimonials"
-                className="font-medium transition-colors"
-                style={{ color: primaryColor, fontSize: bodyFontSize }}
-              >
-                See All Testimonials →
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* ===== LATEST BLOG ===== */}
       {latestBlogs.length > 0 && (
         <section className="py-16 bg-white">
@@ -759,10 +703,9 @@ export default function HomePage() {
                 >
                   {blog.coverImageUrl ? (
                     <div className="aspect-video bg-gray-100 relative overflow-hidden">
-                      <Image
+                      <img
                         src={blog.coverImageUrl}
                         alt={blog.title}
-                        fill
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
@@ -806,6 +749,113 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ===== TESTIMONIALS & BEFORE/AFTER SECTION ===== */}
+      {testimonials.length > 0 && (
+        <section className="py-16" style={{ backgroundColor: `${secondaryColor}30` }}>
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
+                What Our Customers Say
+              </h2>
+              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Real reviews from real people</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {testimonials.slice(0, 3).map((testimonial) => (
+                <div
+                  key={testimonial.id}
+                  className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100"
+                  style={{ borderColor: `${primaryColor}20` }}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    {testimonial.customerPhotoUrl ? (
+                      <img
+                        src={testimonial.customerPhotoUrl}
+                        alt={testimonial.customerName}
+                        className="w-10 h-10 object-cover rounded-full border-2"
+                        style={{ borderColor: primaryColor }}
+                      />
+                    ) : (
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {testimonial.customerName.charAt(0)}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-semibold text-gray-800" style={{ fontSize: bodyFontSize }}>
+                        {testimonial.customerName}
+                      </p>
+                      <div className="flex text-yellow-400">
+                        {Array.from({ length: testimonial.rating }).map((_, i) => (
+                          <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-gray-600 mb-4 line-clamp-3 italic" style={{ fontSize: bodyFontSize }}>
+                    "{testimonial.reviewText}"
+                  </p>
+
+                  {testimonial.beforeAfter && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex gap-2">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={testimonial.beforeAfter.beforeImageUrl} 
+                            alt="Before" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                          <img 
+                            src={testimonial.beforeAfter.afterImageUrl} 
+                            alt="After" 
+                            className="w-full h-full object-cover" 
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-800 truncate" style={{ fontSize: smallFontSize }}>
+                            {testimonial.beforeAfter.title}
+                          </p>
+                          <p className="text-xs text-gray-500" style={{ fontSize: smallFontSize }}>
+                            {testimonial.beforeAfter.category}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <Link
+                    href={`/testimonials/${testimonial.customerName.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '')}`}
+                    className="inline-block mt-3 text-sm font-medium transition-colors"
+                    style={{ color: primaryColor, fontSize: smallFontSize }}
+                  >
+                    Read More →
+                  </Link>
+                </div>
+              ))}
+            </div>
+
+            {testimonials.length > 3 && (
+              <div className="text-center mt-8">
+                <Link
+                  href="/testimonials"
+                  className="font-medium transition-colors"
+                  style={{ color: primaryColor, fontSize: bodyFontSize }}
+                >
+                  See All Testimonials →
+                </Link>
+              </div>
+            )}
           </div>
         </section>
       )}

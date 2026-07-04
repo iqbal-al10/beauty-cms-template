@@ -713,17 +713,6 @@ export default function BlogPage() {
                           className="flex-1 mt-1 block px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                           placeholder="https://example.com/og-image.jpg"
                         />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            fetchMediaFiles()
-                            setShowMediaPicker(true)
-                          }}
-                          className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors text-sm"
-                        >
-                          <ImageIcon className="w-4 h-4" />
-                          Pilih
-                        </button>
                       </div>
                       {postForm.ogImageUrl && (
                         <div className="mt-2">

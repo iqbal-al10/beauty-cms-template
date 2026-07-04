@@ -273,7 +273,7 @@ export default function BookingPage() {
                     className="mt-4 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
                     style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                   >
-                    Lihat Detail <ArrowRight className="w-4 h-4" />
+                    Views Details <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </div>

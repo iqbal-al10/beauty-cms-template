@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { 
       title, slug, content, excerpt, status, publishedAt, categoryId,
+      coverImageUrl,
       metaTitle, metaDescription, canonicalUrl, ogImageUrl 
     } = body
 
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
         slug,
         content,
         excerpt,
+        coverImageUrl: coverImageUrl || null,
         status: status || 'DRAFT',
         publishedAt: publishedAt ? new Date(publishedAt) : null,
         categoryId: categoryId || null,

@@ -31,6 +31,7 @@ model Settings {
   
   copyrightText      String?
   footerLinks        Json?
+  footerServices  Json?
   
   shippingZones       Json?
   freeShippingThreshold Int?   @default(300000)
@@ -71,7 +72,7 @@ model Settings {
   siteKeywords        String?
   
   // ===== HERO CONTENT =====
-  heroBadge          String?  @default("⭐ Premium Beauty Services")
+  heroBadge          String?  @default("Premium Beauty Services")
   heroSubtitle       String?  @default("Discover premium beauty services and products for your perfect look")
   heroShopButtonText String?  @default("Shop Now")
   heroShopButtonLink String?  @default("/products")
@@ -97,6 +98,22 @@ model Settings {
   heroSlide2Link     String?  @default("/booking")
   heroSlide2BgStart  String?  @default("#8b5cf6")
   heroSlide2BgEnd    String?  @default("#ec4899")
+  
+  // ===== ABOUT PAGE =====
+  aboutHeroTitle      String?  @default("About Us")
+  aboutHeroSubtitle   String?  @default("Learn more about our journey")
+  aboutStoryTitle     String?  @default("Our Story")
+  aboutStoryContent   String?  @default("We are passionate about bringing beauty to everyone...")
+  aboutMission        String?  @default("To bring beauty and confidence to every individual")
+  aboutVision         String?  @default("To be the leading beauty destination in the region")
+  aboutTeamTitle      String?  @default("Meet Our Team")
+  aboutTeam           Json?    // Array of team members
+  
+  // ===== CONTACT PAGE =====
+  contactHeroTitle    String?  @default("Contact Us")
+  contactHeroSubtitle String?  @default("We'd love to hear from you")
+  contactFormTitle    String?  @default("Send Us a Message")
+  contactSuccessMessage String? @default("Thank you for your message! We will get back to you soon.")
   
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -217,6 +234,8 @@ model Testimonial {
   reviewText       String
   isPublished      Boolean  @default(false)
   sortOrder        Int      @default(0)
+  beforeAfterId    String?
+  beforeAfter      BeforeAfter?  @relation(fields: [beforeAfterId], references: [id], onDelete: SetNull)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -247,7 +266,7 @@ model BlogCategory {
   slug        String    @unique
   description String?
   sortOrder   Int       @default(0)
-  isActive    Boolean   @default(true)  // ← FIELD INI PENTING!
+  isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   posts       BlogPost[]
@@ -294,6 +313,7 @@ model BeforeAfter {
   isPublished    Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  testimonials   Testimonial[]
 }
 
 model Promo {

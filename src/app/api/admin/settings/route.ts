@@ -35,10 +35,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log('📦 Received settings update:', body)
 
     const settingsData = {
-      // ===== BRAND IDENTITY =====
+      // Brand Identity
       siteName: body.siteName || 'Beauty Studio',
       colorPrimary: body.colorPrimary || '#c4367b',
       colorSecondary: body.colorSecondary || '#f5dbe8',
@@ -56,36 +55,36 @@ export async function PUT(request: NextRequest) {
       socialLinks: body.socialLinks || {},
       gaTrackingId: body.gaTrackingId || null,
       
-      // ===== SEO =====
+      // SEO
       metaTitle: body.metaTitle || null,
       metaDescription: body.metaDescription || null,
       defaultOgImage: body.defaultOgImage || null,
       
-      // ===== COLORS =====
+      // Colors
       primaryBackground: body.primaryBackground || '#ffffff',
       secondaryBackground: body.secondaryBackground || '#f8f9fa',
       headingColor: body.headingColor || '#111827',
       bodyTextColor: body.bodyTextColor || '#4b5563',
       linkHoverColor: body.linkHoverColor || '#c4367b',
       
-      // ===== LAYOUT =====
+      // Layout
       borderRadius: body.borderRadius || 'medium',
       buttonStyle: body.buttonStyle || 'rounded',
       layoutStyle: body.layoutStyle || 'full-width',
       navStyle: body.navStyle || 'sticky',
       
-      // ===== NAVBAR =====
+      // Navbar
       navbarBackground: body.navbarBackground || '#ffffff',
       navbarTextColor: body.navbarTextColor || '#4b5563',
       navbarHoverColor: body.navbarHoverColor || '#c4367b',
       navbarActiveColor: body.navbarActiveColor || '#c4367b',
       
-      // ===== FONT SIZES =====
+      // Font Sizes
       headingFontSize: body.headingFontSize || '32px',
       bodyFontSize: body.bodyFontSize || '16px',
       smallFontSize: body.smallFontSize || '14px',
       
-      // ===== FEATURES =====
+      // Features
       enableCart: body.enableCart !== undefined ? body.enableCart : true,
       enableWhatsAppOrder: body.enableWhatsAppOrder !== undefined ? body.enableWhatsAppOrder : true,
       enableGuestCheckout: body.enableGuestCheckout !== undefined ? body.enableGuestCheckout : true,
@@ -95,22 +94,20 @@ export async function PUT(request: NextRequest) {
       enableGallery: body.enableGallery !== undefined ? body.enableGallery : true,
       enableFaq: body.enableFaq !== undefined ? body.enableFaq : true,
       
-      // ===== LIMITS =====
+      // Limits
       minOrderAmount: body.minOrderAmount || 0,
       maxOrderQuantity: body.maxOrderQuantity || 99,
       cartExpiryDays: body.cartExpiryDays || 7,
       
-      // ===== SITE INFO =====
+      // Site Info
       siteDescription: body.siteDescription || null,
       siteKeywords: body.siteKeywords || null,
       
-      // ===== FOOTER =====
+      // Footer
       copyrightText: body.copyrightText || '',
       footerLinks: body.footerLinks || null,
 
-      // =============================================
-      // ===== 🔥 HERO CONTENT =====
-      // =============================================
+      // Hero Content
       heroBadge: body.heroBadge || '⭐ Premium Beauty Services',
       heroSubtitle: body.heroSubtitle || 'Discover premium beauty services and products for your perfect look',
       heroShopButtonText: body.heroShopButtonText || 'Shop Now',
@@ -118,9 +115,7 @@ export async function PUT(request: NextRequest) {
       heroBookButtonText: body.heroBookButtonText || 'Book Now',
       heroBookButtonLink: body.heroBookButtonLink || '/booking',
 
-      // =============================================
-      // ===== 🔥 HERO SLIDE 1 =====
-      // =============================================
+      // Hero Slide 1
       heroSlide1Icon: body.heroSlide1Icon || '🔥',
       heroSlide1Label: body.heroSlide1Label || 'Limited Time Offer',
       heroSlide1Title: body.heroSlide1Title || 'FLASH SALE 50% OFF',
@@ -130,9 +125,7 @@ export async function PUT(request: NextRequest) {
       heroSlide1BgStart: body.heroSlide1BgStart || '#f97316',
       heroSlide1BgEnd: body.heroSlide1BgEnd || '#db2777',
 
-      // =============================================
-      // ===== 🔥 HERO SLIDE 2 =====
-      // =============================================
+      // Hero Slide 2
       heroSlide2Icon: body.heroSlide2Icon || '📅',
       heroSlide2Label: body.heroSlide2Label || 'Book Now & Get Special Offer',
       heroSlide2Title: body.heroSlide2Title || 'FREE Consultation',
@@ -141,23 +134,34 @@ export async function PUT(request: NextRequest) {
       heroSlide2Link: body.heroSlide2Link || '/booking',
       heroSlide2BgStart: body.heroSlide2BgStart || '#8b5cf6',
       heroSlide2BgEnd: body.heroSlide2BgEnd || '#ec4899',
-    }
 
-    console.log('📦 Settings data to save:', settingsData)
+      // ===== ABOUT PAGE =====
+      aboutHeroTitle: body.aboutHeroTitle || 'About Us',
+      aboutHeroSubtitle: body.aboutHeroSubtitle || 'Learn more about our journey',
+      aboutStoryTitle: body.aboutStoryTitle || 'Our Story',
+      aboutStoryContent: body.aboutStoryContent || 'We are passionate about bringing beauty to everyone...',
+      aboutMission: body.aboutMission || 'To bring beauty and confidence to every individual',
+      aboutVision: body.aboutVision || 'To be the leading beauty destination in the region',
+      aboutTeamTitle: body.aboutTeamTitle || 'Meet Our Team',
+      aboutTeam: body.aboutTeam || null,
+
+      // ===== CONTACT PAGE =====
+      contactHeroTitle: body.contactHeroTitle || 'Contact Us',
+      contactHeroSubtitle: body.contactHeroSubtitle || "We'd love to hear from you",
+      contactFormTitle: body.contactFormTitle || 'Send Us a Message',
+      contactSuccessMessage: body.contactSuccessMessage || 'Thank you for your message! We will get back to you soon.',
+    }
 
     const settings = await prisma.settings.update({
       where: { id: 'default' },
       data: settingsData,
     })
 
-    console.log('✅ Settings updated successfully')
-    console.log('✅ Saved heroBadge:', settings.heroBadge)
-
     return NextResponse.json(settings)
   } catch (error) {
     console.error('Error updating settings:', error)
     return NextResponse.json(
-      { error: 'Failed to update settings: ' + (error as Error).message },
+      { error: 'Failed to update settings' },
       { status: 500 }
     )
   }

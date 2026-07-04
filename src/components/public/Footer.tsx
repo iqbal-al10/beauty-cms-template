@@ -30,6 +30,7 @@ interface Settings {
   bodyTextColor: string
   copyrightText: string
   footerLinks: any
+  footerServices: any
   primaryBackground: string
 }
 
@@ -83,6 +84,16 @@ export default function Footer({ settings }: FooterProps) {
       footerLinks = JSON.parse(footerLinks)
     } catch (e) {
       footerLinks = []
+    }
+  }
+
+  // 🔥 Parse footer services - AMBIL DARI SETTINGS
+  let footerServices = settings?.footerServices || ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup']
+  if (typeof footerServices === 'string') {
+    try {
+      footerServices = JSON.parse(footerServices)
+    } catch (e) {
+      footerServices = ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup']
     }
   }
 
@@ -161,7 +172,9 @@ export default function Footer({ settings }: FooterProps) {
               {[
                 { href: '/products', label: 'Products' },
                 { href: '/booking', label: 'Booking' },
-                { href: '/about', label: 'About Us' },
+                { href: '/blog', label: 'Blog' },
+                { href: '/testimonials', label: 'Testimonials' },
+                { href: '/about', label: 'About' },
                 { href: '/contact', label: 'Contact' },
               ].map((link) => (
                 <li key={link.href}>
@@ -180,7 +193,7 @@ export default function Footer({ settings }: FooterProps) {
             </ul>
           </div>
 
-          {/* Services */}
+          {/* 🔥 Services - DIAMBIL DARI SETTINGS */}
           <div>
             <h4 
               className="font-semibold mb-4"
@@ -192,24 +205,26 @@ export default function Footer({ settings }: FooterProps) {
               Services
             </h4>
             <ul className="space-y-2">
-              {[
-                'Facial Treatment',
-                'Body Care',
-                'Hair Care',
-                'Nail Art',
-                'Makeup',
-              ].map((service) => (
-                <li key={service}>
-                  <span 
-                    style={{ 
-                      color: textColor,
-                      fontSize: smallFontSize 
-                    }}
-                  >
-                    {service}
+              {Array.isArray(footerServices) && footerServices.length > 0 ? (
+                footerServices.map((service: string, index: number) => (
+                  <li key={index}>
+                    <span 
+                      style={{ 
+                        color: textColor,
+                        fontSize: smallFontSize 
+                      }}
+                    >
+                      {service}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li>
+                  <span style={{ color: textColor, fontSize: smallFontSize }}>
+                    No services listed
                   </span>
                 </li>
-              ))}
+              )}
             </ul>
           </div>
 
@@ -253,7 +268,6 @@ export default function Footer({ settings }: FooterProps) {
               })}
             </div>
             
-            {/* Footer Links dari Settings */}
             {footerLinks && footerLinks.length > 0 && (
               <div className="flex flex-wrap gap-3 mb-2">
                 {footerLinks.map((link: any, index: number) => (

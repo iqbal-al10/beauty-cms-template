@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { logUserAction } from '@/middleware/activityLogger'
+import { getServerSession } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
+
     const item = await prisma.beforeAfter.findUnique({
       where: { id },
     })
@@ -21,9 +27,9 @@ export async function GET(
 
     return NextResponse.json(item)
   } catch (error) {
-    console.error('Error fetching before-after:', error)
+    console.error('Error fetching before-after item:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch item' },
+      { error: 'Failed to fetch before-after item' },
       { status: 500 }
     )
   }
@@ -34,35 +40,51 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
     const { title, category, beforeImageUrl, afterImageUrl, description, sortOrder, isPublished } = body
+
+    if (!title || !beforeImageUrl || !afterImageUrl) {
+      return NextResponse.json(
+        { error: 'Title, Before Image, and After Image are required' },
+        { status: 400 }
+      )
+    }
+
+    const existing = await prisma.beforeAfter.findUnique({
+      where: { id },
+    })
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Item not found' },
+        { status: 404 }
+      )
+    }
 
     const item = await prisma.beforeAfter.update({
       where: { id },
       data: {
         title,
-        category,
+        category: category || 'Other',
         beforeImageUrl,
         afterImageUrl,
-        description,
-        sortOrder: parseInt(sortOrder) || 0,
+        description: description || null,
+        sortOrder: sortOrder || 0,
         isPublished: isPublished !== undefined ? isPublished : true,
       },
     })
 
-    // Log activity
-    await logUserAction('UPDATE', 'BeforeAfter', item.id, {
-      title: item.title,
-      category: item.category,
-      isPublished: item.isPublished,
-    })
-
     return NextResponse.json(item)
   } catch (error) {
-    console.error('Error updating before-after:', error)
+    console.error('Error updating before-after item:', error)
     return NextResponse.json(
-      { error: 'Failed to update item' },
+      { error: 'Failed to update before-after item' },
       { status: 500 }
     )
   }
@@ -73,12 +95,18 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { id } = await params
-    const item = await prisma.beforeAfter.findUnique({
+
+    const existing = await prisma.beforeAfter.findUnique({
       where: { id },
     })
 
-    if (!item) {
+    if (!existing) {
       return NextResponse.json(
         { error: 'Item not found' },
         { status: 404 }
@@ -89,17 +117,11 @@ export async function DELETE(
       where: { id },
     })
 
-    // Log activity
-    await logUserAction('DELETE', 'BeforeAfter', id, {
-      title: item.title,
-      category: item.category,
-    })
-
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting before-after:', error)
+    console.error('Error deleting before-after item:', error)
     return NextResponse.json(
-      { error: 'Failed to delete item' },
+      { error: 'Failed to delete before-after item' },
       { status: 500 }
     )
   }

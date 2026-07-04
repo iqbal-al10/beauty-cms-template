@@ -26,7 +26,15 @@ export async function GET() {
         address: null,
         socialLinks: {},
         gaTrackingId: null,
-        // Hero fields default
+        operatingHours: {
+          Sunday: 'Closed',
+          Monday: '10:00 - 21:00',
+          Tuesday: '10:00 - 21:00',
+          Wednesday: '10:00 - 21:00',
+          Thursday: '10:00 - 21:00',
+          Friday: '10:00 - 21:00',
+          Saturday: '10:00 - 16:00',
+        },
         heroBadge: '⭐ Premium Beauty Services',
         heroSubtitle: 'Discover premium beauty services and products for your perfect look',
         heroShopButtonText: 'Shop Now',
@@ -49,6 +57,18 @@ export async function GET() {
         heroSlide2Link: '/booking',
         heroSlide2BgStart: '#8b5cf6',
         heroSlide2BgEnd: '#ec4899',
+        aboutHeroTitle: 'About Us',
+        aboutHeroSubtitle: 'Learn more about our journey',
+        aboutStoryTitle: 'Our Story',
+        aboutStoryContent: 'We are passionate about bringing beauty to everyone...',
+        aboutMission: 'To bring beauty and confidence to every individual',
+        aboutVision: 'To be the leading beauty destination in the region',
+        aboutTeamTitle: 'Meet Our Team',
+        aboutTeam: null,
+        contactHeroTitle: 'Contact Us',
+        contactHeroSubtitle: "We'd love to hear from you",
+        contactFormTitle: 'Send Us a Message',
+        contactSuccessMessage: 'Thank you for your message! We will get back to you soon.',
       })
     }
 
@@ -70,14 +90,22 @@ export async function GET() {
       address: settings.address,
       socialLinks: settings.socialLinks,
       gaTrackingId: settings.gaTrackingId,
-      // ===== HERO CONTENT =====
+      // 🔥 TAMBAHKAN OPERATING HOURS
+      operatingHours: settings.operatingHours || {
+        Sunday: 'Closed',
+        Monday: '10:00 - 21:00',
+        Tuesday: '10:00 - 21:00',
+        Wednesday: '10:00 - 21:00',
+        Thursday: '10:00 - 21:00',
+        Friday: '10:00 - 21:00',
+        Saturday: '10:00 - 16:00',
+      },
       heroBadge: settings.heroBadge,
       heroSubtitle: settings.heroSubtitle,
       heroShopButtonText: settings.heroShopButtonText,
       heroShopButtonLink: settings.heroShopButtonLink,
       heroBookButtonText: settings.heroBookButtonText,
       heroBookButtonLink: settings.heroBookButtonLink,
-      // ===== HERO SLIDE 1 =====
       heroSlide1Icon: settings.heroSlide1Icon,
       heroSlide1Label: settings.heroSlide1Label,
       heroSlide1Title: settings.heroSlide1Title,
@@ -86,7 +114,6 @@ export async function GET() {
       heroSlide1Link: settings.heroSlide1Link,
       heroSlide1BgStart: settings.heroSlide1BgStart,
       heroSlide1BgEnd: settings.heroSlide1BgEnd,
-      // ===== HERO SLIDE 2 =====
       heroSlide2Icon: settings.heroSlide2Icon,
       heroSlide2Label: settings.heroSlide2Label,
       heroSlide2Title: settings.heroSlide2Title,
@@ -95,6 +122,18 @@ export async function GET() {
       heroSlide2Link: settings.heroSlide2Link,
       heroSlide2BgStart: settings.heroSlide2BgStart,
       heroSlide2BgEnd: settings.heroSlide2BgEnd,
+      aboutHeroTitle: settings.aboutHeroTitle,
+      aboutHeroSubtitle: settings.aboutHeroSubtitle,
+      aboutStoryTitle: settings.aboutStoryTitle,
+      aboutStoryContent: settings.aboutStoryContent,
+      aboutMission: settings.aboutMission,
+      aboutVision: settings.aboutVision,
+      aboutTeamTitle: settings.aboutTeamTitle,
+      aboutTeam: settings.aboutTeam,
+      contactHeroTitle: settings.contactHeroTitle,
+      contactHeroSubtitle: settings.contactHeroSubtitle,
+      contactFormTitle: settings.contactFormTitle,
+      contactSuccessMessage: settings.contactSuccessMessage,
     })
   } catch (error) {
     console.error('Error fetching settings:', error)
@@ -116,6 +155,15 @@ export async function GET() {
       address: null,
       socialLinks: {},
       gaTrackingId: null,
+      operatingHours: {
+        Sunday: 'Closed',
+        Monday: '10:00 - 21:00',
+        Tuesday: '10:00 - 21:00',
+        Wednesday: '10:00 - 21:00',
+        Thursday: '10:00 - 21:00',
+        Friday: '10:00 - 21:00',
+        Saturday: '10:00 - 16:00',
+      },
       heroBadge: '⭐ Premium Beauty Services',
       heroSubtitle: 'Discover premium beauty services and products for your perfect look',
       heroShopButtonText: 'Shop Now',
@@ -138,6 +186,18 @@ export async function GET() {
       heroSlide2Link: '/booking',
       heroSlide2BgStart: '#8b5cf6',
       heroSlide2BgEnd: '#ec4899',
+      aboutHeroTitle: 'About Us',
+      aboutHeroSubtitle: 'Learn more about our journey',
+      aboutStoryTitle: 'Our Story',
+      aboutStoryContent: 'We are passionate about bringing beauty to everyone...',
+      aboutMission: 'To bring beauty and confidence to every individual',
+      aboutVision: 'To be the leading beauty destination in the region',
+      aboutTeamTitle: 'Meet Our Team',
+      aboutTeam: null,
+      contactHeroTitle: 'Contact Us',
+      contactHeroSubtitle: "We'd love to hear from you",
+      contactFormTitle: 'Send Us a Message',
+      contactSuccessMessage: 'Thank you for your message! We will get back to you soon.',
     })
   }
 }

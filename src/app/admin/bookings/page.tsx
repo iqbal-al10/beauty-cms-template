@@ -888,7 +888,7 @@ export default function BookingsPage() {
             }}
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> Tambah Layanan
+            <Plus className="w-5 h-5" /> Add Services
           </button>
         )
       case 'categories':
@@ -908,7 +908,7 @@ export default function BookingsPage() {
             }}
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> Tambah Kategori Booking
+            <Plus className="w-5 h-5" /> Add Category
           </button>
         )
       case 'tags':
@@ -921,7 +921,7 @@ export default function BookingsPage() {
             }}
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> Tambah Tag Booking
+            <Plus className="w-5 h-5" /> Add Tag
           </button>
         )
       case 'promos':
@@ -935,7 +935,7 @@ export default function BookingsPage() {
             }}
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> Tambah Voucher
+            <Plus className="w-5 h-5" /> Add Voucher
           </button>
         )
       default:
@@ -1225,15 +1225,15 @@ export default function BookingsPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-3 text-left"><input type="checkbox" checked={selectAll} onChange={() => { if (selectAll) { setSelectedIds([]) } else { setSelectedIds(filteredServices.map(s => s.id)) } setSelectAll(!selectAll) }} className="w-4 h-4 text-pink-500 rounded border-gray-300" /></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gambar</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tags</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Durasi</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Featured</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">

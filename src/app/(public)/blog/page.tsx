@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 
 interface BlogPageProps {
@@ -23,6 +22,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   })
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
+  const headingFontSize = settings?.headingFontSize || '32px'
+  const bodyFontSize = settings?.bodyFontSize || '16px'
+  const smallFontSize = settings?.smallFontSize || '14px'
+  const fontFamily = settings?.fontFamily || 'Inter'
 
   const filter: any = {
     status: 'PUBLISHED',
@@ -72,10 +75,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Blog</h1>
-        <p className="text-gray-500 mt-1">
+        <h1 className="font-bold text-gray-800" style={{ fontSize: headingFontSize }}>Blog</h1>
+        <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>
           Tips, inspiration, and insights from our experts
         </p>
       </div>
@@ -95,16 +98,17 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors"
               style={{ 
                 '--tw-ring-color': primaryColor,
+                fontSize: bodyFontSize,
               } as React.CSSProperties}
             />
             <svg className="absolute left-3 top-3 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0118 0z"/>
             </svg>
           </div>
         </form>
       </div>
 
-      {/* ===== FILTER KATEGORI (SEPERTI PRODUCTS) ===== */}
+      {/* ===== FILTER KATEGORI ===== */}
       <div className="flex flex-wrap gap-2 mb-6">
         <a
           href="/blog"
@@ -113,7 +117,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               ? 'text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
-          style={!categorySlug ? { backgroundColor: primaryColor } : {}}
+          style={
+            !categorySlug 
+              ? { backgroundColor: primaryColor, fontSize: smallFontSize } 
+              : { fontSize: smallFontSize }
+          }
         >
           All
         </a>
@@ -126,14 +134,18 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={categorySlug === category.slug ? { backgroundColor: primaryColor } : {}}
+            style={
+              categorySlug === category.slug 
+                ? { backgroundColor: primaryColor, fontSize: smallFontSize } 
+                : { fontSize: smallFontSize }
+            }
           >
             {category.name}
           </Link>
         ))}
       </div>
 
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-500 mb-6" style={{ fontSize: smallFontSize }}>
         Showing {posts.length} of {totalPosts} posts
       </p>
 
@@ -142,12 +154,12 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
-          <h3 className="text-lg font-semibold text-gray-600">No posts found</h3>
-          <p className="text-gray-400 text-sm">Try adjusting your search or filter</p>
+          <h3 className="text-lg font-semibold text-gray-600" style={{ fontSize: headingFontSize }}>No posts found</h3>
+          <p className="text-gray-400 text-sm" style={{ fontSize: bodyFontSize }}>Try adjusting your search or filter</p>
           <Link
             href="/blog"
             className="inline-block mt-4 px-6 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:opacity-90"
-            style={{ backgroundColor: primaryColor }}
+            style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
           >
             Clear filters
           </Link>
@@ -163,11 +175,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             >
               {post.coverImageUrl ? (
                 <div className="aspect-video bg-gray-100 relative overflow-hidden">
-                  <Image
+                  <img
                     src={post.coverImageUrl}
                     alt={post.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
               ) : (
@@ -182,18 +193,19 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                     style={{
                       backgroundColor: `${primaryColor}15`,
                       color: primaryColor,
+                      fontSize: smallFontSize,
                     }}
                   >
                     {post.category.name}
                   </span>
                 )}
-                <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-2">
+                <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-2" style={{ fontSize: bodyFontSize }}>
                   {post.title}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                <p className="text-sm text-gray-500 mt-1 line-clamp-2" style={{ fontSize: smallFontSize }}>
                   {post.excerpt || 'Read more...'}
                 </p>
-                <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                <div className="flex items-center gap-2 mt-3 text-xs text-gray-400" style={{ fontSize: smallFontSize }}>
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
@@ -219,7 +231,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
-                style={isActive ? { backgroundColor: primaryColor } : {}}
+                style={
+                  isActive 
+                    ? { backgroundColor: primaryColor, fontSize: smallFontSize } 
+                    : { fontSize: smallFontSize }
+                }
               >
                 {pageNum}
               </Link>

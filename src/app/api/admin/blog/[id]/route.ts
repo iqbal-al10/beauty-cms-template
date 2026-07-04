@@ -45,6 +45,7 @@ export async function PUT(
     const body = await request.json()
     const { 
       title, slug, content, excerpt, status, publishedAt, categoryId,
+      coverImageUrl,
       metaTitle, metaDescription, canonicalUrl, ogImageUrl 
     } = body
 
@@ -55,6 +56,7 @@ export async function PUT(
         slug,
         content,
         excerpt,
+        coverImageUrl: coverImageUrl || null,
         status,
         publishedAt: publishedAt ? new Date(publishedAt) : null,
         categoryId: categoryId || null,

@@ -122,11 +122,10 @@ export default function AdminLayout({
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Package, label: 'Products', href: '/admin/products' },
     { icon: Calendar, label: 'Bookings', href: '/admin/bookings' },
-    { icon: FileText, label: 'Blog', href: '/admin/blog' },
     { icon: Star, label: 'Reviews', href: '/admin/reviews' },
+    { icon: FileText, label: 'Blog', href: '/admin/blog' },
     { icon: MessageSquare, label: 'Testimonials', href: '/admin/testimonials' },
     { icon: Image, label: 'Media', href: '/admin/media' },
-    { icon: Images, label: 'Before/After', href: '/admin/before-after' },
     { icon: Video, label: 'Videos', href: '/admin/videos' },
     { icon: Contact, label: 'Contact Messages', href: '/admin/contact-messages' },
     { icon: HelpCircle, label: 'FAQ', href: '/admin/faq' },
@@ -165,7 +164,6 @@ export default function AdminLayout({
     if (pathname?.startsWith('/admin/bookings')) return 'Bookings'
     if (pathname?.startsWith('/admin/testimonials')) return 'Testimonials'
     if (pathname?.startsWith('/admin/blog')) return 'Blog'
-    if (pathname?.startsWith('/admin/before-after')) return 'Before/After'
     if (pathname?.startsWith('/admin/faq')) return 'FAQ'
     if (pathname?.startsWith('/admin/settings')) return 'Settings'
     if (pathname?.startsWith('/admin/media')) return 'Media'

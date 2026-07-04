@@ -26,6 +26,19 @@ interface PaymentMethod {
   isActive: boolean
 }
 
+interface Settings {
+  siteName: string
+  colorPrimary: string
+  whatsappNumber: string | null
+  email: string | null
+  address: string | null
+  operatingHours: any
+  fontFamily: string
+  headingFontSize: string
+  bodyFontSize: string
+  smallFontSize: string
+}
+
 function BookingServiceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -43,6 +56,9 @@ function BookingServiceContent() {
   const [voucherCode, setVoucherCode] = useState('')
   const [voucherApplied, setVoucherApplied] = useState(false)
   const [voucherError, setVoucherError] = useState('')
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [isClosed, setIsClosed] = useState(false)
+  const [closedMessage, setClosedMessage] = useState('')
   const [form, setForm] = useState({
     serviceId: serviceIdParam,
     bookingDate: '',
@@ -59,6 +75,7 @@ function BookingServiceContent() {
   useEffect(() => {
     fetchServices()
     fetchPaymentMethods()
+    fetchSettings()
   }, [])
 
   useEffect(() => {
@@ -71,6 +88,19 @@ function BookingServiceContent() {
       }
     }
   }, [serviceIdParam, services])
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/public/settings')
+      if (res.ok) {
+        const data = await res.json()
+        console.log('✅ Settings fetched:', data)
+        setSettings(data)
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    }
+  }
 
   const fetchServices = async () => {
     try {
@@ -104,6 +134,8 @@ function BookingServiceContent() {
       const res = await fetch(`/api/public/bookings?date=${date}&serviceId=${serviceId}`)
       const data = await res.json()
       setSlots(data.slots || [])
+      setIsClosed(data.isClosed || false)
+      setClosedMessage(data.message || '')
     } catch (error) {
       console.error('Error fetching slots:', error)
     }
@@ -179,7 +211,6 @@ function BookingServiceContent() {
       return
     }
 
-    // Get selected payment method details
     const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
 
     try {
@@ -219,6 +250,69 @@ function BookingServiceContent() {
     return Math.max(0, selectedService.price - voucherDiscount)
   }
 
+  // 🔥 PERBAIKAN: Render operating hours langsung tanpa useEffect
+  const renderOperatingHours = () => {
+    if (!settings?.operatingHours) return null
+    
+    let hours = settings.operatingHours
+    console.log('🔍 Operating hours:', hours)
+    
+    // Jika string, parse JSON
+    if (typeof hours === 'string') {
+      try {
+        hours = JSON.parse(hours)
+      } catch {
+        return null
+      }
+    }
+    
+    // Jika object, render
+    if (typeof hours === 'object' && !Array.isArray(hours)) {
+      return Object.entries(hours).map(([day, time]) => (
+        <p key={day} className="text-gray-600 text-sm flex justify-between">
+          <span>{day}</span>
+          <span>{String(time)}</span>
+        </p>
+      ))
+    }
+    
+    return null
+  }
+
+  const renderSlots = () => {
+    if (slots.length === 0) {
+      if (isClosed) {
+        return (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+            <p className="text-yellow-700 font-medium">{closedMessage || 'Maaf, tidak ada slot tersedia untuk hari ini'}</p>
+          </div>
+        )
+      }
+      return (
+        <p className="text-gray-500 text-sm">Pilih tanggal terlebih dahulu untuk melihat slot</p>
+      )
+    }
+
+    return (
+      <div className="grid grid-cols-3 gap-2">
+        {slots.map((slot) => (
+          <button
+            key={slot}
+            type="button"
+            onClick={() => setForm({ ...form, bookingTime: slot })}
+            className={`px-4 py-2 rounded-lg border transition-colors ${
+              form.bookingTime === slot
+                ? 'bg-pink-500 text-white border-pink-500'
+                : 'border-gray-300 hover:border-pink-300'
+            }`}
+          >
+            {slot}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   if (loading && !submitted) {
     return (
       <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
@@ -228,7 +322,7 @@ function BookingServiceContent() {
   }
 
   if (submitted && bookingData) {
-    const adminWhatsapp = '6285710379820'
+    const adminWhatsapp = settings?.whatsappNumber || '6285710379820'
     const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
     const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Metode:* ${selectedPayment?.name || form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
 
@@ -290,10 +384,9 @@ function BookingServiceContent() {
             )}
           </div>
 
-          {/* Tombol Upload Bukti via WhatsApp */}
           <div className="mt-6">
             <a
-              href={`https://wa.me/${adminWhatsapp}?text=${waMessage}`}
+              href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95"
@@ -325,6 +418,7 @@ function BookingServiceContent() {
   }
 
   const totalPrice = getTotalPrice()
+  const operatingHoursDisplay = renderOperatingHours()
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -356,6 +450,28 @@ function BookingServiceContent() {
           </div>
           <span className="text-sm">Konfirmasi</span>
         </div>
+      </div>
+
+      {/* ===== CONTACT INFO WITH OPERATING HOURS ===== */}
+      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+        <h3 className="font-semibold text-gray-700 text-sm mb-2">Informasi Kontak & Jam Operasional</h3>
+        {settings?.address && (
+          <p className="text-sm text-gray-600">📍 {settings.address}</p>
+        )}
+        {settings?.whatsappNumber && (
+          <p className="text-sm text-gray-600">📞 {settings.whatsappNumber}</p>
+        )}
+        {settings?.email && (
+          <p className="text-sm text-gray-600">📧 {settings.email}</p>
+        )}
+        {operatingHoursDisplay && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <p className="text-sm font-medium text-gray-700 mb-1">🕐 Jam Operasional:</p>
+            <div className="text-sm space-y-0.5">
+              {operatingHoursDisplay}
+            </div>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
@@ -405,26 +521,7 @@ function BookingServiceContent() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Waktu *</label>
-              {slots.length === 0 ? (
-                <p className="text-gray-500 text-sm">Pilih tanggal terlebih dahulu untuk melihat slot</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {slots.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setForm({ ...form, bookingTime: slot })}
-                      className={`px-4 py-2 rounded-lg border transition-colors ${
-                        form.bookingTime === slot
-                          ? 'bg-pink-500 text-white border-pink-500'
-                          : 'border-gray-300 hover:border-pink-300'
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {renderSlots()}
             </div>
 
             <button
@@ -545,7 +642,7 @@ function BookingServiceContent() {
               )}
             </div>
 
-            {/* Metode Pembayaran - DENGAN DETAIL */}
+            {/* Metode Pembayaran */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran *</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
