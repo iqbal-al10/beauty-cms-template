@@ -276,6 +276,7 @@ model BlogTag {
   id        String    @id @default(cuid())
   name      String
   slug      String    @unique
+  color     String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   posts     BlogPost[]
