@@ -7,7 +7,7 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode
 }) {
-  let settings: any = null  // 🔥 PAKAI any
+  let settings: any = null
 
   try {
     const data = await prisma.settings.findUnique({
@@ -118,7 +118,8 @@ export default async function PublicLayout({
       <main className="flex-1">
         {children}
       </main>
-      <Footer settings={settings} />
+      {/* 🔥 PAKAI as any */}
+      <Footer settings={settings as any} />
     </div>
   )
 }
