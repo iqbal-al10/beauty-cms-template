@@ -49,9 +49,17 @@ interface Promo {
 interface Testimonial {
   id: string
   customerName: string
+  customerPhotoUrl: string | null
   rating: number
   reviewText: string
   isPublished: boolean
+  beforeAfter?: {
+    id: string
+    title: string
+    category: string
+    beforeImageUrl: string
+    afterImageUrl: string
+  }
 }
 
 interface BlogPost {
