@@ -136,13 +136,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Generate slots
+    // Generate semua slots
     const intervalMinutes = Math.max(30, service.duration || 60)
     const allSlots = generateTimeSlots(daySchedule.open, daySchedule.close, intervalMinutes)
 
-    // 🔥 PERBAIKAN: Hanya ambil booking dengan status yang aktif
-    // PENDING, APPROVED, RESCHEDULED, COMPLETED → slot tidak tersedia
-    // REJECTED → slot tersedia (karena dibatalkan)
+    // 🔥 PERBAIKAN: Ambil semua booking dengan status aktif
     const existingBookings = await prisma.booking.findMany({
       where: {
         bookingDate: new Date(date),
@@ -155,11 +153,14 @@ export async function GET(request: NextRequest) {
 
     const bookedSlots = new Set(existingBookings.map(b => b.bookingTime))
 
-    // Filter slots yang masih available
-    const availableSlots = allSlots.filter(slot => !bookedSlots.has(slot))
+    // 🔥 PERBAIKAN: Kirim semua slot dengan status booked
+    const slotsWithStatus = allSlots.map((slot) => ({
+      time: slot,
+      isBooked: bookedSlots.has(slot),
+    }))
 
     return NextResponse.json({ 
-      slots: availableSlots,
+      slots: slotsWithStatus,
       isClosed: false,
       message: null
     })
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Cek apakah slot sudah di-book oleh status aktif
+    // Cek apakah slot sudah di-book
     const existingBooking = await prisma.booking.findFirst({
       where: {
         bookingDate: new Date(bookingDate),

@@ -98,6 +98,10 @@ export async function PUT(
       }
     }
 
+    // 🔥 PERBAIKAN: Catat stock history jika stock berubah
+    const newStock = parseInt(stock)
+    const oldStock = existing.stock
+    
     // Update product
     const product = await prisma.product.update({
       where: { id },
@@ -107,7 +111,7 @@ export async function PUT(
         description: description || '',
         price: parseFloat(price),
         compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
-        stock: parseInt(stock),
+        stock: newStock,
         status: status || 'DRAFT',
         categoryId,
         imageUrl: imageUrl || null,
@@ -134,6 +138,27 @@ export async function PUT(
         },
       },
     })
+
+    // 🔥 PERBAIKAN: Jika stock berubah, buat StockHistory
+    if (newStock !== oldStock) {
+      try {
+        await prisma.stockHistory.create({
+          data: {
+            productId: id,
+            oldStock: oldStock,
+            newStock: newStock,
+            change: newStock - oldStock,
+            reason: 'ADMIN_UPDATE',
+            note: `Stok diupdate oleh admin dari ${oldStock} menjadi ${newStock}`,
+            userId: session.userId,
+          },
+        })
+        console.log(`✅ Stock history created: ${oldStock} → ${newStock}`)
+      } catch (stockError) {
+        console.error('❌ Error creating stock history:', stockError)
+        // Jangan gagalkan update product jika stock history gagal
+      }
+    }
 
     return NextResponse.json(product)
   } catch (error) {

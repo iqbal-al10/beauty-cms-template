@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { 
   Package, Calendar, MessageSquare, FileText, Users, Star, 
   RefreshCw, ShoppingBag, CheckCircle, XCircle, 
   Clock, DollarSign, TrendingUp, TrendingDown, BarChart3,
-  CreditCard, ArrowUpRight, ArrowDownRight, Box, Plus, History
+  CreditCard, ArrowUpRight, ArrowDownRight, Box, Plus, History, RotateCcw
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -49,11 +49,31 @@ interface DashboardStats {
     week: number
     month: number
     byDay: Array<{ date: string; revenue: number }>
+    product: {
+      total: number
+      today: number
+      week: number
+      month: number
+      byDay: Array<{ date: string; revenue: number }>
+    }
+    booking: {
+      total: number
+      today: number
+      week: number
+      month: number
+      byDay: Array<{ date: string; revenue: number }>
+    }
   }
   expense: {
     total: number
-    today: number
-    byDay: Array<{ date: string; expense: number }>
+    product: {
+      total: number
+      byDay: Array<{ date: string; expense: number }>
+    }
+    booking: {
+      total: number
+      byDay: Array<{ date: string; expense: number }>
+    }
   }
   profit: {
     total: number
@@ -66,6 +86,20 @@ interface DashboardStats {
     name: string
     quantity: number
     revenue: number
+  }>
+  revenueData: Array<{
+    date: string
+    productRevenue: number
+    bookingRevenue: number
+  }>
+  expenseData: Array<{
+    date: string
+    productExpense: number
+    bookingExpense: number
+  }>
+  pieChartData: Array<{
+    name: string
+    value: number
   }>
   recentTransactions: Array<{
     id: string
@@ -125,12 +159,13 @@ interface Expense {
   title: string
   amount: number
   category: string
+  target: string
   description: string | null
   date: string
   createdAt: string
 }
 
-const COLORS = ['#c4367b', '#e20373', '#f472b6', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa']
+const COLORS = ['#c4367b', '#3b82f6', '#f472b6', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa']
 
 const CATEGORIES = [
   'OPERATIONAL',
@@ -162,11 +197,26 @@ export default function DashboardPage() {
     totalReviews: 0,
     lowStockProducts: [],
     recentBookings: [],
-    revenue: { total: 0, today: 0, week: 0, month: 0, byDay: [] },
-    expense: { total: 0, today: 0, byDay: [] },
+    revenue: { 
+      total: 0, 
+      today: 0, 
+      week: 0, 
+      month: 0, 
+      byDay: [],
+      product: { total: 0, today: 0, week: 0, month: 0, byDay: [] },
+      booking: { total: 0, today: 0, week: 0, month: 0, byDay: [] }
+    },
+    expense: { 
+      total: 0,
+      product: { total: 0, byDay: [] },
+      booking: { total: 0, byDay: [] }
+    },
     profit: { total: 0 },
     orders: { total: 0, pending: 0 },
     topProducts: [],
+    revenueData: [],
+    expenseData: [],
+    pieChartData: [],
     recentTransactions: [],
   })
   const [orders, setOrders] = useState<Order[]>([])
@@ -175,6 +225,7 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [processingOrder, setProcessingOrder] = useState<string | null>(null)
   const [processingBooking, setProcessingBooking] = useState<string | null>(null)
@@ -184,6 +235,7 @@ export default function DashboardPage() {
     title: '',
     amount: '',
     category: 'OPERATIONAL',
+    target: 'PRODUCT',
     description: '',
     date: new Date().toISOString().split('T')[0],
   })
@@ -191,12 +243,26 @@ export default function DashboardPage() {
 
   const primaryColor = '#c4367b'
 
-  // Fungsi fetch data
-  const fetchData = useCallback(async (showLoading = true) => {
+  // 🔥 Cek apakah tab aktif
+  const isTabActive = useRef(true)
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isTabActive.current = !document.hidden
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  // 🔥 Fungsi fetch dengan parameter period
+  const fetchData = useCallback(async (showLoading = true, period?: FilterPeriod) => {
     try {
       if (showLoading) {
         setRefreshing(true)
       }
+      
+      const currentPeriod = period || filterPeriod
+      const url = `/api/admin/dashboard?period=${currentPeriod}`
       
       const [
         statsRes,
@@ -205,7 +271,7 @@ export default function DashboardPage() {
         historyRes,
         expensesRes
       ] = await Promise.all([
-        fetch('/api/admin/dashboard'),
+        fetch(url),
         fetch('/api/admin/orders?status=PENDING'),
         fetch('/api/admin/bookings?status=PENDING'),
         fetch('/api/admin/stock-history?limit=10'),
@@ -214,7 +280,12 @@ export default function DashboardPage() {
 
       if (statsRes.ok) {
         const data = await statsRes.json()
+        console.log('📊 Dashboard data:', data)
         setStats(data)
+      } else {
+        const error = await statsRes.json()
+        console.error('Error from API:', error)
+        toast.error(error.error || 'Gagal memuat data dashboard')
       }
 
       if (ordersRes.ok) {
@@ -247,22 +318,78 @@ export default function DashboardPage() {
       }
       setLoading(false)
     }
-  }, [])
+  }, [filterPeriod])
 
-  // Initial fetch & auto-refresh setiap 5 detik
   useEffect(() => {
     fetchData(true)
 
+    // 🔥 Auto-refresh setiap 10 detik hanya jika tab aktif
     const interval = setInterval(() => {
-      fetchData(false) // Silent refresh tanpa loading indicator
-    }, 5000) // 5 detik
+      if (isTabActive.current) {
+        fetchData(false)
+      }
+    }, 10000)
 
     return () => clearInterval(interval)
   }, [fetchData])
 
-  // Manual refresh
   const handleManualRefresh = () => {
     fetchData(true)
+  }
+
+  // 🔥 RESET DASHBOARD - SEMUA KOSONG TOTAL
+  const handleReset = async () => {
+    if (!window.confirm('Apakah anda yakin ingin mereset?')) {
+      return
+    }
+
+    setResetting(true)
+    try {
+      // 🔥 SEMUA STATE DI SET 0 / [] - KOSONG TOTAL
+      setStats({
+        totalProducts: 0,
+        totalBookings: 0,
+        totalTestimonials: 0,
+        totalBlogPosts: 0,
+        totalUsers: 0,
+        totalReviews: 0,
+        lowStockProducts: [],
+        recentBookings: [],
+        revenue: { 
+          total: 0, 
+          today: 0, 
+          week: 0, 
+          month: 0, 
+          byDay: [],
+          product: { total: 0, today: 0, week: 0, month: 0, byDay: [] },
+          booking: { total: 0, today: 0, week: 0, month: 0, byDay: [] }
+        },
+        expense: { 
+          total: 0,
+          product: { total: 0, byDay: [] },
+          booking: { total: 0, byDay: [] }
+        },
+        profit: { total: 0 },
+        orders: { total: 0, pending: 0 },
+        topProducts: [],
+        revenueData: [],
+        expenseData: [],
+        pieChartData: [],
+        recentTransactions: [],
+      })
+      setOrders([])
+      setBookings([])
+      setStockHistories([])
+      setExpenses([])
+      setLastUpdated(null)
+      
+      toast.success('✅ Dashboard berhasil direset!')
+    } catch (error) {
+      console.error('Error resetting data:', error)
+      toast.error('Gagal mereset dashboard')
+    } finally {
+      setResetting(false)
+    }
   }
 
   const handleOrderAction = async (orderId: string, action: 'approve' | 'reject') => {
@@ -349,6 +476,7 @@ export default function DashboardPage() {
         title: '',
         amount: '',
         category: 'OPERATIONAL',
+        target: 'PRODUCT',
         description: '',
         date: new Date().toISOString().split('T')[0],
       })
@@ -393,51 +521,63 @@ export default function DashboardPage() {
     return `Rp ${amount.toLocaleString('id-ID')}`
   }
 
-  const getFilteredData = () => {
-    const now = new Date()
-    let filteredRevenue = [...stats.revenue.byDay]
-    let filteredExpense = [...stats.expense.byDay]
+  // 🔥 Gabungkan data pendapatan dan pengeluaran untuk grafik gabungan
+  const getCombinedChartData = () => {
+    const revenueData = stats.revenueData || []
+    const expenseData = stats.expenseData || []
 
-    if (filterPeriod === 'day') {
-      const today = now.toISOString().split('T')[0]
-      filteredRevenue = filteredRevenue.filter(d => d.date === today)
-      filteredExpense = filteredExpense.filter(d => d.date === today)
-    } else if (filterPeriod === 'week') {
-      const weekAgo = new Date(now)
-      weekAgo.setDate(now.getDate() - 7)
-      const weekAgoStr = weekAgo.toISOString().split('T')[0]
-      filteredRevenue = filteredRevenue.filter(d => d.date >= weekAgoStr)
-      filteredExpense = filteredExpense.filter(d => d.date >= weekAgoStr)
-    } else if (filterPeriod === 'month') {
-      const monthAgo = new Date(now)
-      monthAgo.setMonth(now.getMonth() - 1)
-      const monthAgoStr = monthAgo.toISOString().split('T')[0]
-      filteredRevenue = filteredRevenue.filter(d => d.date >= monthAgoStr)
-      filteredExpense = filteredExpense.filter(d => d.date >= monthAgoStr)
-    } else if (filterPeriod === 'year') {
-      const yearAgo = new Date(now)
-      yearAgo.setFullYear(now.getFullYear() - 1)
-      const yearAgoStr = yearAgo.toISOString().split('T')[0]
-      filteredRevenue = filteredRevenue.filter(d => d.date >= yearAgoStr)
-      filteredExpense = filteredExpense.filter(d => d.date >= yearAgoStr)
-    }
+    // Buat map untuk menggabungkan data
+    const dateMap = new Map<string, {
+      date: string
+      productRevenue: number
+      bookingRevenue: number
+      productExpense: number
+      bookingExpense: number
+    }>()
 
-    const combinedData = filteredRevenue.map((item) => {
-      const expenseItem = filteredExpense.find(e => e.date === item.date)
-      return {
-        date: item.date,
-        revenue: item.revenue,
-        expense: expenseItem?.expense || 0,
+    // Masukkan data pendapatan
+    revenueData.forEach(item => {
+      if (!dateMap.has(item.date)) {
+        dateMap.set(item.date, {
+          date: item.date,
+          productRevenue: 0,
+          bookingRevenue: 0,
+          productExpense: 0,
+          bookingExpense: 0
+        })
       }
+      const existing = dateMap.get(item.date)!
+      existing.productRevenue = item.productRevenue || 0
+      existing.bookingRevenue = item.bookingRevenue || 0
     })
 
-    return combinedData
+    // Masukkan data pengeluaran
+    expenseData.forEach(item => {
+      if (!dateMap.has(item.date)) {
+        dateMap.set(item.date, {
+          date: item.date,
+          productRevenue: 0,
+          bookingRevenue: 0,
+          productExpense: 0,
+          bookingExpense: 0
+        })
+      }
+      const existing = dateMap.get(item.date)!
+      existing.productExpense = item.productExpense || 0
+      existing.bookingExpense = item.bookingExpense || 0
+    })
+
+    // Konversi ke array dan sortir
+    return Array.from(dateMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
   }
 
-  const tooltipFormatter = (value: any) => {
-    if (value === undefined || value === null) return 'Rp 0'
-    if (typeof value === 'number') return `Rp ${value.toLocaleString('id-ID')}`
-    return 'Rp 0'
+  const chartData = getCombinedChartData()
+
+  const tooltipFormatter = (value: any, name: string) => {
+    if (value === undefined || value === null) return ['Rp 0', name]
+    if (typeof value === 'number') return [`Rp ${value.toLocaleString('id-ID')}`, name]
+    return ['Rp 0', name]
   }
 
   const pieTooltipFormatter = (value: any) => {
@@ -508,13 +648,16 @@ export default function DashboardPage() {
 
   const pendingOrders = orders.filter(o => o.status === 'PENDING')
   const pendingBookings = bookings.filter(b => b.status === 'PENDING')
-  const pieData = stats.topProducts.map((item) => ({
-    name: item.name,
-    value: item.revenue,
-  }))
+  
+  const pieData = stats.pieChartData && stats.pieChartData.length > 0 
+    ? stats.pieChartData 
+    : [{ name: 'Pendapatan Product', value: stats.revenue?.product?.total || 0 },
+       { name: 'Pendapatan Booking', value: stats.revenue?.booking?.total || 0 }]
 
-  const filteredData = getFilteredData()
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const validPieData = pieData.filter(d => d.value > 0)
+  const displayPieData = validPieData.length > 0 ? validPieData : [{ name: 'Belum ada data', value: 1 }]
+
+  const totalExpense = stats.expense?.total || 0
 
   return (
     <div>
@@ -533,6 +676,15 @@ export default function DashboardPage() {
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+          {/* 🔥 TOMBOL RESET */}
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+          >
+            <RotateCcw className={`w-4 h-4 ${resetting ? 'animate-spin' : ''}`} />
+            {resetting ? 'Resetting...' : 'Reset'}
           </button>
         </div>
       </div>
@@ -648,12 +800,12 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm text-gray-500">Total Pendapatan</p><p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.revenue.total)}</p></div>
+            <div><p className="text-sm text-gray-500">Total Pendapatan</p><p className="text-2xl font-bold text-gray-800">{formatCurrency(stats.revenue?.total || 0)}</p></div>
             <div className="p-3 bg-green-100 rounded-xl"><DollarSign className="w-6 h-6 text-green-600" /></div>
           </div>
           <div className="flex items-center gap-2 mt-2 text-sm">
             <ArrowUpRight className="w-4 h-4 text-green-500" />
-            <span className="text-green-500">+{formatCurrency(stats.revenue.today)}</span>
+            <span className="text-green-500">+{formatCurrency(stats.revenue?.today || 0)}</span>
             <span className="text-gray-400">hari ini</span>
           </div>
         </div>
@@ -672,7 +824,7 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm text-gray-500">Laba Bersih</p><p className={`text-2xl font-bold ${stats.profit.total >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(stats.profit.total)}</p></div>
+            <div><p className="text-sm text-gray-500">Laba Bersih</p><p className={`text-2xl font-bold ${(stats.profit?.total || 0) >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{formatCurrency(stats.profit?.total || 0)}</p></div>
             <div className="p-3 bg-blue-100 rounded-xl"><TrendingUp className="w-6 h-6 text-blue-600" /></div>
           </div>
           <div className="flex items-center gap-2 mt-2 text-sm">
@@ -682,12 +834,12 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
-            <div><p className="text-sm text-gray-500">Total Order</p><p className="text-2xl font-bold text-gray-800">{stats.orders.total}</p></div>
+            <div><p className="text-sm text-gray-500">Total Order</p><p className="text-2xl font-bold text-gray-800">{stats.orders?.total || 0}</p></div>
             <div className="p-3 bg-yellow-100 rounded-xl"><ShoppingBag className="w-6 h-6 text-yellow-600" /></div>
           </div>
           <div className="flex items-center gap-2 mt-2 text-sm">
             <Clock className="w-4 h-4 text-yellow-500" />
-            <span className="text-yellow-500">{stats.orders.pending} pending</span>
+            <span className="text-yellow-500">{stats.orders?.pending || 0} pending</span>
             <span className="text-gray-400">menunggu</span>
           </div>
         </div>
@@ -698,7 +850,7 @@ export default function DashboardPage() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800">{editingExpense ? 'Edit Pengeluaran' : 'Catat Pengeluaran'}</h2>
-            <button onClick={() => { setShowExpenseForm(false); setEditingExpense(null); setExpenseForm({ title: '', amount: '', category: 'OPERATIONAL', description: '', date: new Date().toISOString().split('T')[0] }) }} className="text-gray-400 hover:text-gray-600">✕</button>
+            <button onClick={() => { setShowExpenseForm(false); setEditingExpense(null); setExpenseForm({ title: '', amount: '', category: 'OPERATIONAL', target: 'PRODUCT', description: '', date: new Date().toISOString().split('T')[0] }) }} className="text-gray-400 hover:text-gray-600">✕</button>
           </div>
           <form onSubmit={handleExpenseSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
@@ -716,6 +868,13 @@ export default function DashboardPage() {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">Target *</label>
+              <select value={expenseForm.target} onChange={(e) => setExpenseForm({ ...expenseForm, target: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400">
+                <option value="PRODUCT">📦 Product</option>
+                <option value="BOOKING">📅 Booking</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">Tanggal</label>
               <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" />
             </div>
@@ -725,7 +884,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex gap-2 items-end">
               <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg">{editingExpense ? 'Update' : 'Simpan'}</button>
-              <button type="button" onClick={() => { setShowExpenseForm(false); setEditingExpense(null); setExpenseForm({ title: '', amount: '', category: 'OPERATIONAL', description: '', date: new Date().toISOString().split('T')[0] }) }} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button>
+              <button type="button" onClick={() => { setShowExpenseForm(false); setEditingExpense(null); setExpenseForm({ title: '', amount: '', category: 'OPERATIONAL', target: 'PRODUCT', description: '', date: new Date().toISOString().split('T')[0] }) }} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button>
             </div>
           </form>
         </div>
@@ -743,29 +902,147 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Grafik */}
+      {/* 🔥 GRAFIK KEUANGAN - BAR TERPISAH (TIDAK STACKED) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2"><BarChart3 className="w-5 h-5 text-pink-500" /> Grafik Keuangan</h2>
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5" style={{ color: primaryColor }} /> 
+            Grafik Keuangan
+          </h2>
           <div className="flex gap-2">
-            <button onClick={() => setFilterPeriod('day')} className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'day' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} style={filterPeriod === 'day' ? { backgroundColor: primaryColor } : {}}>1 Hari</button>
-            <button onClick={() => setFilterPeriod('week')} className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'week' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} style={filterPeriod === 'week' ? { backgroundColor: primaryColor } : {}}>1 Minggu</button>
-            <button onClick={() => setFilterPeriod('month')} className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'month' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} style={filterPeriod === 'month' ? { backgroundColor: primaryColor } : {}}>1 Bulan</button>
-            <button onClick={() => setFilterPeriod('year')} className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'year' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} style={filterPeriod === 'year' ? { backgroundColor: primaryColor } : {}}>1 Tahun</button>
+            <button 
+              onClick={() => {
+                setFilterPeriod('day')
+                fetchData(true, 'day')
+              }} 
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'day' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} 
+              style={filterPeriod === 'day' ? { backgroundColor: primaryColor } : {}}
+            >
+              1 Hari
+            </button>
+            <button 
+              onClick={() => {
+                setFilterPeriod('week')
+                fetchData(true, 'week')
+              }} 
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'week' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} 
+              style={filterPeriod === 'week' ? { backgroundColor: primaryColor } : {}}
+            >
+              1 Minggu
+            </button>
+            <button 
+              onClick={() => {
+                setFilterPeriod('month')
+                fetchData(true, 'month')
+              }} 
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'month' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} 
+              style={filterPeriod === 'month' ? { backgroundColor: primaryColor } : {}}
+            >
+              1 Bulan
+            </button>
+            <button 
+              onClick={() => {
+                setFilterPeriod('year')
+                fetchData(true, 'year')
+              }} 
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPeriod === 'year' ? 'text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`} 
+              style={filterPeriod === 'year' ? { backgroundColor: primaryColor } : {}}
+            >
+              1 Tahun
+            </button>
           </div>
         </div>
+
         <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
-              <YAxis stroke="#888" fontSize={12} />
-              <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} formatter={tooltipFormatter} labelFormatter={(label) => `Tanggal: ${label}`} />
-              <Legend />
-              <Bar dataKey="revenue" fill="#c4367b" radius={[4, 4, 0, 0]} name="Pendapatan" />
-              <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="Pengeluaran" />
-            </BarChart>
-          </ResponsiveContainer>
+          {chartData.length === 0 || chartData.every(d => d.productRevenue === 0 && d.bookingRevenue === 0 && d.productExpense === 0 && d.bookingExpense === 0) ? (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              Belum ada data keuangan
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#888" 
+                  fontSize={12} 
+                  tickFormatter={(value) => {
+                    return new Date(value).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+                  }}
+                />
+                <YAxis stroke="#888" fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} 
+                  formatter={tooltipFormatter}
+                  labelFormatter={(label) => {
+                    return `Tanggal: ${new Date(label).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                  }}
+                />
+                <Legend />
+                {/* 🔥 TANPA STACKID - BAR TERPISAH */}
+                <Bar 
+                  dataKey="productRevenue" 
+                  fill="#c4367b" 
+                  radius={[4, 4, 0, 0]} 
+                  name="Pendapatan Product" 
+                />
+                <Bar 
+                  dataKey="bookingRevenue" 
+                  fill="#3b82f6" 
+                  radius={[4, 4, 0, 0]} 
+                  name="Pendapatan Booking" 
+                />
+                <Bar 
+                  dataKey="productExpense" 
+                  fill="#e01a1a" 
+                  radius={[4, 4, 0, 0]} 
+                  name="Pengeluaran Product" 
+                />
+                <Bar 
+                  dataKey="bookingExpense" 
+                  fill="#1ac0dd" 
+                  radius={[4, 4, 0, 0]} 
+                  name="Pengeluaran Booking" 
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* 🔥 Summary per kategori */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Pendapatan Product</p>
+            <p className="text-sm font-bold" style={{ color: '#c4367b' }}>
+              {formatCurrency(
+                chartData.reduce((sum, d) => sum + d.productRevenue, 0)
+              )}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Pendapatan Booking</p>
+            <p className="text-sm font-bold" style={{ color: '#3b82f6' }}>
+              {formatCurrency(
+                chartData.reduce((sum, d) => sum + d.bookingRevenue, 0)
+              )}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Pengeluaran Product</p>
+            <p className="text-sm font-bold" style={{ color: '#e01a1a' }}>
+              {formatCurrency(
+                chartData.reduce((sum, d) => sum + d.productExpense, 0)
+              )}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-gray-500">Pengeluaran Booking</p>
+            <p className="text-sm font-bold" style={{ color: '#1ac0dd' }}>
+              {formatCurrency(
+                chartData.reduce((sum, d) => sum + d.bookingExpense, 0)
+              )}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -803,7 +1080,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Products */}
+      {/* Top Products & Pie Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-green-500" /> Top Products</h2>
@@ -821,18 +1098,37 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><CreditCard className="w-5 h-5 text-pink-500" /> Kontribusi Pendapatan</h2>
-          {pieData.length === 0 ? <p className="text-gray-500 text-sm text-center py-8">Belum ada data penjualan</p> : (
-            <div className="h-64">
+          <div className="h-64">
+            {displayPieData.length === 0 || (displayPieData.length === 1 && displayPieData[0].value === 1) ? (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                Belum ada data
+              </div>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" labelLine={false} label={renderPieLabel} outerRadius={80} fill="#8884d8" dataKey="value">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  <Pie 
+                    data={displayPieData} 
+                    cx="50%" 
+                    cy="50%" 
+                    labelLine={false} 
+                    label={renderPieLabel} 
+                    outerRadius={80} 
+                    fill="#8884d8" 
+                    dataKey="value"
+                  >
+                    {displayPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} formatter={pieTooltipFormatter} labelFormatter={(label) => label} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} 
+                    formatter={pieTooltipFormatter} 
+                    labelFormatter={(label) => label} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>

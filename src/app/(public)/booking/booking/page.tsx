@@ -39,6 +39,11 @@ interface Settings {
   smallFontSize: string
 }
 
+interface Slot {
+  time: string
+  isBooked: boolean
+}
+
 function BookingServiceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -48,7 +53,7 @@ function BookingServiceContent() {
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
-  const [slots, setSlots] = useState<string[]>([])
+  const [slots, setSlots] = useState<Slot[]>([])
   const [submitted, setSubmitted] = useState(false)
   const [bookingData, setBookingData] = useState<any>(null)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
@@ -59,6 +64,7 @@ function BookingServiceContent() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [isClosed, setIsClosed] = useState(false)
   const [closedMessage, setClosedMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     serviceId: serviceIdParam,
     bookingDate: '',
@@ -71,6 +77,24 @@ function BookingServiceContent() {
   })
 
   const primaryColor = '#c4367b'
+
+  // Load customer data from localStorage
+  useEffect(() => {
+    const savedCustomer = localStorage.getItem('beauty_customer')
+    if (savedCustomer) {
+      try {
+        const data = JSON.parse(savedCustomer)
+        setForm(prev => ({
+          ...prev,
+          customerName: data.customerName || '',
+          whatsapp: data.whatsapp || '',
+          email: data.email || '',
+        }))
+      } catch (e) {
+        console.error('Error loading customer data:', e)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     fetchServices()
@@ -94,7 +118,6 @@ function BookingServiceContent() {
       const res = await fetch('/api/public/settings')
       if (res.ok) {
         const data = await res.json()
-        console.log('✅ Settings fetched:', data)
         setSettings(data)
       }
     } catch (error) {
@@ -133,7 +156,26 @@ function BookingServiceContent() {
     try {
       const res = await fetch(`/api/public/bookings?date=${date}&serviceId=${serviceId}`)
       const data = await res.json()
-      setSlots(data.slots || [])
+      
+      // 🔥 PERBAIKAN: Handle berbagai format data
+      if (data.slots && Array.isArray(data.slots)) {
+        if (data.slots.length > 0 && typeof data.slots[0] === 'object' && data.slots[0].time !== undefined) {
+          // Format baru: [{ time: '10:00', isBooked: true }, ...]
+          setSlots(data.slots)
+        } else if (data.slots.length > 0 && typeof data.slots[0] === 'string') {
+          // Format lama: ['10:00', '11:00', ...] - konversi ke format baru
+          const convertedSlots = data.slots.map((time: string) => ({
+            time,
+            isBooked: false,
+          }))
+          setSlots(convertedSlots)
+        } else {
+          setSlots([])
+        }
+      } else {
+        setSlots([])
+      }
+      
       setIsClosed(data.isClosed || false)
       setClosedMessage(data.message || '')
     } catch (error) {
@@ -203,13 +245,18 @@ function BookingServiceContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    
+    if (paymentMethods.length === 0) {
+      toast.error('Belum ada metode pembayaran yang tersedia. Silahkan hubungi admin.')
+      return
+    }
 
     if (!form.paymentMethod) {
       toast.error('Pilih metode pembayaran')
-      setLoading(false)
       return
     }
+
+    setSubmitting(true)
 
     const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
 
@@ -230,8 +277,13 @@ function BookingServiceContent() {
       const data = await res.json()
 
       if (res.ok) {
+        localStorage.setItem('beauty_customer', JSON.stringify({
+          customerName: form.customerName,
+          whatsapp: form.whatsapp,
+          email: form.email,
+        }))
+
         setSubmitted(true)
-        setStep(3)
         setBookingData(data)
         toast.success('Booking berhasil!')
       } else {
@@ -241,42 +293,13 @@ function BookingServiceContent() {
       console.error('Error:', error)
       toast.error('Terjadi kesalahan')
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
   const getTotalPrice = () => {
     if (!selectedService) return 0
     return Math.max(0, selectedService.price - voucherDiscount)
-  }
-
-  // 🔥 PERBAIKAN: Render operating hours langsung tanpa useEffect
-  const renderOperatingHours = () => {
-    if (!settings?.operatingHours) return null
-    
-    let hours = settings.operatingHours
-    console.log('🔍 Operating hours:', hours)
-    
-    // Jika string, parse JSON
-    if (typeof hours === 'string') {
-      try {
-        hours = JSON.parse(hours)
-      } catch {
-        return null
-      }
-    }
-    
-    // Jika object, render
-    if (typeof hours === 'object' && !Array.isArray(hours)) {
-      return Object.entries(hours).map(([day, time]) => (
-        <p key={day} className="text-gray-600 text-sm flex justify-between">
-          <span>{day}</span>
-          <span>{String(time)}</span>
-        </p>
-      ))
-    }
-    
-    return null
   }
 
   const renderSlots = () => {
@@ -293,24 +316,69 @@ function BookingServiceContent() {
       )
     }
 
+    // 🔥 PERBAIKAN: Sortir berdasarkan waktu (time adalah string)
+    const sortedSlots = [...slots].sort((a, b) => a.time.localeCompare(b.time))
+
     return (
       <div className="grid grid-cols-3 gap-2">
-        {slots.map((slot) => (
-          <button
-            key={slot}
-            type="button"
-            onClick={() => setForm({ ...form, bookingTime: slot })}
-            className={`px-4 py-2 rounded-lg border transition-colors ${
-              form.bookingTime === slot
-                ? 'bg-pink-500 text-white border-pink-500'
-                : 'border-gray-300 hover:border-pink-300'
-            }`}
-          >
-            {slot}
-          </button>
-        ))}
+        {sortedSlots.map((slot) => {
+          const isSelected = form.bookingTime === slot.time
+          
+          return (
+            <button
+              key={slot.time}
+              type="button"
+              onClick={() => !slot.isBooked && setForm({ ...form, bookingTime: slot.time })}
+              disabled={slot.isBooked}
+              className={`px-4 py-2 rounded-lg border transition-colors ${
+                slot.isBooked
+                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                  : isSelected
+                  ? 'bg-pink-500 text-white border-pink-500'
+                  : 'border-gray-300 hover:border-pink-300'
+              }`}
+              title={slot.isBooked ? 'already booked' : ''}
+            >
+              {slot.time}
+              {slot.isBooked && <span className="ml-1 text-xs"></span>}
+            </button>
+          )
+        })}
       </div>
     )
+  }
+
+  const getOperatingHoursList = () => {
+    if (!settings || !settings.operatingHours) {
+      return null
+    }
+
+    let hours = settings.operatingHours
+    
+    if (typeof hours === 'string') {
+      try {
+        hours = JSON.parse(hours)
+      } catch (e) {
+        return null
+      }
+    }
+
+    if (typeof hours !== 'object' || Array.isArray(hours)) {
+      return null
+    }
+
+    const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    
+    const sortedEntries = dayOrder
+      .filter(day => hours[day] !== undefined)
+      .map(day => [day, hours[day]])
+
+    return sortedEntries.map(([day, time]) => (
+      <p key={day} className="text-gray-600 text-sm flex justify-between">
+        <span className="capitalize">{day}</span>
+        <span>{String(time)}</span>
+      </p>
+    ))
   }
 
   if (loading && !submitted) {
@@ -418,7 +486,7 @@ function BookingServiceContent() {
   }
 
   const totalPrice = getTotalPrice()
-  const operatingHoursDisplay = renderOperatingHours()
+  const operatingHoursList = getOperatingHoursList()
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -452,27 +520,15 @@ function BookingServiceContent() {
         </div>
       </div>
 
-      {/* ===== CONTACT INFO WITH OPERATING HOURS ===== */}
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <h3 className="font-semibold text-gray-700 text-sm mb-2">Informasi Kontak & Jam Operasional</h3>
-        {settings?.address && (
-          <p className="text-sm text-gray-600">📍 {settings.address}</p>
-        )}
-        {settings?.whatsappNumber && (
-          <p className="text-sm text-gray-600">📞 {settings.whatsappNumber}</p>
-        )}
-        {settings?.email && (
-          <p className="text-sm text-gray-600">📧 {settings.email}</p>
-        )}
-        {operatingHoursDisplay && (
-          <div className="mt-2 pt-2 border-t border-gray-200">
-            <p className="text-sm font-medium text-gray-700 mb-1">🕐 Jam Operasional:</p>
-            <div className="text-sm space-y-0.5">
-              {operatingHoursDisplay}
-            </div>
+      {/* Jam Operasional */}
+      {operatingHoursList && operatingHoursList.length > 0 && (
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <p className="text-sm font-medium text-gray-700 mb-1">🕐 Jam Operasional:</p>
+          <div className="text-sm space-y-0.5">
+            {operatingHoursList}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
         {step === 1 && (
@@ -645,11 +701,13 @@ function BookingServiceContent() {
             {/* Metode Pembayaran */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran *</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {paymentMethods.length === 0 ? (
-                  <p className="text-gray-500 col-span-full text-sm">Belum ada metode pembayaran</p>
-                ) : (
-                  paymentMethods.map((method) => (
+              {paymentMethods.length === 0 ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                  <p className="text-yellow-700 text-sm">⚠️ Belum ada metode pembayaran. Silakan hubungi admin.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {paymentMethods.map((method) => (
                     <label
                       key={method.id}
                       className={`flex items-start gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
@@ -686,9 +744,9 @@ function BookingServiceContent() {
                         )}
                       </div>
                     </label>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {selectedService && (
@@ -715,10 +773,10 @@ function BookingServiceContent() {
               </button>
               <button
                 type="submit"
-                disabled={loading || !form.customerName || !form.whatsapp || !form.paymentMethod}
+                disabled={submitting || !form.customerName || !form.whatsapp || !form.paymentMethod || paymentMethods.length === 0}
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
               >
-                {loading ? 'Memproses...' : 'Konfirmasi Booking'}
+                {submitting ? 'Memproses...' : 'Konfirmasi Booking'}
               </button>
             </div>
           </>

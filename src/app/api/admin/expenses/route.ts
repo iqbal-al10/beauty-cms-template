@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, amount, category, description, date } = body
+    const { title, amount, category, target, description, date } = body
 
     if (!title || !amount || !category) {
       return NextResponse.json(
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         title,
         amount: parseFloat(amount),
         category,
+        target: target || 'PRODUCT',
         description: description || '',
         date: date ? new Date(date) : new Date(),
       },
@@ -62,7 +63,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, title, amount, category, description, date } = body
+    const { id, title, amount, category, target, description, date } = body
 
     if (!id) {
       return NextResponse.json({ error: 'ID is required' }, { status: 400 })
@@ -74,6 +75,7 @@ export async function PUT(request: NextRequest) {
         title,
         amount: parseFloat(amount),
         category,
+        target: target || 'PRODUCT',
         description: description || '',
         date: date ? new Date(date) : new Date(),
       },

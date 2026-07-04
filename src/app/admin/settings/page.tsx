@@ -438,7 +438,7 @@ export default function SettingsPage() {
   return (
     <div>
       {/* ===== HEADER FIXED ===== */}
-      <div className="sticky top-[-20.75px] z-20 bg-gray-50/95 backdrop-blur-sm -mx-6 px-6 py-2 border-b border-gray-200">
+      <div className="sticky top-[-20.5px] z-20 bg-gray-50/95 backdrop-blur-sm -mx-6 px-6 py-2 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <SettingsIcon className="w-6 h-6 text-pink-500" />
@@ -447,14 +447,14 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsPreviewOpen(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
             >
               <Eye className="w-4 h-4" />
               Preview Homepage
             </button>
             <button
               onClick={handleReset}
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-1 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
               Reset ke Default

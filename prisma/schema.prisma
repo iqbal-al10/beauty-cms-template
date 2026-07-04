@@ -512,6 +512,7 @@ model Expense {
   title       String
   amount      Float
   category    String
+  target      String   @default("PRODUCT") 
   description String?
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
