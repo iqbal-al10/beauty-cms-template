@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import Header from '@/components/public/Header'
 import Footer from '@/components/public/Footer'
+import CookieConsent from '@/components/public/CookieConsent'
+import GoogleAnalytics from '@/components/public/GoogleAnalytics'
 
 export default async function PublicLayout({
   children,
@@ -51,6 +53,8 @@ export default async function PublicLayout({
         operatingHours: data.operatingHours || null,
         googleMapsEmbedUrl: data.googleMapsEmbedUrl || null,
         gaTrackingId: data.gaTrackingId || null,
+        // 🔥 TAMBAHKAN INI
+        enableCookieConsent: data.enableCookieConsent !== undefined ? data.enableCookieConsent : true,
         metaTitle: data.metaTitle || null,
         metaDescription: data.metaDescription || null,
         defaultOgImage: data.defaultOgImage || null,
@@ -106,6 +110,9 @@ export default async function PublicLayout({
         cartExpiryDays: data.cartExpiryDays || 7,
         siteDescription: data.siteDescription || null,
         siteKeywords: data.siteKeywords || null,
+        // 🔥 COOKIE SETTINGS
+        cookiePrefix: data.cookiePrefix || 'beauty',
+        sessionDuration: data.sessionDuration || 7,
       }
     }
   } catch (error) {
@@ -118,8 +125,25 @@ export default async function PublicLayout({
       <main className="flex-1">
         {children}
       </main>
-      {/* 🔥 PAKAI as any */}
       <Footer settings={settings as any} />
+      
+      {/* 🔥 GOOGLE ANALYTICS - Conditionally loaded based on consent */}
+      {settings?.gaTrackingId && (
+        <GoogleAnalytics trackingId={settings.gaTrackingId} />
+      )}
+      
+{/* 🔥 COOKIE CONSENT BANNER */}
+{settings?.enableCookieConsent !== false && (
+  <CookieConsent 
+    siteName={settings?.siteName || 'Beauty Studio'}
+    primaryColor={settings?.colorPrimary || '#c4367b'}
+    secondaryBackground={settings?.secondaryBackground || '#f9fafb'}
+    primaryBackground={settings?.primaryBackground || '#ffffff'}
+    headingColor={settings?.headingColor || '#111827'}
+    bodyTextColor={settings?.bodyTextColor || '#4b5563'}
+    enableConsent={settings?.enableCookieConsent !== false}
+  />
+)}
     </div>
   )
 }

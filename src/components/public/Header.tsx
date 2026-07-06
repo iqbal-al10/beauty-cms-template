@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { Menu, X, ShoppingCart } from 'lucide-react'
+import { Menu, X, ShoppingCart, LayoutDashboard, LogOut, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 interface Settings {
   siteName: string
@@ -23,6 +24,13 @@ interface Settings {
   smallFontSize: string
 }
 
+interface User {
+  id: string
+  name: string
+  email: string
+  role: string
+}
+
 interface HeaderProps {
   settings: Settings | null
 }
@@ -31,6 +39,9 @@ export default function Header({ settings }: HeaderProps) {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
   const navbarBg = settings?.navbarBackground || '#ffffff'
@@ -42,6 +53,28 @@ export default function Header({ settings }: HeaderProps) {
   const bodyFontSize = settings?.bodyFontSize || '16px'
   const smallFontSize = settings?.smallFontSize || '14px'
   const fontFamily = settings?.fontFamily || 'Inter'
+
+  // 🔥 Cek status login
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data)
+        } else {
+          setUser(null)
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
 
   useEffect(() => {
     updateCartCount()
@@ -68,6 +101,23 @@ export default function Header({ settings }: HeaderProps) {
       setCartCount(0)
     }
   }
+
+  // 🔥 Handler logout
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      setUser(null)
+      setIsDropdownOpen(false)
+      toast.success('Logout berhasil')
+      router.push('/')
+    } catch (error) {
+      console.error('Error logging out:', error)
+      toast.error('Gagal logout')
+    }
+  }
+
+  // 🔥 Cek apakah user bisa akses dashboard (SUPER_ADMIN atau ADMIN)
+  const canAccessDashboard = user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN')
 
   const navLinks = [
     { href: '/', label: 'Home' },
@@ -106,7 +156,7 @@ export default function Header({ settings }: HeaderProps) {
             )}
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - TANPA Dashboard di sini */}
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
@@ -149,6 +199,66 @@ export default function Header({ settings }: HeaderProps) {
               </Link>
             )}
 
+            {/* 🔥 User Avatar + Dropdown (jika login) */}
+            {!loading && user && (
+              <div className="relative">
+                <button
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition-colors border-2"
+                  style={{ borderColor: primaryColor }}
+                >
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                </button>
+
+                {/* Dropdown Menu */}
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-800" style={{ fontSize: smallFontSize }}>
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-500" style={{ fontSize: smallFontSize }}>
+                        {user.email}
+                      </p>
+                      <span 
+                        className="inline-block text-xs px-2 py-0.5 rounded-full mt-1 text-white"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {user.role}
+                      </span>
+                    </div>
+
+                    {/* 🔥 Dashboard ONLY di dropdown (bukan di header nav) */}
+                    {canAccessDashboard && (
+                      <Link
+                        href="/admin"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        style={{ fontSize: smallFontSize }}
+                        onClick={() => setIsDropdownOpen(false)}
+                      >
+                        <LayoutDashboard className="w-4 h-4" style={{ color: primaryColor }} />
+                        <span className="font-medium" style={{ color: primaryColor }}>Dashboard</span>
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                      style={{ fontSize: smallFontSize }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -187,6 +297,58 @@ export default function Header({ settings }: HeaderProps) {
                   {link.label}
                 </Link>
               ))}
+
+              {/* 🔥 Mobile: Dashboard di sini (bukan di nav utama) */}
+              {!loading && user && canAccessDashboard && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2 font-semibold transition-colors"
+                  style={{ 
+                    color: primaryColor,
+                    fontSize: bodyFontSize,
+                  }}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Link>
+              )}
+
+              {/* Mobile User Info & Logout */}
+              {!loading && user && (
+                <div className="pt-3 mt-3 border-t" style={{ borderColor: `${navbarText}20` }}>
+                  <div className="flex items-center gap-3 px-2 py-2">
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium" style={{ color: navbarText, fontSize: bodyFontSize }}>
+                        {user.name}
+                      </p>
+                      <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
+                        {user.email}
+                      </p>
+                      <span 
+                        className="inline-block text-xs px-2 py-0.5 rounded-full mt-1 text-white"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {user.role}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full mt-1"
+                    style={{ fontSize: bodyFontSize }}
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
         )}

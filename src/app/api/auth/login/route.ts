@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
+import { getCookieName, getCookieOptions } from '@/lib/cookies'
 
 // Validation schema
 const loginSchema = z.object({
@@ -62,6 +63,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🔥 PASTIKAN JWT_SECRET ADA
+    const jwtSecret = process.env.JWT_SECRET
+    if (!jwtSecret) {
+      console.error('❌ JWT_SECRET is not defined in environment variables')
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role,
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      jwtSecret,
       { expiresIn: '7d' }
     )
 
@@ -93,6 +104,10 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Login berhasil:', email)
 
+    // 🔥 DAPATKAN COOKIE NAME DARI DATABASE
+    const cookieName = await getCookieName()
+    const cookieOptions = await getCookieOptions()
+
     // Create response with cookie
     const response = NextResponse.json({
       success: true,
@@ -104,14 +119,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Set cookie
-    response.cookies.set('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    })
+    // 🔥 SET COOKIE DENGAN NAMA DINAMIS
+    response.cookies.set(cookieName, token, cookieOptions)
 
     return response
   } catch (error) {

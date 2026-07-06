@@ -118,6 +118,15 @@ model Settings {
   
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  // WHITE-LABEL COOKIE CONFIG
+  cookiePrefix     String?   @default("beauty")
+  sessionDuration  Int?      @default(7) // in days
+  cookieDomain     String?   // optional, override from env
+  isMaintenance    Boolean?  @default(false)
+
+   // COOKIE CONSENT SETTINGS
+  enableCookieConsent Boolean? @default(true)
 }
 
 model User {

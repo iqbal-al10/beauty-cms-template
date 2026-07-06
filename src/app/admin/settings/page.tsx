@@ -8,7 +8,7 @@ import {
   FileText, Users, Star, Settings as SettingsIcon,
   Eye, Palette, Type, Image, CreditCard, Search,
   Globe, Lock, Bell, ChevronDown, ChevronRight,
-  Plus, Trash2, Edit, Save, X, RefreshCw
+  Plus, Trash2, Edit, Save, X, RefreshCw, Shield,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -26,7 +26,7 @@ interface Settings {
   email: string
   address: string
   footerContent: any
-  footerSlogan: string  // 🔥 TAMBAHKAN
+  footerSlogan: string
   operatingHours: any
   googleMapsEmbedUrl: string
   socialLinks: any
@@ -66,6 +66,10 @@ interface Settings {
   copyrightText: string
   footerLinks: any
   footerServices: any
+  // 🔥 WHITE-LABEL COOKIE SETTINGS
+  cookiePrefix: string
+  sessionDuration: number
+  enableCookieConsent: boolean
   // Hero Content
   heroBadge: string
   heroSubtitle: string
@@ -120,7 +124,7 @@ const DEFAULT_SETTINGS: Settings = {
   email: '',
   address: '',
   footerContent: null,
-  footerSlogan: '',  // 🔥 TAMBAHKAN
+  footerSlogan: '',
   operatingHours: {
     Monday: '09:00 - 21:00',
     Tuesday: '09:00 - 21:00',
@@ -168,6 +172,10 @@ const DEFAULT_SETTINGS: Settings = {
   copyrightText: '',
   footerLinks: null,
   footerServices: ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
+  // 🔥 WHITE-LABEL COOKIE SETTINGS
+  cookiePrefix: 'beauty',
+  sessionDuration: 7,
+  enableCookieConsent: true,
   heroBadge: 'Premium Beauty Services',
   heroSubtitle: 'Discover premium beauty services and products for your perfect look',
   heroShopButtonText: 'Shop Now',
@@ -240,7 +248,6 @@ const FONT_SIZE_OPTIONS = [
   { value: '48px', label: '48px' },
 ]
 
-// 🔥 HAPUS Twitter & Pinterest
 const SOCIAL_PLATFORMS = [
   { key: 'instagram', icon: Camera, label: 'Instagram', color: '#E4405F', placeholder: 'https://instagram.com/username' },
   { key: 'facebook', icon: Share2, label: 'Facebook', color: '#1877F2', placeholder: 'https://facebook.com/username' },
@@ -358,7 +365,10 @@ export default function SettingsPage() {
         socialLinks: socialLinks,
         footerLinks,
         footerServices: footerServices || ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
-        footerSlogan: settings.footerSlogan || '',  // 🔥 TAMBAHKAN
+        footerSlogan: settings.footerSlogan || '',
+        // 🔥 WHITE-LABEL COOKIE SETTINGS
+        cookiePrefix: settings.cookiePrefix || 'beauty',
+        sessionDuration: settings.sessionDuration || 7,
       }
 
       const res = await fetch('/api/admin/settings', {
@@ -499,6 +509,75 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* ===== WHITE-LABEL COOKIE SETTINGS ===== */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Lock className="w-5 h-5 text-pink-500" />
+            Security & Session
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Cookie Prefix</label>
+              <input
+                type="text"
+                value={safeValue(settings.cookiePrefix)}
+                onChange={(e) => handleChange('cookiePrefix', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="beauty"
+              />
+              <p className="text-xs text-gray-400 mt-1">Nama cookie akan menjadi: <strong>[prefix]_token</strong></p>
+              <p className="text-xs text-gray-400">Contoh: beauty_token, glow_token, dll</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Session Duration (hari)</label>
+              <input
+                type="number"
+                min="1"
+                max="90"
+                value={safeValue(settings.sessionDuration)}
+                onChange={(e) => handleChange('sessionDuration', parseInt(e.target.value) || 7)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="7"
+              />
+              <p className="text-xs text-gray-400 mt-1">Berapa lama user tetap login (1-90 hari)</p>
+              <p className="text-xs text-gray-400">Default: 7 hari</p>
+            </div>
+          </div>
+        </div>
+
+        {/* ===== COOKIE CONSENT SETTINGS ===== */}
+<div className="border-b border-gray-200 pb-4">
+  <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+    <Shield className="w-5 h-5 text-pink-500" />
+    Cookie Consent
+  </h2>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        checked={settings.enableCookieConsent !== false}
+        onChange={(e) => handleChange('enableCookieConsent', e.target.checked)}
+        className="w-5 h-5 rounded border-gray-300 text-pink-500 focus:ring-pink-400"
+      />
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Aktifkan Cookie Consent Banner</label>
+        <p className="text-xs text-gray-400">Tampilkan banner persetujuan cookie kepada pengunjung</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-3">
+      <div className="w-5 h-5" />
+      <div>
+        <p className="text-xs text-gray-500">
+          <span className="text-green-600">✓</span> Sesuai dengan GDPR & Privasi
+        </p>
+        <p className="text-xs text-gray-500">
+          <span className="text-green-600">✓</span> Google Analytics hanya aktif jika user menyetujui
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* ===== COLORS ===== */}
         <div className="border-b border-gray-200 pb-4">
@@ -957,7 +1036,7 @@ export default function SettingsPage() {
                   value={safeValue(settings.contactHeroSubtitle)}
                   onChange={(e) => handleChange('contactHeroSubtitle', e.target.value)}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="We&apos;d love to hear from you"
+                  placeholder="We'd love to hear from you"
                 />
               </div>
             </div>
@@ -1053,7 +1132,6 @@ export default function SettingsPage() {
             Footer Settings
           </h2>
           <div className="space-y-4">
-            {/* 🔥 TAMBAHKAN INI */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Footer Slogan</label>
               <textarea
@@ -1558,7 +1636,6 @@ export default function SettingsPage() {
                       <h3 className="text-lg font-bold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.headingFontSize || '32px' }}>
                         {settings.siteName || 'Beauty Studio'}
                       </h3>
-                      {/* 🔥 SLOGAN DI PREVIEW */}
                       {settings.footerSlogan && (
                         <p className="text-sm mb-2" style={{ color: settings.bodyTextColor || '#4b5563', fontSize: settings.bodyFontSize || '16px' }}>
                           {settings.footerSlogan}

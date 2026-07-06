@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getCookieName } from '@/lib/cookies'
 
 // Paths that don't require authentication
 const PUBLIC_PATHS = [
@@ -21,7 +22,7 @@ const PUBLIC_PATHS = [
 // Admin paths that require authentication
 const ADMIN_PATHS = ['/admin', '/api/admin']
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Skip static files
@@ -42,7 +43,9 @@ export function middleware(request: NextRequest) {
 
   // If admin, check authentication
   if (isAdmin) {
-    const token = request.cookies.get('token')?.value
+    // 🔥 DAPATKAN COOKIE NAME DARI DATABASE
+    const cookieName = await getCookieName()
+    const token = request.cookies.get(cookieName)?.value
 
     if (!token) {
       const loginUrl = new URL('/login', request.url)
