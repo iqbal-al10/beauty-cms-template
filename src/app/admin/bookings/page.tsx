@@ -1290,13 +1290,34 @@ export default function BookingsPage() {
                           </td>
                           <td className="px-6 py-4">
                             <button onClick={() => toggleServiceActive(service.id, service.isActive, service.name)} className={`px-2 py-1 text-xs rounded-full transition-colors ${service.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                              {service.isActive ? '✅ Aktif' : '❌ Nonaktif'}
+                              {service.isActive ? '✅ Published' : '📝 Draft'}
                             </button>
                           </td>
-                          <td className="px-6 py-4 text-right space-x-2">
-                            <button onClick={() => handleEditService(service)} className="text-yellow-600 hover:text-yellow-800"><Edit className="w-5 h-5 inline" /></button>
-                            <button onClick={() => handleDeleteService(service.id, service.name)} className="text-red-600 hover:text-red-800"><Trash2 className="w-5 h-5 inline" /></button>
-                            <Link href={`/booking/${service.slug}`} target="_blank" className="text-blue-600 hover:text-blue-800"><Eye className="w-5 h-5 inline" /></Link>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button 
+                                onClick={() => handleEditService(service)} 
+                                className="p-1 rounded-lg hover:bg-yellow-50 text-yellow-600 hover:text-yellow-800 transition-colors"
+                                title="Edit Layanan"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteService(service.id, service.name)} 
+                                className="p-1 rounded-lg hover:bg-red-50 text-red-600 hover:text-red-800 transition-colors"
+                                title="Hapus Layanan"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                              <Link 
+                                href={`/booking/${service.slug}`} 
+                                target="_blank" 
+                                className="p-1 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Lihat di Frontend"
+                              >
+                                <Eye className="w-5 h-5" />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       )

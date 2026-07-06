@@ -65,7 +65,7 @@ export async function PATCH(
 
     if (!action) {
       return NextResponse.json(
-        { error: 'Action is required (approve/reject)' },
+        { error: 'Action is required (approve/reject/done)' },
         { status: 400 }
       )
     }
@@ -88,32 +88,81 @@ export async function PATCH(
       )
     }
 
-    if (order.status !== 'PENDING') {
+    // 🔥 CEK STATUS SAAT INI
+    if (action === 'approve' && order.status !== 'PENDING') {
       return NextResponse.json(
         { error: `Order already ${order.status.toLowerCase()}` },
         { status: 400 }
       )
     }
 
+    if (action === 'done' && order.status !== 'ON_PROGRESS') {
+      return NextResponse.json(
+        { error: 'Order must be ON_PROGRESS to mark as done' },
+        { status: 400 }
+      )
+    }
+
     let newStatus: string
+    let updateData: any = {}
+
     if (action === 'approve') {
-      newStatus = 'APPROVED'
+      newStatus = 'ON_PROGRESS'
+      updateData = {
+        status: newStatus,
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      }
+      
+      // 🔥 KURANGI STOK PRODUK
+      for (const item of order.items) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        })
+
+        // Catat history stok
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId },
+        })
+
+        if (product) {
+          await prisma.stockHistory.create({
+            data: {
+              productId: item.productId,
+              oldStock: product.stock + item.quantity,
+              newStock: product.stock,
+              change: -item.quantity,
+              reason: `Order ${order.orderNumber} - ${order.customerName}`,
+              note: `Order approved by ${session.name}`,
+              userId: session.userId,
+            },
+          })
+        }
+      }
     } else if (action === 'reject') {
       newStatus = 'REJECTED'
+      updateData = { status: newStatus }
+    } else if (action === 'done') {
+      newStatus = 'COMPLETED'
+      updateData = {
+        status: newStatus,
+        completedAt: new Date(),
+      }
     } else {
       return NextResponse.json(
-        { error: 'Invalid action. Use "approve" or "reject"' },
+        { error: 'Invalid action. Use "approve", "reject", or "done"' },
         { status: 400 }
       )
     }
 
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: {
-        status: newStatus,
-        approvedBy: session.userId,
-        approvedAt: new Date(),
-      },
+      data: updateData,
       include: {
         items: {
           include: {

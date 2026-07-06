@@ -140,12 +140,12 @@ export async function GET(request: NextRequest) {
     const intervalMinutes = Math.max(30, service.duration || 60)
     const allSlots = generateTimeSlots(daySchedule.open, daySchedule.close, intervalMinutes)
 
-    // 🔥 PERBAIKAN: Ambil semua booking dengan status aktif
+    // Ambil semua booking dengan status aktif
     const existingBookings = await prisma.booking.findMany({
       where: {
         bookingDate: new Date(date),
         status: { 
-          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED']
+          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED', 'ON_PROGRESS']
         },
       },
       select: { bookingTime: true },
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
 
     const bookedSlots = new Set(existingBookings.map(b => b.bookingTime))
 
-    // 🔥 PERBAIKAN: Kirim semua slot dengan status booked
+    // Kirim semua slot dengan status booked
     const slotsWithStatus = allSlots.map((slot) => ({
       time: slot,
       isBooked: bookedSlots.has(slot),
@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
       customerName,
       whatsapp,
       email,
+      address,  // 🔥 TAMBAHKAN
       notes,
       voucherCode,
       paymentMethod,
@@ -229,7 +230,7 @@ export async function POST(request: NextRequest) {
         bookingDate: new Date(bookingDate),
         bookingTime,
         status: { 
-          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED']
+          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED', 'ON_PROGRESS']
         },
       },
     })
@@ -241,6 +242,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🔥 TAMBAHKAN ADDRESS
     const booking = await prisma.booking.create({
       data: {
         serviceId,
@@ -249,6 +251,7 @@ export async function POST(request: NextRequest) {
         customerName,
         whatsapp,
         email: email || null,
+        address: address || null,  // 🔥 TAMBAHKAN
         notes: notes || null,
         status: 'PENDING',
       },

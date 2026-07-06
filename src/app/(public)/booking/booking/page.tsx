@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { CheckCircle, Calendar, Clock, User, Phone, Mail, MessageSquare, ArrowLeft, DollarSign, CreditCard, X } from 'lucide-react'
+import { CheckCircle, Calendar, Clock, User, Phone, Mail, MessageSquare, ArrowLeft, DollarSign, CreditCard, X, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
@@ -72,6 +72,7 @@ function BookingServiceContent() {
     customerName: '',
     whatsapp: '',
     email: '',
+    address: '',  // 🔥 TAMBAHKAN
     notes: '',
     paymentMethod: '',
   })
@@ -89,6 +90,7 @@ function BookingServiceContent() {
           customerName: data.customerName || '',
           whatsapp: data.whatsapp || '',
           email: data.email || '',
+          address: data.address || '',  // 🔥 TAMBAHKAN
         }))
       } catch (e) {
         console.error('Error loading customer data:', e)
@@ -157,13 +159,10 @@ function BookingServiceContent() {
       const res = await fetch(`/api/public/bookings?date=${date}&serviceId=${serviceId}`)
       const data = await res.json()
       
-      // 🔥 PERBAIKAN: Handle berbagai format data
       if (data.slots && Array.isArray(data.slots)) {
         if (data.slots.length > 0 && typeof data.slots[0] === 'object' && data.slots[0].time !== undefined) {
-          // Format baru: [{ time: '10:00', isBooked: true }, ...]
           setSlots(data.slots)
         } else if (data.slots.length > 0 && typeof data.slots[0] === 'string') {
-          // Format lama: ['10:00', '11:00', ...] - konversi ke format baru
           const convertedSlots = data.slots.map((time: string) => ({
             time,
             isBooked: false,
@@ -266,6 +265,7 @@ function BookingServiceContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          address: form.address,  // 🔥 TAMBAHKAN
           voucherCode: voucherApplied ? voucherCode : null,
           paymentMethod: form.paymentMethod,
           paymentMethodName: selectedPayment?.name || '',
@@ -281,6 +281,7 @@ function BookingServiceContent() {
           customerName: form.customerName,
           whatsapp: form.whatsapp,
           email: form.email,
+          address: form.address,  // 🔥 TAMBAHKAN
         }))
 
         setSubmitted(true)
@@ -316,7 +317,6 @@ function BookingServiceContent() {
       )
     }
 
-    // 🔥 PERBAIKAN: Sortir berdasarkan waktu (time adalah string)
     const sortedSlots = [...slots].sort((a, b) => a.time.localeCompare(b.time))
 
     return (
@@ -392,7 +392,7 @@ function BookingServiceContent() {
   if (submitted && bookingData) {
     const adminWhatsapp = settings?.whatsappNumber || '6285710379820'
     const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
-    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Metode:* ${selectedPayment?.name || form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
+    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${bookingData.booking.id}%0A👤 *Nama:* ${bookingData.booking.customerName}%0A📱 *WA:* ${bookingData.booking.whatsapp}%0A📧 *Email:* ${bookingData.booking.email || '-'}%0A📍 *Alamat:* ${bookingData.booking.address || '-'}%0A💵 *Total:* Rp ${bookingData.totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(bookingData.booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${bookingData.booking.bookingTime}%0A💳 *Metode:* ${selectedPayment?.name || form.paymentMethod}%0A%0A📎 *Berikut bukti pembayaran saya.*`
 
     return (
       <div className="container mx-auto px-4 py-12 max-w-2xl">
@@ -423,6 +423,10 @@ function BookingServiceContent() {
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Waktu</span>
               <span className="font-medium">{bookingData.booking.bookingTime}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Alamat</span>
+              <span className="font-medium">{bookingData.booking.address || '-'}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Total</span>
@@ -627,6 +631,21 @@ function BookingServiceContent() {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
+            </div>
+
+            {/* 🔥 ALAMAT - OPSIONAL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Alamat (Opsional)
+              </label>
+              <textarea
+                rows={2}
+                placeholder="Masukkan alamat lengkap Anda (opsional)..."
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+              />
+              <p className="text-xs text-gray-400 mt-1">Alamat akan digunakan untuk pengiriman jika diperlukan</p>
             </div>
 
             <div>

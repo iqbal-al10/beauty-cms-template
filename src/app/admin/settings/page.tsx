@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   Camera, Share2, CircleUser, Video, MessageCircle,
-  BriefcaseBusiness, Pin, MessageSquare, MapPin, Phone, Mail,
+  BriefcaseBusiness, MessageSquare, MapPin, Phone, Mail,
   Menu, ShoppingCart, Home, Package, Calendar,
   FileText, Users, Star, Settings as SettingsIcon,
   Eye, Palette, Type, Image, CreditCard, Search,
@@ -26,6 +26,7 @@ interface Settings {
   email: string
   address: string
   footerContent: any
+  footerSlogan: string  // 🔥 TAMBAHKAN
   operatingHours: any
   googleMapsEmbedUrl: string
   socialLinks: any
@@ -119,6 +120,7 @@ const DEFAULT_SETTINGS: Settings = {
   email: '',
   address: '',
   footerContent: null,
+  footerSlogan: '',  // 🔥 TAMBAHKAN
   operatingHours: {
     Monday: '09:00 - 21:00',
     Tuesday: '09:00 - 21:00',
@@ -166,7 +168,7 @@ const DEFAULT_SETTINGS: Settings = {
   copyrightText: '',
   footerLinks: null,
   footerServices: ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
-  heroBadge: '⭐ Premium Beauty Services',
+  heroBadge: 'Premium Beauty Services',
   heroSubtitle: 'Discover premium beauty services and products for your perfect look',
   heroShopButtonText: 'Shop Now',
   heroShopButtonLink: '/products',
@@ -238,14 +240,13 @@ const FONT_SIZE_OPTIONS = [
   { value: '48px', label: '48px' },
 ]
 
+// 🔥 HAPUS Twitter & Pinterest
 const SOCIAL_PLATFORMS = [
   { key: 'instagram', icon: Camera, label: 'Instagram', color: '#E4405F', placeholder: 'https://instagram.com/username' },
   { key: 'facebook', icon: Share2, label: 'Facebook', color: '#1877F2', placeholder: 'https://facebook.com/username' },
   { key: 'tiktok', icon: CircleUser, label: 'TikTok', color: '#000000', placeholder: 'https://tiktok.com/@username' },
   { key: 'youtube', icon: Video, label: 'YouTube', color: '#FF0000', placeholder: 'https://youtube.com/@username' },
-  { key: 'twitter', icon: MessageCircle, label: 'Twitter / X', color: '#000000', placeholder: 'https://twitter.com/username' },
   { key: 'linkedin', icon: BriefcaseBusiness, label: 'LinkedIn', color: '#0A66C2', placeholder: 'https://linkedin.com/in/username' },
-  { key: 'pinterest', icon: Pin, label: 'Pinterest', color: '#E60023', placeholder: 'https://pinterest.com/username' },
   { key: 'threads', icon: MessageSquare, label: 'Threads', color: '#000000', placeholder: 'https://threads.net/@username' },
 ]
 
@@ -357,6 +358,7 @@ export default function SettingsPage() {
         socialLinks: socialLinks,
         footerLinks,
         footerServices: footerServices || ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup'],
+        footerSlogan: settings.footerSlogan || '',  // 🔥 TAMBAHKAN
       }
 
       const res = await fetch('/api/admin/settings', {
@@ -1051,6 +1053,19 @@ export default function SettingsPage() {
             Footer Settings
           </h2>
           <div className="space-y-4">
+            {/* 🔥 TAMBAHKAN INI */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Footer Slogan</label>
+              <textarea
+                rows={2}
+                value={safeValue(settings.footerSlogan)}
+                onChange={(e) => handleChange('footerSlogan', e.target.value)}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                placeholder="Discover premium beauty services and products for your perfect look"
+              />
+              <p className="text-xs text-gray-400 mt-1">Slogan yang muncul di footer di bawah nama brand</p>
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700">Copyright Text</label>
               <input
@@ -1058,7 +1073,7 @@ export default function SettingsPage() {
                 value={safeValue(settings.copyrightText)}
                 onChange={(e) => handleChange('copyrightText', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="© 2024 Beauty Studio. All rights reserved."
+                placeholder="© 2026 Beauty Studio. All rights reserved."
               />
               <p className="text-xs text-gray-400 mt-1">Akan muncul di footer</p>
             </div>
@@ -1543,6 +1558,12 @@ export default function SettingsPage() {
                       <h3 className="text-lg font-bold mb-2" style={{ color: settings.headingColor || '#111827', fontSize: settings.headingFontSize || '32px' }}>
                         {settings.siteName || 'Beauty Studio'}
                       </h3>
+                      {/* 🔥 SLOGAN DI PREVIEW */}
+                      {settings.footerSlogan && (
+                        <p className="text-sm mb-2" style={{ color: settings.bodyTextColor || '#4b5563', fontSize: settings.bodyFontSize || '16px' }}>
+                          {settings.footerSlogan}
+                        </p>
+                      )}
                       <p className="text-sm" style={{ color: settings.bodyTextColor || '#4b5563', fontSize: settings.bodyFontSize || '16px' }}>
                         {settings.address || 'Premium beauty services for your perfect look'}
                       </p>

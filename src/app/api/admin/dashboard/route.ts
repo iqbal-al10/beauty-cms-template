@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 🔥 Ambil parameter period dari URL
     const searchParams = request.nextUrl.searchParams
     const period = searchParams.get('period') || 'week'
 
@@ -19,16 +18,27 @@ export async function GET(request: NextRequest) {
     startOfWeek.setDate(now.getDate() - 7)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
+    // 🔥 FIX 1: Total Bookings = Total Services (bukan transaksi booking)
+    const totalBookings = await prisma.service.count()
+
+    // 🔥 FIX 2: Total Reviews = Product Reviews + Service Reviews
+    const [totalProductReviews, totalServiceReviews] = await Promise.all([
+      prisma.review.count({ where: { isPublished: true } }),
+      prisma.serviceReview.count({ where: { isPublished: true } })
+    ])
+    const totalReviews = totalProductReviews + totalServiceReviews
+
     const [
       totalProducts,
-      totalBookings,
       totalTestimonials,
       totalBlogPosts,
       totalUsers,
-      totalReviews,
       lowStockProducts,
       recentBookings,
-      approvedOrders,
+      onProgressBookings,
+      onProgressOrders,
+      historyOrders,
+      completedOrders,
       approvedBookings,
       totalOrders,
       pendingOrders,
@@ -37,31 +47,59 @@ export async function GET(request: NextRequest) {
       bookingExpenses,
     ] = await Promise.all([
       prisma.product.count(),
-      prisma.booking.count(),
       prisma.testimonial.count({ where: { isPublished: true } }),
       prisma.blogPost.count({ where: { status: 'PUBLISHED' } }),
       prisma.user.count({ where: { isActive: true } }),
-      prisma.review.count({ where: { isPublished: true } }),
       prisma.product.findMany({
         where: { stock: { lt: 10 }, status: 'PUBLISHED' },
         select: { id: true, name: true, stock: true, slug: true },
         take: 5,
       }),
       prisma.booking.findMany({
-        where: { status: { in: ['PENDING', 'APPROVED', 'COMPLETED', 'REJECTED'] } },
-        include: { service: { select: { name: true } } },
-        orderBy: { createdAt: 'desc' },
+        where: { status: 'COMPLETED' },
+        include: { 
+          service: { select: { name: true } },
+          approvedUser: { select: { name: true } }
+        },
+        orderBy: { completedAt: 'desc' },
         take: 5,
       }),
+      prisma.booking.findMany({
+        where: { status: 'ON_PROGRESS' },
+        include: { 
+          service: { select: { name: true } },
+          approvedUser: { select: { name: true } }
+        },
+        orderBy: { approvedAt: 'desc' },
+        take: 10,
+      }),
       prisma.order.findMany({
-        where: { status: { in: ['APPROVED', 'PAID'] } },
+        where: { status: 'ON_PROGRESS' },
+        include: { 
+          items: true,
+          user: { select: { name: true } }
+        },
+        orderBy: { approvedAt: 'desc' },
+        take: 10,
+      }),
+      prisma.order.findMany({
+        where: { status: 'COMPLETED' },
+        include: { 
+          items: true,
+          user: { select: { name: true } }
+        },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+      }),
+      prisma.order.findMany({
+        where: { status: 'COMPLETED' },
         select: {
           total: true,
           createdAt: true,
         },
       }),
       prisma.booking.findMany({
-        where: { status: { in: ['APPROVED', 'COMPLETED'] } },
+        where: { status: 'COMPLETED' },
         select: {
           bookingDate: true,
           service: {
@@ -73,6 +111,11 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where: { status: 'PENDING' } }),
       prisma.orderItem.groupBy({
         by: ['productId', 'productName'],
+        where: {
+          order: {
+            status: 'COMPLETED',
+          }
+        },
         _sum: {
           quantity: true,
           total: true,
@@ -97,7 +140,7 @@ export async function GET(request: NextRequest) {
     let monthProductRevenue = 0
     const productRevenueByDay: Record<string, number> = {}
 
-    for (const order of approvedOrders) {
+    for (const order of completedOrders) {
       const amount = order.total || 0
       totalProductRevenue += amount
 
@@ -150,7 +193,7 @@ export async function GET(request: NextRequest) {
       bookingExpenseByDay[dateKey] = (bookingExpenseByDay[dateKey] || 0) + expense.amount
     }
 
-    // ===== REVENUE DATA (UNTUK GRAFIK) =====
+    // ===== REVENUE DATA =====
     const allDates = new Set([
       ...Object.keys(productRevenueByDay),
       ...Object.keys(bookingRevenueByDay),
@@ -164,11 +207,9 @@ export async function GET(request: NextRequest) {
         bookingRevenue: bookingRevenueByDay[date] || 0,
       }))
 
-    // 🔥 Filter berdasarkan period
     const today = now.toISOString().split('T')[0]
     
     if (period === 'day') {
-      // 🔥 HANYA TAMPILKAN DATA HARI INI
       revenueData = revenueData.filter(d => d.date === today)
     } else if (period === 'week') {
       const weekAgo = new Date(now)
@@ -187,7 +228,7 @@ export async function GET(request: NextRequest) {
       revenueData = revenueData.filter(d => d.date >= yearAgoStr)
     }
 
-    // ===== EXPENSE DATA (UNTUK GRAFIK) =====
+    // ===== EXPENSE DATA =====
     const expenseDates = new Set([
       ...Object.keys(productExpenseByDay),
       ...Object.keys(bookingExpenseByDay),
@@ -201,9 +242,7 @@ export async function GET(request: NextRequest) {
         bookingExpense: bookingExpenseByDay[date] || 0,
       }))
 
-    // 🔥 Filter berdasarkan period
     if (period === 'day') {
-      // 🔥 HANYA TAMPILKAN DATA HARI INI
       expenseData = expenseData.filter(d => d.date === today)
     } else if (period === 'week') {
       const weekAgo = new Date(now)
@@ -251,6 +290,71 @@ export async function GET(request: NextRequest) {
     const totalExpense = totalProductExpense + totalBookingExpense
     const totalProfit = totalRevenue - totalExpense
 
+    // FORMAT DATA UNTUK RESPONSE
+    const formattedRecentBookings = recentBookings.map((b) => ({
+      id: b.id,
+      customerName: b.customerName,
+      bookingDate: b.bookingDate,
+      bookingTime: b.bookingTime,
+      status: b.status,
+      address: b.address,
+      whatsapp: b.whatsapp,
+      email: b.email,
+      notes: b.notes,
+      service: b.service,
+      completedAt: b.completedAt,
+    }))
+
+    const formattedOnProgressBookings = onProgressBookings.map((b) => ({
+      id: b.id,
+      customerName: b.customerName,
+      bookingDate: b.bookingDate,
+      bookingTime: b.bookingTime,
+      status: b.status,
+      address: b.address,
+      whatsapp: b.whatsapp,
+      email: b.email,
+      notes: b.notes,
+      service: b.service,
+      approvedAt: b.approvedAt,
+    }))
+
+    const formattedOnProgressOrders = onProgressOrders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      customerName: o.customerName,
+      customerWhatsapp: o.customerWhatsapp,
+      address: o.address,
+      email: o.email,
+      total: o.total,
+      status: o.status,
+      items: o.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      approvedAt: o.approvedAt,
+    }))
+
+    const formattedHistoryOrders = historyOrders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      customerName: o.customerName,
+      customerWhatsapp: o.customerWhatsapp,
+      address: o.address,
+      email: o.email,
+      total: o.total,
+      status: o.status,
+      items: o.items.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      createdAt: o.createdAt,
+      completedAt: o.completedAt,
+      approvedBy: o.user ? { name: o.user.name } : null,
+    }))
+
     return NextResponse.json({
       totalProducts,
       totalBookings,
@@ -259,7 +363,10 @@ export async function GET(request: NextRequest) {
       totalUsers,
       totalReviews,
       lowStockProducts,
-      recentBookings,
+      recentBookings: formattedRecentBookings,
+      onProgressBookings: formattedOnProgressBookings,
+      onProgressOrders: formattedOnProgressOrders,
+      historyOrders: formattedHistoryOrders,
       revenue: {
         total: totalRevenue,
         today: todayRevenue,

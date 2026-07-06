@@ -5,9 +5,7 @@ import {
   FaInstagram, 
   FaFacebook, 
   FaYoutube, 
-  FaTwitter, 
   FaLinkedin, 
-  FaPinterest,
   FaTiktok
 } from 'react-icons/fa'
 import { RiThreadsFill } from 'react-icons/ri'
@@ -22,6 +20,7 @@ interface Settings {
   email: string | null
   socialLinks: any
   footerContent: any
+  footerSlogan: string | null
   bodyFontSize: string
   smallFontSize: string
   headingFontSize: string
@@ -42,9 +41,7 @@ const SOCIAL_ICONS: Record<string, any> = {
   instagram: FaInstagram,
   facebook: FaFacebook,
   youtube: FaYoutube,
-  twitter: FaTwitter,
   linkedin: FaLinkedin,
-  pinterest: FaPinterest,
   threads: RiThreadsFill,
   tiktok: FaTiktok,
 }
@@ -53,9 +50,7 @@ const platformLabels: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
   youtube: 'YouTube',
-  twitter: 'Twitter / X',
   linkedin: 'LinkedIn',
-  pinterest: 'Pinterest',
   threads: 'Threads',
   tiktok: 'TikTok',
 }
@@ -68,6 +63,7 @@ export default function Footer({ settings }: FooterProps) {
   const whatsappNumber = settings?.whatsappNumber || null
   const email = settings?.email || null
   const socialLinks = settings?.socialLinks || {}
+  const footerSlogan = settings?.footerSlogan || null
   const bodyFontSize = settings?.bodyFontSize || '16px'
   const smallFontSize = settings?.smallFontSize || '14px'
   const headingFontSize = settings?.headingFontSize || '32px'
@@ -87,7 +83,7 @@ export default function Footer({ settings }: FooterProps) {
     }
   }
 
-  // 🔥 Parse footer services - AMBIL DARI SETTINGS
+  // Parse footer services
   let footerServices = settings?.footerServices || ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup']
   if (typeof footerServices === 'string') {
     try {
@@ -95,6 +91,11 @@ export default function Footer({ settings }: FooterProps) {
     } catch (e) {
       footerServices = ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup']
     }
+  }
+
+  // Pastikan footerServices adalah array
+  if (!Array.isArray(footerServices)) {
+    footerServices = ['Facial Treatment', 'Body Care', 'Hair Care', 'Nail Art', 'Makeup']
   }
 
   return (
@@ -111,7 +112,7 @@ export default function Footer({ settings }: FooterProps) {
           {/* Brand */}
           <div>
             <h3 
-              className="font-bold mb-4"
+              className="font-bold mb-2"
               style={{ 
                 color: primaryColor,
                 fontSize: headingFontSize,
@@ -119,6 +120,21 @@ export default function Footer({ settings }: FooterProps) {
             >
               {siteName}
             </h3>
+            
+            {/* SLOGAN */}
+            {footerSlogan && (
+              <p 
+                className="mb-4 text-sm"
+                style={{ 
+                  color: textColor,
+                  fontSize: bodyFontSize,
+                  opacity: 0.8,
+                }}
+              >
+                {footerSlogan}
+              </p>
+            )}
+            
             {address && (
               <p 
                 className="mb-2 flex items-start gap-2"
@@ -193,7 +209,7 @@ export default function Footer({ settings }: FooterProps) {
             </ul>
           </div>
 
-          {/* 🔥 Services - DIAMBIL DARI SETTINGS */}
+          {/* Services */}
           <div>
             <h4 
               className="font-semibold mb-4"
@@ -205,7 +221,7 @@ export default function Footer({ settings }: FooterProps) {
               Services
             </h4>
             <ul className="space-y-2">
-              {Array.isArray(footerServices) && footerServices.length > 0 ? (
+              {footerServices.length > 0 ? (
                 footerServices.map((service: string, index: number) => (
                   <li key={index}>
                     <span 

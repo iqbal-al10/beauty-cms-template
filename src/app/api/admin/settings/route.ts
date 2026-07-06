@@ -50,6 +50,7 @@ export async function PUT(request: NextRequest) {
       email: body.email || '',
       address: body.address || null,
       footerContent: body.footerContent || null,
+      footerSlogan: body.footerSlogan || null, // 🔥 TAMBAHKAN
       operatingHours: body.operatingHours || null,
       googleMapsEmbedUrl: body.googleMapsEmbedUrl || '',
       socialLinks: body.socialLinks || {},
@@ -106,6 +107,7 @@ export async function PUT(request: NextRequest) {
       // Footer
       copyrightText: body.copyrightText || '',
       footerLinks: body.footerLinks || null,
+      footerServices: body.footerServices || null, // 🔥 PASTIKAN ADA
 
       // Hero Content
       heroBadge: body.heroBadge || '⭐ Premium Beauty Services',

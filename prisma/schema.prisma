@@ -32,6 +32,7 @@ model Settings {
   copyrightText      String?
   footerLinks        Json?
   footerServices  Json?
+  footerSlogan       String?
   
   shippingZones       Json?
   freeShippingThreshold Int?   @default(300000)
@@ -135,6 +136,7 @@ model User {
   stockHistories   StockHistory[]
   orders           Order[]
   transactions     Transaction[]
+  approvedBookings Booking[]     @relation("ApprovedBookings")
 }
 
 model Category {
@@ -216,14 +218,19 @@ model Booking {
   customerName String
   whatsapp     String
   email        String?
+  address      String?
   bookingDate  DateTime
   bookingTime  String
   serviceId    String?
   notes        String?
-  status       String   @default("PENDING")
+  status       String   @default("PENDING") // PENDING, ON_PROGRESS, COMPLETED, REJECTED, RESCHEDULED
+  approvedBy   String?
+  approvedAt   DateTime?
+  completedAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   service      Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  approvedUser User?    @relation("ApprovedBookings", fields: [approvedBy], references: [id], onDelete: SetNull)
 }
 
 model Testimonial {
@@ -442,7 +449,8 @@ model Order {
   orderNumber  String   @unique
   customerName String
   customerWhatsapp String
-  address      String?
+  email        String?  // 🔥 TAMBAHKAN - email customer
+  address      String?  // 🔥 TAMBAHKAN - alamat pengiriman
   city         String?
   province     String?
   postalCode   String?
@@ -455,11 +463,12 @@ model Order {
   paymentAccountNumber String?
   paymentAccountName String?
   paymentProof String?
-  status       String   @default("PENDING")
+  status       String   @default("PENDING") // PENDING, ON_PROGRESS, COMPLETED, REJECTED, RESCHEDULED
   note         String?
   voucherCode  String?
   approvedBy   String?
-  approvedAt   DateTime?
+  approvedAt   DateTime? 
+  completedAt  DateTime? 
   paidAt       DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
