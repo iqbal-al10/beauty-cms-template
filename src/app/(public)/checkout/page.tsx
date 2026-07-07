@@ -431,7 +431,7 @@ function CheckoutContent() {
       // 🔥 4. CEK APAKAH SNAP TERSEDIA
       if (!window.snap || typeof window.snap.pay !== 'function') {
         console.error('❌ Snap is not available! Redirecting to Midtrans...')
-        toast.warning('Mengarahkan ke halaman pembayaran Midtrans...')
+        toast.loading('Mengarahkan ke halaman pembayaran Midtrans...')
         window.location.href = paymentData.redirectUrl
         return
       }
