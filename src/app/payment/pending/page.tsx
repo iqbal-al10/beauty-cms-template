@@ -18,6 +18,7 @@ export default function PaymentPendingPage() {
       router.push('/')
       return
     }
+    // 🔥 GANTI toast.info MENJADI toast.loading
     toast.loading('⏳ Menunggu pembayaran...', { duration: 3000 })
   }, [orderId, router])
 
