@@ -119,12 +119,14 @@ export default function Header({ settings }: HeaderProps) {
   // 🔥 Cek apakah user bisa akses dashboard (SUPER_ADMIN atau ADMIN)
   const canAccessDashboard = user && (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN')
 
+  // 🔥 TAMBAHKAN FAQ DI SINI
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/products', label: 'Products' },
     { href: '/booking', label: 'Booking' },
     { href: '/blog', label: 'Blog' },
     { href: '/testimonials', label: 'Testimonials' },
+    { href: '/faq', label: 'FAQ' }, // 🔥 TAMBAHKAN INI
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ]

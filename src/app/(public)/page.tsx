@@ -73,6 +73,15 @@ interface BlogPost {
   category: { name: string } | null
 }
 
+// 🔥 TAMBAHKAN INTERFACE FAQ
+interface FAQ {
+  id: string
+  question: string
+  answer: string
+  sortOrder: number
+  isActive: boolean
+}
+
 interface Settings {
   siteName: string
   colorPrimary: string
@@ -174,6 +183,8 @@ export default function HomePage() {
   const [activePromos, setActivePromos] = useState<Promo[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [latestBlogs, setLatestBlogs] = useState<BlogPost[]>([])
+  const [faqs, setFaqs] = useState<FAQ[]>([])
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
 
@@ -233,7 +244,8 @@ export default function HomePage() {
           servicesRes,
           promosRes,
           testimonialsRes,
-          blogsRes
+          blogsRes,
+          faqsRes // 🔥 TAMBAHKAN INI
         ] = await Promise.all([
           fetchWithTimeout('/api/public/settings', 3000).catch(() => null),
           fetchWithTimeout('/api/public/products?featured=true&limit=4', 5000).catch(() => null),
@@ -241,16 +253,15 @@ export default function HomePage() {
           fetchWithTimeout('/api/public/promos?active=true&limit=1', 5000).catch(() => null),
           fetchWithTimeout('/api/public/testimonials?limit=3', 5000).catch(() => null),
           fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
+          fetchWithTimeout('/api/public/faq', 5000).catch(() => null), // 🔥 TAMBAHKAN
         ])
 
-        // 🔥 PERBAIKAN: Settings - merge data dari API ke state
+        // Settings
         if (settingsRes && (settingsRes as Response).ok) {
           const data = await (settingsRes as Response).json()
           console.log('🔍 PUBLIC - Settings from API:', data)
-          // Merge data dari API ke state, jangan timpa dengan DEFAULT_SETTINGS
           setSettings(prev => ({ ...prev, ...data }))
         } else {
-          // Jika gagal, gunakan DEFAULT_SETTINGS
           setSettings(DEFAULT_SETTINGS)
         }
 
@@ -277,6 +288,12 @@ export default function HomePage() {
         if (blogsRes && (blogsRes as Response).ok) {
           const data = await (blogsRes as Response).json()
           setLatestBlogs(data || [])
+        }
+
+        // 🔥 SET FAQ DATA
+        if (faqsRes && (faqsRes as Response).ok) {
+          const data = await (faqsRes as Response).json()
+          setFaqs(data || [])
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -343,9 +360,12 @@ export default function HomePage() {
     )
   }
 
+  // 🔥 Ambil 3 FAQ pertama untuk ditampilkan di home
+  const homeFaqs = faqs.filter(f => f.isActive).slice(0, 3)
+
   return (
     <div style={{ fontFamily: fontFamily }}>
-      {/* ===== HERO SECTION - 2 KOLOM ===== */}
+      {/* ===== HERO SECTION ===== */}
       <section 
         className="relative min-h-[70vh] flex items-center overflow-hidden"
         style={{
@@ -365,7 +385,6 @@ export default function HomePage() {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            {/* ===== KIRI: TEKS ===== */}
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-white/20">
                 <svg className="w-4 h-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24">
@@ -399,10 +418,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* ===== KANAN: CAROUSEL PROMO ===== */}
             <div className="relative w-full max-w-xl mx-auto lg:mx-0 lg:ml-auto">
               <div className="relative overflow-hidden rounded-2xl">
-                {/* Slide Container */}
                 <div 
                   className="transition-transform duration-700 ease-in-out"
                   style={{ transform: `translateX(-${currentSlide * 100}%)` }}
@@ -438,7 +455,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Dots Indicator */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
                   {slides.map((_, index) => (
                     <button
@@ -761,7 +777,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ===== TESTIMONIALS & BEFORE/AFTER SECTION ===== */}
+      {/* ===== TESTIMONIALS SECTION ===== */}
       {testimonials.length > 0 && (
         <section className="py-16" style={{ backgroundColor: `${secondaryColor}30` }}>
           <div className="container mx-auto px-4">
@@ -861,6 +877,75 @@ export default function HomePage() {
                   style={{ color: primaryColor, fontSize: bodyFontSize }}
                 >
                   See All Testimonials →
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ===== FAQ SECTION ===== */}
+      {homeFaqs.length > 0 && (
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
+                ❓ Frequently Asked Questions
+              </h2>
+              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>
+                Find answers to common questions
+              </p>
+            </div>
+
+            <div className="max-w-2xl mx-auto space-y-3">
+              {homeFaqs.map((faq, index) => {
+                const isOpen = openFaqIndex === index
+                return (
+                  <div
+                    key={faq.id}
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
+                    style={{ borderColor: isOpen ? primaryColor : undefined }}
+                  >
+                    <button
+                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
+                      className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-medium text-gray-800" style={{ fontSize: bodyFontSize }}>
+                        {faq.question}
+                      </span>
+                      <span className="flex-shrink-0 ml-4">
+                        {isOpen ? (
+                          <svg className="w-5 h-5" style={{ color: primaryColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/>
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" style={{ color: primaryColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                          </svg>
+                        )}
+                      </span>
+                    </button>
+                    
+                    {isOpen && (
+                      <div className="px-6 pb-4 pt-1 border-t border-gray-100">
+                        <p className="text-gray-600 leading-relaxed" style={{ fontSize: bodyFontSize }}>
+                          {faq.answer}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {faqs.filter(f => f.isActive).length > 3 && (
+              <div className="text-center mt-6">
+                <Link
+                  href="/faq"
+                  className="font-medium transition-colors hover:underline"
+                  style={{ color: primaryColor, fontSize: bodyFontSize }}
+                >
+                  Lihat Semua FAQ →
                 </Link>
               </div>
             )}
