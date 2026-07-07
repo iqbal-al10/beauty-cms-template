@@ -109,6 +109,10 @@ interface Settings {
   contactHeroSubtitle: string
   contactFormTitle: string
   contactSuccessMessage: string
+  // WHATSAPP FLOAT SETTINGS
+  whatsappQuickReplies: any
+  whatsappAutoMessage: string
+  whatsappFloatPosition: string
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -212,6 +216,15 @@ const DEFAULT_SETTINGS: Settings = {
   contactHeroSubtitle: "We'd love to hear from you",
   contactFormTitle: 'Send Us a Message',
   contactSuccessMessage: 'Thank you for your message! We will get back to you soon.',
+  // WhatsApp Float Settings
+    whatsappQuickReplies: [
+    { label: '💆‍♀️ Booking', message: 'Saya ingin booking layanan' },
+    { label: '📦 Product', message: 'Saya ingin tanya tentang produk' },
+    { label: '💰 Price', message: 'Berapa harga layanannya?' },
+    { label: '📅 Schedule', message: 'Saya ingin cek jadwal' },
+  ],
+  whatsappAutoMessage: 'Halo, saya ingin bertanya tentang layanan Anda.',
+  whatsappFloatPosition: 'bottom-right',
 }
 
 const FONT_OPTIONS = ['Inter', 'Poppins', 'Roboto', 'Open Sans', 'Lato', 'Montserrat']

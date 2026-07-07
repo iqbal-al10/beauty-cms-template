@@ -6,11 +6,23 @@ interface Settings {
   whatsappNumber: string | null
   siteName: string
   colorButton: string
+  whatsappQuickReplies?: Array<{ label: string; message: string }> | null
+  whatsappAutoMessage?: string | null
+  whatsappFloatPosition?: string | null
 }
 
 interface WhatsAppFloatProps {
   settings?: Settings | null
 }
+
+const DEFAULT_QUICK_REPLIES = [
+  { label: '💆‍♀️ Booking', message: 'Saya ingin booking layanan' },
+  { label: '📦 Product', message: 'Saya ingin tanya tentang produk' },
+  { label: '💰 Price', message: 'Berapa harga layanannya?' },
+  { label: '📅 Schedule', message: 'Saya ingin cek jadwal' },
+]
+
+const DEFAULT_AUTO_MESSAGE = 'Halo, saya ingin bertanya tentang layanan Anda.'
 
 export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -20,6 +32,17 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
   const cleanNumber = phoneNumber.replace(/[^0-9]/g, '')
   const buttonColor = settings?.colorButton || '#c4367b'
   const siteName = settings?.siteName || 'Beauty Studio'
+  
+  const quickReplies = settings?.whatsappQuickReplies || DEFAULT_QUICK_REPLIES
+  const autoMessage = settings?.whatsappAutoMessage || DEFAULT_AUTO_MESSAGE
+  const position = settings?.whatsappFloatPosition || 'bottom-right'
+  
+  const positionClasses = position === 'bottom-left' 
+    ? 'bottom-6 left-6' 
+    : 'bottom-6 right-6'
+  const popupPosition = position === 'bottom-left'
+    ? 'bottom-20 left-0'
+    : 'bottom-20 right-0'
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,19 +53,12 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
 
   if (!cleanNumber) return null
 
-  const whatsappUrl = `https://wa.me/${cleanNumber}?text=Halo%20${encodeURIComponent(siteName)}%2C%20saya%20ingin%20bertanya%20tentang%20layanan%20Anda.`
-
-  const quickReplies = [
-    { label: '💆‍♀️ Booking', message: 'Saya ingin booking layanan' },
-    { label: '📦 Product', message: 'Saya ingin tanya tentang produk' },
-    { label: '💰 Price', message: 'Berapa harga layanannya?' },
-    { label: '📅 Schedule', message: 'Saya ingin cek jadwal' },
-  ]
+  const whatsappUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(autoMessage)}`
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed ${positionClasses} z-50`}>
       {isOpen && (
-        <div className="absolute bottom-20 right-0 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className={`absolute ${popupPosition} w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300`}>
           <div
             className="px-4 py-3 flex items-center gap-3 text-white"
             style={{ backgroundColor: buttonColor }}

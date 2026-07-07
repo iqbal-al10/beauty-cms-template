@@ -33,6 +33,11 @@ model Settings {
   footerLinks        Json?
   footerServices  Json?
   footerSlogan       String?
+
+   // WHATSAPP FLOAT SETTINGS
+  whatsappQuickReplies   Json?    // Array of { label: string, message: string }
+  whatsappAutoMessage    String?  @default("Halo, saya ingin bertanya tentang layanan Anda.")
+  whatsappFloatPosition  String?  @default("bottom-right") // bottom-right, bottom-left
   
   shippingZones       Json?
   freeShippingThreshold Int?   @default(300000)

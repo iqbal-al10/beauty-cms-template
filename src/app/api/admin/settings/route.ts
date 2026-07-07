@@ -159,6 +159,11 @@ export async function PUT(request: NextRequest) {
       contactHeroSubtitle: body.contactHeroSubtitle || "We'd love to hear from you",
       contactFormTitle: body.contactFormTitle || 'Send Us a Message',
       contactSuccessMessage: body.contactSuccessMessage || 'Thank you for your message! We will get back to you soon.',
+
+      // 🔥 WHATSAPP FLOAT SETTINGS
+      whatsappQuickReplies: body.whatsappQuickReplies || null,
+      whatsappAutoMessage: body.whatsappAutoMessage || 'Halo, saya ingin bertanya tentang layanan Anda.',
+      whatsappFloatPosition: body.whatsappFloatPosition || 'bottom-right',
     }
 
     const settings = await prisma.settings.update({

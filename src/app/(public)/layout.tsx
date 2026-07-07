@@ -4,6 +4,7 @@ import Footer from '@/components/public/Footer'
 import CookieConsent from '@/components/public/CookieConsent'
 import GoogleAnalytics from '@/components/public/GoogleAnalytics'
 import Script from 'next/script'
+import WhatsAppFloat from '@/components/public/WhatsAppFloat' // 🔥 TAMBAHKAN
 
 export default async function PublicLayout({
   children,
@@ -112,6 +113,11 @@ export default async function PublicLayout({
         siteKeywords: data.siteKeywords || null,
         cookiePrefix: data.cookiePrefix || 'beauty',
         sessionDuration: data.sessionDuration || 7,
+        
+        // 🔥 WHATSAPP FLOAT SETTINGS
+        whatsappQuickReplies: data.whatsappQuickReplies || null,
+        whatsappAutoMessage: data.whatsappAutoMessage || 'Halo, saya ingin bertanya tentang layanan Anda.',
+        whatsappFloatPosition: data.whatsappFloatPosition || 'bottom-right',
       }
     }
   } catch (error) {
@@ -126,7 +132,7 @@ export default async function PublicLayout({
         color: settings?.bodyTextColor || '#4b5563',
       }}
     >
-      {/* 🔥 SCRIPT MIDTRANS - TANPA onLoad/onError */}
+      {/* 🔥 SCRIPT MIDTRANS */}
       <Script
         src="https://app.sandbox.midtrans.com/snap/snap.js"
         data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
@@ -138,6 +144,9 @@ export default async function PublicLayout({
         {children}
       </main>
       <Footer settings={settings as any} />
+      
+      {/* 🔥 WHATSAPP FLOAT - TARUH DI SINI (DI BAWAH FOOTER) */}
+      <WhatsAppFloat settings={settings} />
       
       {settings?.gaTrackingId && (
         <GoogleAnalytics trackingId={settings.gaTrackingId} />
