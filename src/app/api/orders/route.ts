@@ -132,6 +132,25 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Order created: ${order.id}`)
     console.log(`✅ Payment Method Name: ${paymentMethodName}`)
 
+    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      await fetch(`${appUrl}/api/push/send-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          total: order.total,
+        }),
+      })
+      console.log('✅ Push notification sent for order:', order.id)
+    } catch (pushError) {
+      // Jangan gagalkan order jika notifikasi gagal
+      console.error('❌ Error sending push notification:', pushError)
+    }
+
     // Return order dengan semua data
     return NextResponse.json(order, { status: 201 })
   } catch (error) {

@@ -32,6 +32,7 @@ import {
   ExternalLink,
   CreditCard
 } from 'lucide-react'
+import NotificationPrompt from '@/components/admin/NotificationPrompt' // 🔥 TAMBAHKAN
 
 interface UserData {
   id: string
@@ -297,6 +298,9 @@ export default function AdminLayout({
           </div>
           
           <div className="flex items-center gap-4">
+            {/* 🔥 TAMBAHKAN NOTIFICATION PROMPT */}
+            <NotificationPrompt />
+            
             <Link
               href="/"
               target="_blank"

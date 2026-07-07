@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 import jwt from 'jsonwebtoken'
 import { prisma } from './prisma'
+import { getCookieName } from './cookies' // 🔥 IMPORT INI
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -24,7 +25,9 @@ export interface TokenPayload {
 export async function getServerSession(): Promise<Session | null> {
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('token')?.value
+    // 🔥 PAKAI getCookieName() BUKAN HARDCODE
+    const cookieName = await getCookieName()
+    const token = cookieStore.get(cookieName)?.value
 
     if (!token) return null
 
@@ -68,11 +71,14 @@ export async function getCurrentUser(request?: NextRequest) {
   try {
     let token: string | undefined
 
+    // 🔥 PAKAI getCookieName() BUKAN HARDCODE
+    const cookieName = await getCookieName()
+
     if (request) {
-      token = request.cookies.get('token')?.value
+      token = request.cookies.get(cookieName)?.value
     } else {
       const cookieStore = await cookies()
-      token = cookieStore.get('token')?.value
+      token = cookieStore.get(cookieName)?.value
     }
 
     if (!token) return null
@@ -101,7 +107,9 @@ export async function getCurrentUser(request?: NextRequest) {
 
 export async function getSessionFromRequest(request: NextRequest): Promise<Session | null> {
   try {
-    const token = request.cookies.get('token')?.value
+    // 🔥 PAKAI getCookieName() BUKAN HARDCODE
+    const cookieName = await getCookieName()
+    const token = request.cookies.get(cookieName)?.value
 
     if (!token) return null
 

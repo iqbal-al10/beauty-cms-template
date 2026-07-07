@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
       customerName,
       whatsapp,
       email,
-      address,  // 🔥 TAMBAHKAN
+      address,
       notes,
       voucherCode,
       paymentMethod,
@@ -242,7 +242,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 🔥 TAMBAHKAN ADDRESS
     const booking = await prisma.booking.create({
       data: {
         serviceId,
@@ -251,11 +250,31 @@ export async function POST(request: NextRequest) {
         customerName,
         whatsapp,
         email: email || null,
-        address: address || null,  // 🔥 TAMBAHKAN
+        address: address || null,
         notes: notes || null,
         status: 'PENDING',
       },
     })
+
+    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      await fetch(`${appUrl}/api/push/send-booking`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: booking.id,
+          customerName: booking.customerName,
+          serviceName: service.name,
+          bookingDate: new Date(booking.bookingDate).toLocaleDateString('id-ID'),
+          bookingTime: booking.bookingTime,
+        }),
+      })
+      console.log('✅ Push notification sent for booking:', booking.id)
+    } catch (pushError) {
+      // Jangan gagalkan booking jika notifikasi gagal
+      console.error('❌ Error sending push notification:', pushError)
+    }
 
     return NextResponse.json({
       success: true,

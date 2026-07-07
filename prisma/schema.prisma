@@ -588,3 +588,13 @@ model ServiceBookingTag {
   service    Service    @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   tag        BookingTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 }
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  subscription String   // JSON string dari push subscription
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
