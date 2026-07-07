@@ -54,7 +54,7 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
             </div>
             <div>
               <p className="font-semibold text-sm">{siteName}</p>
-              <p className="text-xs opacity-90">Usually replies in minutessssssssssssssssss</p>
+              <p className="text-xs opacity-90">Usually replies in minutes</p>
             </div>
             <button
               onClick={() => setIsOpen(false)}
