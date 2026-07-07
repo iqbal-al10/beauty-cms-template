@@ -10,6 +10,14 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+declare global {
+  interface Window {
+    snap?: {
+      pay: (token: string, options: any) => void
+    }
+  }
+}
+
 interface CartItem {
   id: string
   name: string
@@ -39,6 +47,9 @@ interface ShippingCost {
   freeShippingThreshold: number
 }
 
+// 🔥 KEY UNTUK LOCALSTORAGE
+const CUSTOMER_STORAGE_KEY = 'beauty_customer'
+
 function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -61,6 +72,7 @@ function CheckoutContent() {
   const [form, setForm] = useState({
     customerName: '',
     customerWhatsapp: '',
+    email: '',
     address: '',
     city: '',
     province: '',
@@ -69,24 +81,35 @@ function CheckoutContent() {
     paymentMethod: '',
   })
 
+  // 🔥 LOAD DATA CUSTOMER DARI LOCALSTORAGE
   useEffect(() => {
-    const customerData = localStorage.getItem('beauty_customer')
-    let savedCity = ''
-    
-    if (customerData) {
+    const savedCustomer = localStorage.getItem(CUSTOMER_STORAGE_KEY)
+    if (savedCustomer) {
       try {
-        const data = JSON.parse(customerData)
-        const updatedForm = {
+        const data = JSON.parse(savedCustomer)
+        setForm(prev => ({
+          ...prev,
           customerName: data.customerName || '',
           customerWhatsapp: data.customerWhatsapp || '',
+          email: data.email || '',
           address: data.address || '',
           city: data.city || '',
           province: data.province || '',
           postalCode: data.postalCode || '',
-          note: '',
-          paymentMethod: '',
-        }
-        setForm(updatedForm)
+        }))
+      } catch (e) {
+        console.error('Error loading customer data:', e)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const savedCustomer = localStorage.getItem(CUSTOMER_STORAGE_KEY)
+    let savedCity = ''
+    
+    if (savedCustomer) {
+      try {
+        const data = JSON.parse(savedCustomer)
         savedCity = data.city || ''
       } catch (e) {}
     }
@@ -103,25 +126,11 @@ function CheckoutContent() {
             return
           }
           
-          // 🔍 DEBUG: Lihat data asli dari localStorage
-          console.log('🔍 RAW DATA from localStorage:', items)
-          
-          // Pastikan compareAtPrice selalu ada
           const enrichedItems = items.map((item: any) => ({
             ...item,
             compareAtPrice: item.compareAtPrice ?? null,
             finalPrice: item.finalPrice ?? item.price,
           }))
-          
-          // 🔍 DEBUG: Lihat data setelah di-enrich
-          console.log('📦 ENRICHED ITEMS:', enrichedItems)
-          console.log('🔍 CompareAtPrice details:', enrichedItems.map((item: any) => ({
-            name: item.name,
-            compareAtPrice: item.compareAtPrice,
-            type: typeof item.compareAtPrice,
-            price: item.price,
-            hasCompare: item.compareAtPrice && item.compareAtPrice > (item.finalPrice || item.price),
-          })))
           
           setCartItems(enrichedItems)
         } catch (error) {
@@ -147,10 +156,6 @@ function CheckoutContent() {
       }
       const product = await res.json()
       
-      // 🔍 DEBUG: Lihat data dari API
-      console.log('🔍 PRODUCT FROM API:', product)
-      console.log('🔍 compareAtPrice from API:', product.compareAtPrice)
-      
       const item: CartItem = {
         id: product.id,
         name: product.name,
@@ -162,8 +167,6 @@ function CheckoutContent() {
         imageUrl: product.imageUrl || null,
         stock: product.stock || 0,
       }
-      
-      console.log('📦 SINGLE PRODUCT ITEM:', item)
       
       setSingleProduct(item)
       setCartItems([item])
@@ -294,11 +297,13 @@ function CheckoutContent() {
     setVoucherError('')
   }
 
+  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     setErrorMessage('')
 
+    // Validasi form
     if (!form.customerName.trim()) {
       const msg = 'Nama lengkap wajib diisi'
       setErrorMessage(msg)
@@ -317,26 +322,37 @@ function CheckoutContent() {
       toast.error(msg)
       return
     }
-    if (!form.paymentMethod) {
-      const msg = 'Silakan pilih metode pembayaran terlebih dahulu'
+    if (!form.email.trim()) {
+      const msg = 'Email wajib diisi'
+      setErrorMessage(msg)
+      toast.error(msg)
+      return
+    }
+
+    // Hitung total
+    const subtotal = calculateSubtotal()
+    const shipping = shippingCost?.cost || 0
+    const appliedDiscount = voucherApplied ? voucherDiscount : 0
+    const total = subtotal + shipping - appliedDiscount
+
+    if (total <= 0) {
+      const msg = 'Total pembayaran harus lebih dari 0'
       setErrorMessage(msg)
       toast.error(msg)
       return
     }
 
     setSubmitting(true)
+    const loadingToast = toast.loading('Memproses pesanan...')
 
     try {
-      const subtotal = calculateSubtotal()
-      const shipping = shippingCost?.cost || 0
-      const appliedDiscount = voucherApplied ? voucherDiscount : 0
-      const total = subtotal + shipping - appliedDiscount
-
+      const customerEmail = form.email.trim()
       const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
 
       const orderData = {
         customerName: form.customerName,
         customerWhatsapp: form.customerWhatsapp,
+        email: customerEmail,
         address: form.address,
         city: form.city || '',
         province: form.province || '',
@@ -360,6 +376,7 @@ function CheckoutContent() {
         })),
       }
 
+      // 1. Buat order
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,9 +389,13 @@ function CheckoutContent() {
         throw new Error(data.error || 'Gagal membuat pesanan')
       }
 
-      localStorage.setItem('beauty_customer', JSON.stringify({
+      const newOrderId = data.id
+
+      // 🔥 2. SIMPAN DATA CUSTOMER KE LOCALSTORAGE (LENGKAP)
+      localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
         customerName: form.customerName,
         customerWhatsapp: form.customerWhatsapp,
+        email: customerEmail,
         address: form.address,
         city: form.city,
         province: form.province,
@@ -386,14 +407,64 @@ function CheckoutContent() {
         window.dispatchEvent(new Event('cartUpdate'))
       }
 
-      toast.success('✅ Pesanan berhasil dibuat!')
-      router.push(`/checkout/success?orderId=${data.id}`)
+      // 3. 🔥 PROSES PEMBAYARAN VIA MIDTRANS
+      const paymentRes = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newOrderId,
+          isBooking: false,
+        }),
+      })
+
+      const paymentData = await paymentRes.json()
+
+      if (!paymentRes.ok) {
+        throw new Error(paymentData.error || 'Gagal memproses pembayaran')
+      }
+
+      toast.dismiss(loadingToast)
+
+      console.log('🔍 window.snap:', window.snap)
+      console.log('🔍 Payment token:', paymentData.token)
+
+      // 🔥 4. CEK APAKAH SNAP TERSEDIA
+      if (!window.snap || typeof window.snap.pay !== 'function') {
+        console.error('❌ Snap is not available! Redirecting to Midtrans...')
+        toast.warning('Mengarahkan ke halaman pembayaran Midtrans...')
+        window.location.href = paymentData.redirectUrl
+        return
+      }
+
+      // 🔥 5. BUKA POPUP MIDTRANS
+      window.snap.pay(paymentData.token, {
+        onSuccess: function(result: any) {
+          console.log('✅ Payment success:', result)
+          toast.success('✅ Pembayaran berhasil!')
+          window.location.href = `/payment/success?order_id=${result.order_id}`
+        },
+        onPending: function(result: any) {
+          console.log('⏳ Payment pending:', result)
+          toast.loading('⏳ Menunggu pembayaran...')
+          window.location.href = `/payment/pending?order_id=${result.order_id}`
+        },
+        onError: function(result: any) {
+          console.error('❌ Payment error:', result)
+          toast.error('❌ Pembayaran gagal')
+          window.location.href = `/payment/error?order_id=${result.order_id}`
+        },
+        onClose: function() {
+          console.log('❌ Payment closed by user')
+          toast.error('❌ Pembayaran dibatalkan')
+        },
+      })
+
     } catch (error: any) {
-      console.error('❌ Error creating order:', error)
-      const msg = error.message || 'Gagal membuat pesanan'
+      toast.dismiss(loadingToast)
+      console.error('❌ Error:', error)
+      const msg = error.message || 'Gagal memproses pesanan'
       setErrorMessage(msg)
       toast.error(msg)
-    } finally {
       setSubmitting(false)
     }
   }
@@ -457,6 +528,18 @@ function CheckoutContent() {
                     placeholder="6281234567890"
                   />
                 </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  placeholder="email@example.com"
+                />
+                <p className="text-xs text-gray-400 mt-1">Email diperlukan untuk konfirmasi pembayaran</p>
               </div>
             </div>
 
@@ -554,10 +637,7 @@ function CheckoutContent() {
 
             {/* Payment Method */}
             <div id="payment-method-section">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                Metode Pembayaran *
-                <span className="text-red-500 ml-1"></span>
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Metode Pembayaran *</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {paymentMethods.length === 0 ? (
                   <p className="text-gray-500 col-span-full">Belum ada metode pembayaran. Silakan hubungi admin.</p>
@@ -625,7 +705,7 @@ function CheckoutContent() {
               className="w-full py-3 rounded-lg text-white font-semibold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#c4367b' }}
             >
-              {submitting ? 'Memproses...' : 'Konfirmasi Pesanan'}
+              {submitting ? 'Memproses...' : 'Konfirmasi & Bayar'}
             </button>
           </form>
         </div>
@@ -640,18 +720,6 @@ function CheckoutContent() {
                 const displayPrice = item.finalPrice || item.price
                 const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
                 const itemTotal = displayPrice * item.quantity
-                const compareTotal = hasCompare ? (item.compareAtPrice || 0) * item.quantity : 0
-                const savings = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
-                
-                // 🔍 DEBUG: Log per item saat render
-                console.log(`🔍 RENDERING ITEM: ${item.name}`, {
-                  displayPrice,
-                  compareAtPrice: item.compareAtPrice,
-                  hasCompare,
-                  savings,
-                  itemTotal,
-                  compareTotal
-                })
                 
                 return (
                   <div key={item.id} className="border-b border-gray-100 pb-3 last:border-0">
@@ -695,25 +763,11 @@ function CheckoutContent() {
                             </p>
                           )}
                         </div>
-                        
-                        {/* 🔥 TAMPILKAN HEMAT */}
-                        {hasCompare && savings > 0 && (
-                          <p className="text-xs text-green-600 font-medium">
-                            Hemat Rp {savings.toLocaleString()} / item
-                          </p>
-                        )}
                       </div>
                       <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
                         Rp {itemTotal.toLocaleString()}
                       </p>
                     </div>
-                    
-                    {/* 🔥 TAMPILKAN TOTAL HEMAT */}
-                    {hasCompare && compareTotal > itemTotal && (
-                      <div className="text-right text-xs text-green-600 font-medium mt-1">
-                        Hemat Rp {(compareTotal - itemTotal).toLocaleString()} dari total
-                      </div>
-                    )}
                   </div>
                 )
               })}

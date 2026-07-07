@@ -3,6 +3,7 @@ import Header from '@/components/public/Header'
 import Footer from '@/components/public/Footer'
 import CookieConsent from '@/components/public/CookieConsent'
 import GoogleAnalytics from '@/components/public/GoogleAnalytics'
+import Script from 'next/script'
 
 export default async function PublicLayout({
   children,
@@ -53,7 +54,6 @@ export default async function PublicLayout({
         operatingHours: data.operatingHours || null,
         googleMapsEmbedUrl: data.googleMapsEmbedUrl || null,
         gaTrackingId: data.gaTrackingId || null,
-        // 🔥 TAMBAHKAN INI
         enableCookieConsent: data.enableCookieConsent !== undefined ? data.enableCookieConsent : true,
         metaTitle: data.metaTitle || null,
         metaDescription: data.metaDescription || null,
@@ -110,7 +110,6 @@ export default async function PublicLayout({
         cartExpiryDays: data.cartExpiryDays || 7,
         siteDescription: data.siteDescription || null,
         siteKeywords: data.siteKeywords || null,
-        // 🔥 COOKIE SETTINGS
         cookiePrefix: data.cookiePrefix || 'beauty',
         sessionDuration: data.sessionDuration || 7,
       }
@@ -120,30 +119,41 @@ export default async function PublicLayout({
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div 
+      className="min-h-screen flex flex-col"
+      style={{ 
+        backgroundColor: settings?.primaryBackground || '#ffffff',
+        color: settings?.bodyTextColor || '#4b5563',
+      }}
+    >
+      {/* 🔥 SCRIPT MIDTRANS - TANPA onLoad/onError */}
+      <Script
+        src="https://app.sandbox.midtrans.com/snap/snap.js"
+        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        strategy="afterInteractive"
+      />
+
       <Header settings={settings} />
       <main className="flex-1">
         {children}
       </main>
       <Footer settings={settings as any} />
       
-      {/* 🔥 GOOGLE ANALYTICS - Conditionally loaded based on consent */}
       {settings?.gaTrackingId && (
         <GoogleAnalytics trackingId={settings.gaTrackingId} />
       )}
       
-{/* 🔥 COOKIE CONSENT BANNER */}
-{settings?.enableCookieConsent !== false && (
-  <CookieConsent 
-    siteName={settings?.siteName || 'Beauty Studio'}
-    primaryColor={settings?.colorPrimary || '#c4367b'}
-    secondaryBackground={settings?.secondaryBackground || '#f9fafb'}
-    primaryBackground={settings?.primaryBackground || '#ffffff'}
-    headingColor={settings?.headingColor || '#111827'}
-    bodyTextColor={settings?.bodyTextColor || '#4b5563'}
-    enableConsent={settings?.enableCookieConsent !== false}
-  />
-)}
+      {settings?.enableCookieConsent !== false && (
+        <CookieConsent 
+          siteName={settings?.siteName || 'Beauty Studio'}
+          primaryColor={settings?.colorPrimary || '#c4367b'}
+          secondaryBackground={settings?.secondaryBackground || '#f9fafb'}
+          primaryBackground={settings?.primaryBackground || '#ffffff'}
+          headingColor={settings?.headingColor || '#111827'}
+          bodyTextColor={settings?.bodyTextColor || '#4b5563'}
+          enableConsent={settings?.enableCookieConsent !== false}
+        />
+      )}
     </div>
   )
 }

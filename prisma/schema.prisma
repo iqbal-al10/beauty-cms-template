@@ -234,6 +234,9 @@ model Booking {
   serviceId    String?
   notes        String?
   status       String   @default("PENDING") // PENDING, ON_PROGRESS, COMPLETED, REJECTED, RESCHEDULED
+  paymentStatus   String?   @default("PENDING")
+  midtransOrderId String?   @unique
+
   approvedBy   String?
   approvedAt   DateTime?
   completedAt  DateTime?
@@ -468,6 +471,8 @@ model Order {
   subtotal     Float
   discountAmount Float   @default(0)
   total        Float
+  paymentStatus   String?   @default("PENDING") // PENDING, PAID, FAILED, EXPIRED
+  midtransOrderId String?   @unique // ID dari Midtrans
   paymentMethod String?
   paymentMethodName String?
   paymentAccountNumber String?

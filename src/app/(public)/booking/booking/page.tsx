@@ -7,6 +7,14 @@ import { CheckCircle, Calendar, Clock, User, Phone, Mail, MessageSquare, ArrowLe
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 
+declare global {
+  interface Window {
+    snap?: {
+      pay: (token: string, options: any) => void
+    }
+  }
+}
+
 interface Service {
   id: string
   name: string
@@ -44,6 +52,9 @@ interface Slot {
   isBooked: boolean
 }
 
+// 🔥 KEY UNTUK LOCALSTORAGE
+const CUSTOMER_STORAGE_KEY = 'beauty_customer'
+
 function BookingServiceContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -72,25 +83,25 @@ function BookingServiceContent() {
     customerName: '',
     whatsapp: '',
     email: '',
-    address: '',  // 🔥 TAMBAHKAN
+    address: '',
     notes: '',
     paymentMethod: '',
   })
 
   const primaryColor = '#c4367b'
 
-  // Load customer data from localStorage
+  // 🔥 LOAD DATA CUSTOMER DARI LOCALSTORAGE
   useEffect(() => {
-    const savedCustomer = localStorage.getItem('beauty_customer')
+    const savedCustomer = localStorage.getItem(CUSTOMER_STORAGE_KEY)
     if (savedCustomer) {
       try {
         const data = JSON.parse(savedCustomer)
         setForm(prev => ({
           ...prev,
           customerName: data.customerName || '',
-          whatsapp: data.whatsapp || '',
+          whatsapp: data.customerWhatsapp || '',
           email: data.email || '',
-          address: data.address || '',  // 🔥 TAMBAHKAN
+          address: data.address || '',
         }))
       } catch (e) {
         console.error('Error loading customer data:', e)
@@ -242,6 +253,7 @@ function BookingServiceContent() {
     setVoucherError('')
   }
 
+  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -255,17 +267,32 @@ function BookingServiceContent() {
       return
     }
 
+    if (!form.email.trim()) {
+      toast.error('Email wajib diisi')
+      return
+    }
+
+    const totalPrice = getTotalPrice()
+    if (totalPrice <= 0) {
+      toast.error('Total pembayaran harus lebih dari 0')
+      return
+    }
+
     setSubmitting(true)
+    const loadingToast = toast.loading('Memproses booking...')
 
     const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
+    const customerEmail = form.email.trim()
 
     try {
+      // 1. Buat booking
       const res = await fetch('/api/public/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          address: form.address,  // 🔥 TAMBAHKAN
+          email: customerEmail,
+          address: form.address || '',
           voucherCode: voucherApplied ? voucherCode : null,
           paymentMethod: form.paymentMethod,
           paymentMethodName: selectedPayment?.name || '',
@@ -276,24 +303,76 @@ function BookingServiceContent() {
 
       const data = await res.json()
 
-      if (res.ok) {
-        localStorage.setItem('beauty_customer', JSON.stringify({
-          customerName: form.customerName,
-          whatsapp: form.whatsapp,
-          email: form.email,
-          address: form.address,  // 🔥 TAMBAHKAN
-        }))
-
-        setSubmitted(true)
-        setBookingData(data)
-        toast.success('Booking berhasil!')
-      } else {
-        toast.error(data.error || 'Gagal booking')
+      if (!res.ok) {
+        throw new Error(data.error || 'Gagal membuat booking')
       }
-    } catch (error) {
+
+      const newBookingId = data.booking.id
+
+      // 🔥 2. SIMPAN DATA CUSTOMER KE LOCALSTORAGE
+      localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
+        customerName: form.customerName,
+        customerWhatsapp: form.whatsapp,
+        email: customerEmail,
+        address: form.address || '',
+      }))
+
+      // 3. 🔥 PROSES PEMBAYARAN VIA MIDTRANS
+      const paymentRes = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: newBookingId,
+          isBooking: true,
+        }),
+      })
+
+      const paymentData = await paymentRes.json()
+
+      if (!paymentRes.ok) {
+        throw new Error(paymentData.error || 'Gagal memproses pembayaran')
+      }
+
+      toast.dismiss(loadingToast)
+
+      console.log('🔍 window.snap:', window.snap)
+      console.log('🔍 Payment token:', paymentData.token)
+
+      // 🔥 4. CEK APAKAH SNAP TERSEDIA
+      if (!window.snap || typeof window.snap.pay !== 'function') {
+        console.error('❌ Snap is not available! Redirecting to Midtrans...')
+        toast.warning('Mengarahkan ke halaman pembayaran Midtrans...')
+        window.location.href = paymentData.redirectUrl
+        return
+      }
+
+      // 🔥 5. BUKA POPUP MIDTRANS
+      window.snap.pay(paymentData.token, {
+        onSuccess: function(result: any) {
+          console.log('✅ Payment success:', result)
+          toast.success('✅ Pembayaran berhasil!')
+          window.location.href = `/payment/success?order_id=${result.order_id}`
+        },
+        onPending: function(result: any) {
+          console.log('⏳ Payment pending:', result)
+          toast.loading('⏳ Menunggu pembayaran...')
+          window.location.href = `/payment/pending?order_id=${result.order_id}`
+        },
+        onError: function(result: any) {
+          console.error('❌ Payment error:', result)
+          toast.error('❌ Pembayaran gagal')
+          window.location.href = `/payment/error?order_id=${result.order_id}`
+        },
+        onClose: function() {
+          console.log('❌ Payment closed by user')
+          toast.error('❌ Pembayaran dibatalkan')
+        },
+      })
+
+    } catch (error: any) {
+      toast.dismiss(loadingToast)
       console.error('Error:', error)
-      toast.error('Terjadi kesalahan')
-    } finally {
+      toast.error(error.message || 'Terjadi kesalahan')
       setSubmitting(false)
     }
   }
@@ -623,17 +702,18 @@ function BookingServiceContent() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email (Opsional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
               <input
                 type="email"
+                required
                 placeholder="email@example.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
+              <p className="text-xs text-gray-400 mt-1">Email diperlukan untuk konfirmasi pembayaran</p>
             </div>
 
-            {/* 🔥 ALAMAT - OPSIONAL */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Alamat (Opsional)
@@ -795,7 +875,7 @@ function BookingServiceContent() {
                 disabled={submitting || !form.customerName || !form.whatsapp || !form.paymentMethod || paymentMethods.length === 0}
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
               >
-                {submitting ? 'Memproses...' : 'Konfirmasi Booking'}
+                {submitting ? 'Memproses...' : 'Konfirmasi & Bayar'}
               </button>
             </div>
           </>
