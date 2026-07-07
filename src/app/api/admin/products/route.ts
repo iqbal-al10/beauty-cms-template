@@ -108,6 +108,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🔥 AMBIL SETTINGS UNTUK AUTO-GENERATE SEO
+    const settings = await prisma.settings.findUnique({
+      where: { id: 'default' },
+      select: { siteName: true, defaultOgImage: true },
+    })
+
+    const siteName = settings?.siteName || 'Beauty Studio'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+
+    // 🔥 AUTO-GENERATE SEO FIELDS
+    const autoMetaTitle = metaTitle || `${name} - ${siteName}`
+    const autoMetaDescription = metaDescription || 
+      (description ? description.substring(0, 155) + '...' : `Temukan ${name} terbaik di ${siteName}`)
+    const autoCanonicalUrl = canonicalUrl || `${baseUrl}/products/${slug}`
+    const autoOgImageUrl = ogImageUrl || imageUrl || settings?.defaultOgImage || ''
+
     // Create product
     const product = await prisma.product.create({
       data: {
@@ -121,10 +137,10 @@ export async function POST(request: NextRequest) {
         categoryId,
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
-        metaTitle: metaTitle || null,
-        metaDescription: metaDescription || null,
-        canonicalUrl: canonicalUrl || null,
-        ogImageUrl: ogImageUrl || null,
+        metaTitle: autoMetaTitle,
+        metaDescription: autoMetaDescription,
+        canonicalUrl: autoCanonicalUrl,
+        ogImageUrl: autoOgImageUrl,
         // Connect promos if provided
         promos: promoIds && promoIds.length > 0 ? {
           create: promoIds.map((promoId: string) => ({
@@ -222,6 +238,22 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // 🔥 AMBIL SETTINGS UNTUK AUTO-GENERATE SEO
+    const settings = await prisma.settings.findUnique({
+      where: { id: 'default' },
+      select: { siteName: true, defaultOgImage: true },
+    })
+
+    const siteName = settings?.siteName || 'Beauty Studio'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+
+    // 🔥 AUTO-GENERATE SEO FIELDS (jika tidak diisi manual)
+    const autoMetaTitle = metaTitle || `${name} - ${siteName}`
+    const autoMetaDescription = metaDescription || 
+      (description ? description.substring(0, 155) + '...' : `Temukan ${name} terbaik di ${siteName}`)
+    const autoCanonicalUrl = canonicalUrl || `${baseUrl}/products/${slug}`
+    const autoOgImageUrl = ogImageUrl || imageUrl || settings?.defaultOgImage || ''
+
     // Update product
     const product = await prisma.product.update({
       where: { id },
@@ -236,10 +268,10 @@ export async function PUT(request: NextRequest) {
         categoryId,
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
-        metaTitle: metaTitle || null,
-        metaDescription: metaDescription || null,
-        canonicalUrl: canonicalUrl || null,
-        ogImageUrl: ogImageUrl || null,
+        metaTitle: autoMetaTitle,
+        metaDescription: autoMetaDescription,
+        canonicalUrl: autoCanonicalUrl,
+        ogImageUrl: autoOgImageUrl,
         // Update promos
         promos: {
           deleteMany: {},

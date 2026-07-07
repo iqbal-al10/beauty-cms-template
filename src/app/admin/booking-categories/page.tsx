@@ -9,24 +9,21 @@ interface Category {
   name: string
   slug: string
   description: string | null
-  icon: string | null
   sortOrder: number
   isActive: boolean
   createdAt: string
 }
 
-const ICON_OPTIONS = [
-  { value: '🧖', label: '🧖 Facial' },
-  { value: '💆', label: '💆 Body' },
-  { value: '💇', label: '💇 Hair' },
-  { value: '💅', label: '💅 Nail' },
-  { value: '💄', label: '💄 Makeup' },
-  { value: '🧘', label: '🧘 Spa' },
-  { value: '🏋️', label: '🏋️ Fitness' },
-  { value: '💊', label: '💊 Health' },
-  { value: '🌿', label: '🌿 Herbal' },
-  { value: '📦', label: '📦 Other' },
-]
+// ===== SLUG GENERATOR FUNCTION =====
+const generateSlug = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 export default function BookingCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -37,7 +34,6 @@ export default function BookingCategoriesPage() {
     name: '',
     slug: '',
     description: '',
-    icon: '📦',
     sortOrder: 0,
     isActive: true,
   })
@@ -65,12 +61,12 @@ export default function BookingCategoriesPage() {
     e.preventDefault()
     
     if (!form.name.trim() || !form.slug.trim()) {
-      toast.error('Name dan slug harus diisi')
+      toast.error('Nama dan slug harus diisi')
       return
     }
 
     try {
-      const url = editing ? '/api/admin/booking-categories' : '/api/admin/booking-categories'
+      const url = editing ? `/api/admin/booking-categories/${editing.id}` : '/api/admin/booking-categories'
       const method = editing ? 'PUT' : 'POST'
       const payload = editing ? { ...form, id: editing.id } : form
 
@@ -98,7 +94,7 @@ export default function BookingCategoriesPage() {
     if (!confirm(`Yakin ingin menghapus kategori "${name}"?`)) return
 
     try {
-      const res = await fetch(`/api/admin/booking-categories?id=${id}`, {
+      const res = await fetch(`/api/admin/booking-categories/${id}`, {
         method: 'DELETE',
       })
 
@@ -121,7 +117,6 @@ export default function BookingCategoriesPage() {
       name: category.name,
       slug: category.slug,
       description: category.description || '',
-      icon: category.icon || '📦',
       sortOrder: category.sortOrder,
       isActive: category.isActive,
     })
@@ -135,7 +130,6 @@ export default function BookingCategoriesPage() {
       name: '',
       slug: '',
       description: '',
-      icon: '📦',
       sortOrder: 0,
       isActive: true,
     })
@@ -148,7 +142,7 @@ export default function BookingCategoriesPage() {
 
       const newStatus = !currentStatus
 
-      const res = await fetch('/api/admin/booking-categories', {
+      const res = await fetch(`/api/admin/booking-categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -168,10 +162,6 @@ export default function BookingCategoriesPage() {
       console.error('Error:', error)
       toast.error(error.message || 'Gagal mengubah status')
     }
-  }
-
-  const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '')
   }
 
   if (loading) {
@@ -198,7 +188,6 @@ export default function BookingCategoriesPage() {
               name: '',
               slug: '',
               description: '',
-              icon: '📦',
               sortOrder: categories.length,
               isActive: true,
             })
@@ -256,19 +245,7 @@ export default function BookingCategoriesPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Icon</label>
-                <select
-                  value={form.icon}
-                  onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                >
-                  {ICON_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Sort Order</label>
                 <input
@@ -314,7 +291,6 @@ export default function BookingCategoriesPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Icon</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -324,14 +300,13 @@ export default function BookingCategoriesPage() {
             <tbody className="divide-y divide-gray-200">
               {categories.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                     Belum ada kategori
                   </td>
                 </tr>
               ) : (
                 categories.map((category) => (
                   <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-2xl">{category.icon || '📦'}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{category.name}</div>
                       {category.description && (

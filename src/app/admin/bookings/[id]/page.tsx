@@ -4,23 +4,24 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { 
-  ArrowLeft, Edit, Trash2, Package, Tag, Layers, DollarSign, Box, 
-  Image as ImageIcon, Star, Sparkles, Ticket, Calendar, Eye
+  ArrowLeft, Edit, Trash2, Clock, DollarSign, Tag, Layers, 
+  Image as ImageIcon, Sparkles, Ticket, Star, Eye, Calendar,
+  Package
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Product {
+interface Service {
   id: string
   name: string
   slug: string
-  description: string
+  description: string | null
+  duration: number | null
   price: number
   compareAtPrice: number | null
-  stock: number
-  status: string
-  isFeatured: boolean
   categoryId: string
   imageUrl: string | null
+  isFeatured: boolean
+  isActive: boolean
   metaTitle: string | null
   metaDescription: string | null
   canonicalUrl: string | null
@@ -56,53 +57,53 @@ const PRESET_COLORS = [
   { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
-export default function ProductDetailPage() {
+export default function ServiceDetailPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
-  const [product, setProduct] = useState<Product | null>(null)
+  const [service, setService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchProduct()
+    fetchService()
   }, [])
 
-  const fetchProduct = async () => {
+  const fetchService = async () => {
     try {
-      const res = await fetch(`/api/admin/products/${params.id}`)
+      const res = await fetch(`/api/admin/services/${params.id}`)
       if (!res.ok) {
-        toast.error('Produk tidak ditemukan')
-        router.push('/admin/products')
+        toast.error('Layanan tidak ditemukan')
+        router.push('/admin/bookings')
         return
       }
       const data = await res.json()
-      setProduct(data)
+      setService(data)
     } catch (error) {
-      console.error('Error fetching product:', error)
-      toast.error('Gagal memuat produk')
-      router.push('/admin/products')
+      console.error('Error fetching service:', error)
+      toast.error('Gagal memuat layanan')
+      router.push('/admin/bookings')
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Yakin ingin menghapus produk "${product?.name}"?`)) return
+    if (!confirm(`Yakin ingin menghapus layanan "${service?.name}"?`)) return
 
     try {
-      const res = await fetch(`/api/admin/products/${params.id}`, {
+      const res = await fetch(`/api/admin/services/${params.id}`, {
         method: 'DELETE',
       })
 
       if (res.ok) {
-        toast.success('Produk berhasil dihapus!')
-        router.push('/admin/products')
+        toast.success('Layanan berhasil dihapus!')
+        router.push('/admin/bookings')
         router.refresh()
       } else {
-        toast.error('Gagal menghapus produk')
+        toast.error('Gagal menghapus layanan')
       }
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error saat menghapus produk')
+      toast.error('Error saat menghapus layanan')
     }
   }
 
@@ -124,6 +125,10 @@ export default function ProductDetailPage() {
     return { label: 'Active', color: 'bg-green-100 text-green-700' }
   }
 
+  const formatCurrency = (amount: number) => {
+    return `Rp ${amount.toLocaleString('id-ID')}`
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -132,12 +137,12 @@ export default function ProductDetailPage() {
     )
   }
 
-  if (!product) {
+  if (!service) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Produk tidak ditemukan</p>
-        <Link href="/admin/products" className="text-pink-500 hover:underline mt-2 inline-block">
-          Kembali ke daftar produk
+        <p className="text-gray-500">Layanan tidak ditemukan</p>
+        <Link href="/admin/bookings" className="text-pink-500 hover:underline mt-2 inline-block">
+          Kembali ke daftar layanan
         </Link>
       </div>
     )
@@ -148,20 +153,20 @@ export default function ProductDetailPage() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href="/admin/products"
+          href="/admin/bookings"
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">{product.name}</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{service.name}</h1>
         <span className={`px-3 py-1 text-xs rounded-full ${
-          product.status === 'PUBLISHED'
+          service.isActive
             ? 'bg-green-100 text-green-700'
             : 'bg-gray-100 text-gray-700'
         }`}>
-          {product.status === 'PUBLISHED' ? 'Dipublikasikan' : 'Draf'}
+          {service.isActive ? '✅ Active' : '📝 Inactive'}
         </span>
-        {product.isFeatured && (
+        {service.isFeatured && (
           <span className="px-3 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
             <Star className="w-3 h-3" /> Featured
           </span>
@@ -171,17 +176,17 @@ export default function ProductDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Product Image */}
+          {/* Service Image */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-sm font-medium text-gray-500 mb-4 flex items-center gap-2">
               <ImageIcon className="w-4 h-4" />
-              Gambar Produk
+              Gambar Layanan
             </h2>
-            {product.imageUrl ? (
+            {service.imageUrl ? (
               <div className="relative w-full max-w-md aspect-square rounded-lg overflow-hidden border border-gray-200">
                 <img 
-                  src={product.imageUrl} 
-                  alt={product.name}
+                  src={service.imageUrl} 
+                  alt={service.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none'
@@ -195,39 +200,39 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* Informasi Produk */}
+          {/* Informasi Layanan */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-sm font-medium text-gray-500 mb-4 flex items-center gap-2">
               <Package className="w-4 h-4" />
-              Informasi Produk
+              Informasi Layanan
             </h2>
             
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Nama</p>
-                  <p className="font-medium text-gray-800">{product.name}</p>
+                  <p className="font-medium text-gray-800">{service.name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Slug</p>
-                  <p className="font-medium text-gray-800">{product.slug}</p>
+                  <p className="font-medium text-gray-800">{service.slug}</p>
                 </div>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Deskripsi</p>
-                <p className="text-gray-700">{product.description || '-'}</p>
+                <p className="text-gray-700">{service.description || '-'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Kategori</p>
-                  <p className="font-medium text-gray-800">{product.category?.name || '-'}</p>
+                  <p className="font-medium text-gray-800">{service.category?.name || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Status</p>
+                  <p className="text-sm text-gray-500">Durasi</p>
                   <p className="font-medium text-gray-800">
-                    {product.status === 'PUBLISHED' ? '✅ Published' : '📝 Draft'}
+                    {service.duration ? `${service.duration} menit` : '-'}
                   </p>
                 </div>
               </div>
@@ -235,11 +240,11 @@ export default function ProductDetailPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-500">Dibuat</p>
-                  <p className="text-sm text-gray-600">{new Date(product.createdAt).toLocaleString('id-ID')}</p>
+                  <p className="text-sm text-gray-600">{new Date(service.createdAt).toLocaleString('id-ID')}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Terakhir Update</p>
-                  <p className="text-sm text-gray-600">{new Date(product.updatedAt).toLocaleString('id-ID')}</p>
+                  <p className="text-sm text-gray-600">{new Date(service.updatedAt).toLocaleString('id-ID')}</p>
                 </div>
               </div>
             </div>
@@ -252,8 +257,8 @@ export default function ProductDetailPage() {
               Tags
             </h2>
             <div className="flex flex-wrap gap-2">
-              {product.tags && product.tags.length > 0 ? (
-                product.tags.map((tag) => (
+              {service.tags && service.tags.length > 0 ? (
+                service.tags.map((tag) => (
                   <span
                     key={tag.id}
                     className="px-3 py-1 text-sm font-medium text-white rounded-full"
@@ -274,9 +279,9 @@ export default function ProductDetailPage() {
               <Ticket className="w-4 h-4" />
               Voucher / Promo
             </h2>
-            {product.promos && product.promos.length > 0 ? (
+            {service.promos && service.promos.length > 0 ? (
               <div className="space-y-3">
-                {product.promos.map((promoItem) => {
+                {service.promos.map((promoItem) => {
                   const promo = promoItem.promo
                   const status = getPromoStatus(promo.startDate, promo.endDate, promo.isActive)
                   return (
@@ -311,29 +316,29 @@ export default function ProductDetailPage() {
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500">Meta Title</p>
-                <p className="text-sm text-gray-800">{product.metaTitle || '-'}</p>
+                <p className="text-sm text-gray-800">{service.metaTitle || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Meta Description</p>
-                <p className="text-sm text-gray-800">{product.metaDescription || '-'}</p>
+                <p className="text-sm text-gray-800">{service.metaDescription || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Canonical URL</p>
-                <p className="text-sm text-gray-800">{product.canonicalUrl || '-'}</p>
+                <p className="text-sm text-gray-800">{service.canonicalUrl || '-'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">OG Image URL</p>
-                {product.ogImageUrl ? (
+                {service.ogImageUrl ? (
                   <div className="mt-2">
                     <img 
-                      src={product.ogImageUrl} 
+                      src={service.ogImageUrl} 
                       alt="OG Image"
                       className="w-48 h-32 object-cover rounded-lg border border-gray-200"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none'
                       }}
                     />
-                    <p className="text-xs text-gray-400 mt-1 truncate">{product.ogImageUrl}</p>
+                    <p className="text-xs text-gray-400 mt-1 truncate">{service.ogImageUrl}</p>
                   </div>
                 ) : (
                   <p className="text-sm text-gray-800">-</p>
@@ -353,24 +358,20 @@ export default function ProductDetailPage() {
                 <DollarSign className="w-5 h-5 text-pink-500" />
                 <div>
                   <p className="text-sm text-gray-500">Harga</p>
-                  <p className="font-bold text-lg">Rp {product.price.toLocaleString('id-ID')}</p>
-                  {product.compareAtPrice && product.compareAtPrice > product.price && (
+                  <p className="font-bold text-lg">{formatCurrency(service.price)}</p>
+                  {service.compareAtPrice && service.compareAtPrice > service.price && (
                     <p className="text-sm text-gray-400 line-through">
-                      Rp {product.compareAtPrice.toLocaleString('id-ID')}
+                      {formatCurrency(service.compareAtPrice)}
                     </p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <Box className="w-5 h-5 text-blue-500" />
+                <Clock className="w-5 h-5 text-blue-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Stok</p>
-                  <p className={`font-bold text-lg ${
-                    product.stock > 10 ? 'text-green-600' : 
-                    product.stock > 0 ? 'text-yellow-600' : 
-                    'text-red-600'
-                  }`}>
-                    {product.stock} unit
+                  <p className="text-sm text-gray-500">Durasi</p>
+                  <p className="font-bold text-lg">
+                    {service.duration ? `${service.duration} menit` : '-'}
                   </p>
                 </div>
               </div>
@@ -378,7 +379,7 @@ export default function ProductDetailPage() {
                 <Star className="w-5 h-5 text-yellow-500" />
                 <div>
                   <p className="text-sm text-gray-500">Featured</p>
-                  <p className="font-medium">{product.isFeatured ? '✅ Ya' : '❌ Tidak'}</p>
+                  <p className="font-medium">{service.isFeatured ? '✅ Ya' : '❌ Tidak'}</p>
                 </div>
               </div>
             </div>
@@ -389,21 +390,21 @@ export default function ProductDetailPage() {
             <h3 className="text-sm font-medium text-gray-500 mb-4">Aksi</h3>
             <div className="space-y-2">
               <Link
-                href={`/admin/products/${product.id}/edit`}
+                href={`/admin/bookings/${service.id}/edit`}
                 className="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
                 <Edit className="w-4 h-4" />
-                Edit Produk
+                Edit Layanan
               </Link>
               <button
                 onClick={handleDelete}
                 className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                Hapus Produk
+                Hapus Layanan
               </button>
               <Link
-                href={`/products/${product.slug}`}
+                href={`/booking/${service.slug}`}
                 target="_blank"
                 className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
               >

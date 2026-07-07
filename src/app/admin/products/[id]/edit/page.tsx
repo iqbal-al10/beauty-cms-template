@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Eye, Image as ImageIcon, X } from 'lucide-react'
+import { ArrowLeft, Save, Eye, Image as ImageIcon, X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Select from 'react-select'
 
 interface Category {
   id: string
@@ -55,8 +56,22 @@ interface Product {
 }
 
 interface Settings {
+  siteName: string
   colorPrimary: string
   colorSecondary: string
+  defaultOgImage: string | null
+  logoUrl: string | null
+}
+
+interface TagOption {
+  value: string
+  label: string
+  color: string
+}
+
+interface CategoryOption {
+  value: string
+  label: string
 }
 
 const PRESET_COLORS = [
@@ -72,6 +87,17 @@ const PRESET_COLORS = [
   { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
+// ===== SLUG GENERATOR FUNCTION =====
+const generateSlug = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')    // Hapus karakter aneh (selain huruf, angka, spasi, -)
+    .replace(/\s+/g, '-')         // Ganti spasi dengan -
+    .replace(/-+/g, '-')          // Ganti multiple - dengan single -
+    .replace(/^-+|-+$/g, '')      // Hapus - di awal dan akhir
+}
+
 export default function EditProductPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -85,6 +111,8 @@ export default function EditProductPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [showMediaPicker, setShowMediaPicker] = useState(false)
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false)
+  const [isSeoOpen, setIsSeoOpen] = useState(false)
   const [form, setForm] = useState<Product>({
     id: '',
     name: '',
@@ -114,6 +142,69 @@ export default function EditProductPage() {
     fetchMediaFiles()
   }, [])
 
+  // AUTO-GENERATE SEO FIELDS
+  useEffect(() => {
+    if (!settings?.siteName) return
+    
+    // Auto-generate Meta Title from product name
+    if (form.name && !isAutoGenerating) {
+      const generatedTitle = generateMetaTitle(form.name, settings.siteName)
+      if (!form.metaTitle || form.metaTitle === '' || form.metaTitle === generateMetaTitle(form.name, settings.siteName)) {
+        setForm(prev => ({ ...prev, metaTitle: generatedTitle }))
+      }
+    }
+
+    // Auto-generate Meta Description from description
+    if (form.description && !isAutoGenerating) {
+      const generatedDesc = generateMetaDescription(form.description, form.name, settings.siteName)
+      if (!form.metaDescription || form.metaDescription === '' || form.metaDescription === generateMetaDescription(form.description, form.name, settings.siteName)) {
+        setForm(prev => ({ ...prev, metaDescription: generatedDesc }))
+      }
+    }
+
+    // Auto-generate Canonical URL from slug
+    if (form.slug && !isAutoGenerating) {
+      const generatedUrl = generateCanonicalUrl(form.slug)
+      if (!form.canonicalUrl || form.canonicalUrl === '' || form.canonicalUrl === generateCanonicalUrl(form.slug)) {
+        setForm(prev => ({ ...prev, canonicalUrl: generatedUrl }))
+      }
+    }
+
+    // Auto-generate OG Image from product image
+    if (form.imageUrl && !isAutoGenerating) {
+      const generatedOgImage = generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)
+      if (!form.ogImageUrl || form.ogImageUrl === '' || form.ogImageUrl === generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)) {
+        setForm(prev => ({ ...prev, ogImageUrl: generatedOgImage || '' }))
+      }
+    }
+  }, [form.name, form.description, form.slug, form.imageUrl, settings])
+
+  // Auto-generate functions
+  const generateMetaTitle = (productName: string, siteName: string) => {
+    if (!productName) return ''
+    return `Jual ${productName} - ${siteName}`
+  }
+
+  const generateMetaDescription = (description: string, productName: string, siteName: string) => {
+    if (description && description.length > 10) {
+      const clean = description.replace(/\s+/g, ' ').trim()
+      return clean.length > 150 ? clean.slice(0, 150) + '...' : clean
+    }
+    return `Temukan ${productName || 'produk'} berkualitas di ${siteName}.`
+  }
+
+  const generateCanonicalUrl = (slug: string) => {
+    if (!slug) return ''
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/products/${slug}`
+    }
+    return `/products/${slug}`
+  }
+
+  const generateOgImage = (imageUrl: string | null, defaultOgImage: string | null, logoUrl: string | null) => {
+    return imageUrl || defaultOgImage || logoUrl || null
+  }
+
   const fetchProduct = async () => {
     try {
       const res = await fetch(`/api/admin/products/${params.id}`)
@@ -128,6 +219,10 @@ export default function EditProductPage() {
         compareAtPrice: data.compareAtPrice || null,
         imageUrl: data.imageUrl || null,
         isFeatured: data.isFeatured || false,
+        metaTitle: data.metaTitle || '',
+        metaDescription: data.metaDescription || '',
+        canonicalUrl: data.canonicalUrl || '',
+        ogImageUrl: data.ogImageUrl || '',
       })
       setSelectedTagIds(data.tags?.map((t: Tag) => t.id) || [])
       setSelectedPromoIds(data.promos?.map((p: { promoId: string }) => p.promoId) || [])
@@ -194,8 +289,11 @@ export default function EditProductPage() {
       if (res.ok) {
         const data = await res.json()
         setSettings({
+          siteName: data.siteName || 'Beauty Studio',
           colorPrimary: data.colorPrimary || '#c4367b',
           colorSecondary: data.colorSecondary || '#f5dbe8',
+          defaultOgImage: data.defaultOgImage || null,
+          logoUrl: data.logoUrl || null,
         })
       }
     } catch (error) {
@@ -223,6 +321,42 @@ export default function EditProductPage() {
     return '#6B7280'
   }
 
+  const getTagOptions = (): TagOption[] => {
+    return tags.map(tag => ({
+      value: tag.id,
+      label: tag.name,
+      color: getTagColor(tag.color),
+    }))
+  }
+
+  const getSelectedTagOptions = (): TagOption[] => {
+    return selectedTagIds.map(id => {
+      const tag = tags.find(t => t.id === id)
+      return {
+        value: id,
+        label: tag?.name || '',
+        color: getTagColor(tag?.color || null),
+      }
+    }).filter(opt => opt.label !== '')
+  }
+
+  const getCategoryOptions = (): CategoryOption[] => {
+    return categories.map(cat => ({
+      value: cat.id,
+      label: cat.name,
+    }))
+  }
+
+  const getSelectedCategoryOption = (): CategoryOption | null => {
+    if (!form.categoryId) return null
+    const category = categories.find(c => c.id === form.categoryId)
+    if (!category) return null
+    return {
+      value: category.id,
+      label: category.name,
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -236,6 +370,10 @@ export default function EditProductPage() {
         imageUrl: form.imageUrl || null,
         isFeatured: form.isFeatured,
         promoIds: selectedPromoIds,
+        metaTitle: form.metaTitle || generateMetaTitle(form.name, settings?.siteName || 'Beauty Studio'),
+        metaDescription: form.metaDescription || generateMetaDescription(form.description, form.name, settings?.siteName || 'Beauty Studio'),
+        canonicalUrl: form.canonicalUrl || generateCanonicalUrl(form.slug),
+        ogImageUrl: form.ogImageUrl || generateOgImage(form.imageUrl, settings?.defaultOgImage || null, settings?.logoUrl || null),
       }
 
       const res = await fetch(`/api/admin/products/${params.id}`, {
@@ -291,7 +429,7 @@ export default function EditProductPage() {
     const hasTags = preview.tags && preview.tags.length > 0
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <Eye className="w-4 h-4" />
@@ -475,7 +613,8 @@ export default function EditProductPage() {
                   setForm({ 
                     ...form, 
                     name, 
-                    slug: name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '') 
+                    slug: generateSlug(name),
+                    metaTitle: name ? generateMetaTitle(name, settings?.siteName || 'Beauty Studio') : '',
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
@@ -489,7 +628,14 @@ export default function EditProductPage() {
                 type="text"
                 required
                 value={form.slug}
-                onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/ /g, '-') })}
+                onChange={(e) => {
+                  const slug = e.target.value.toLowerCase().replace(/ /g, '-')
+                  setForm({ 
+                    ...form, 
+                    slug,
+                    canonicalUrl: slug ? generateCanonicalUrl(slug) : '',
+                  })
+                }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 placeholder="moisturizer"
               />
@@ -500,7 +646,16 @@ export default function EditProductPage() {
               <textarea
                 rows={2}
                 value={form.description || ''}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => {
+                  const description = e.target.value
+                  setForm({ 
+                    ...form, 
+                    description,
+                    metaDescription: description && form.name ? 
+                      generateMetaDescription(description, form.name, settings?.siteName || 'Beauty Studio') : 
+                      form.metaDescription,
+                  })
+                }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 placeholder="Deskripsi produk..."
               />
@@ -512,7 +667,14 @@ export default function EditProductPage() {
                 <input
                   type="text"
                   value={form.imageUrl || ''}
-                  onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                  onChange={(e) => {
+                    const imageUrl = e.target.value
+                    setForm({ 
+                      ...form, 
+                      imageUrl,
+                      ogImageUrl: imageUrl ? generateOgImage(imageUrl, settings?.defaultOgImage || null, settings?.logoUrl || null) || '' : '',
+                    })
+                  }}
                   className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                   placeholder="https://example.com/gambar-produk.jpg"
                 />
@@ -599,50 +761,115 @@ export default function EditProductPage() {
               </div>
             </div>
 
+            {/* KATEGORI - REACT SELECT */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Kategori *</label>
-              <select
-                required
-                value={form.categoryId}
-                onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-              >
-                <option value="">Pilih Kategori</option>
-                {categories.length === 0 ? (
-                  <option value="" disabled>Loading categories...</option>
-                ) : (
-                  categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))
-                )}
-              </select>
+              <Select
+                options={getCategoryOptions()}
+                value={getSelectedCategoryOption()}
+                onChange={(selected) => {
+                  setForm({ ...form, categoryId: selected?.value || '' })
+                }}
+                placeholder="Cari atau pilih kategori..."
+                isClearable
+                className="mt-1"
+                classNamePrefix="react-select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: '#D1D5DB',
+                    borderRadius: '0.5rem',
+                    padding: '2px',
+                    '&:hover': {
+                      borderColor: '#D1D5DB',
+                    },
+                    '&:focus-within': {
+                      borderColor: '#EC4899',
+                      boxShadow: '0 0 0 2px rgba(236, 72, 153, 0.2)',
+                    },
+                  }),
+                  option: (provided, state) => ({
+                    ...provided,
+                    backgroundColor: state.isSelected ? '#EC4899' : state.isFocused ? '#FCE7F3' : 'white',
+                    color: state.isSelected ? 'white' : '#1F2937',
+                    '&:hover': {
+                      backgroundColor: state.isSelected ? '#EC4899' : '#FCE7F3',
+                    },
+                  }),
+                }}
+              />
             </div>
 
+            {/* TAGS - REACT SELECT */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Tags</label>
-              <select
-                multiple
-                value={selectedTagIds}
-                onChange={(e) => {
-                  const options = Array.from(e.target.selectedOptions, option => option.value)
-                  setSelectedTagIds(options)
+              <Select
+                isMulti
+                options={getTagOptions()}
+                value={getSelectedTagOptions()}
+                onChange={(selected) => {
+                  const ids = selected ? selected.map(item => item.value) : []
+                  setSelectedTagIds(ids)
                 }}
-                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 min-h-[80px]"
-              >
-                {tags.length === 0 ? (
-                  <option value="" disabled>Belum ada tag. Buat tag dulu di menu Tags.</option>
-                ) : (
-                  tags.map((tag) => (
-                    <option key={tag.id} value={tag.id}>{tag.name}</option>
-                  ))
+                placeholder="Cari atau pilih tags..."
+                className="mt-1"
+                classNamePrefix="react-select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: '#D1D5DB',
+                    borderRadius: '0.5rem',
+                    padding: '2px',
+                    '&:hover': {
+                      borderColor: '#D1D5DB',
+                    },
+                    '&:focus-within': {
+                      borderColor: '#EC4899',
+                      boxShadow: '0 0 0 2px rgba(236, 72, 153, 0.2)',
+                    },
+                  }),
+                  option: (provided, state) => ({
+                    ...provided,
+                    backgroundColor: state.isSelected ? '#EC4899' : state.isFocused ? '#FCE7F3' : 'white',
+                    color: state.isSelected ? 'white' : '#1F2937',
+                    '&:hover': {
+                      backgroundColor: state.isSelected ? '#EC4899' : '#FCE7F3',
+                    },
+                  }),
+                  multiValue: (provided) => ({
+                    ...provided,
+                    borderRadius: '0.375rem',
+                  }),
+                  multiValueLabel: (provided) => ({
+                    ...provided,
+                    padding: '2px 8px',
+                    fontSize: '0.875rem',
+                  }),
+                  multiValueRemove: (provided) => ({
+                    ...provided,
+                    borderRadius: '0 0.375rem 0.375rem 0',
+                    '&:hover': {
+                      backgroundColor: '#EF4444',
+                      color: 'white',
+                    },
+                  }),
+                }}
+                formatOptionLabel={(option) => (
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: option.color }}
+                    />
+                    <span>{option.label}</span>
+                  </div>
                 )}
-              </select>
+              />
               <p className="text-xs text-gray-400 mt-1">
-                {selectedTagIds.length > 0 ? `Terpilih: ${selectedTagIds.length} tag` : 'Hold Ctrl/Cmd untuk pilih multiple tags'}
+                {selectedTagIds.length > 0 ? `${selectedTagIds.length} tag terpilih` : 'Cari dan pilih tags'}
               </p>
             </div>
 
-            {/* PROMOS / VOUCHERS - SAMA SEPERTI DI BOOKING */}
+            {/* PROMOS / VOUCHERS */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Voucher</label>
               <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
@@ -671,50 +898,87 @@ export default function EditProductPage() {
               <p className="text-xs text-gray-400 mt-1">Pilih {selectedPromoIds.length} voucher</p>
             </div>
 
+            {/* SEO DROPDOWN - COLLAPSIBLE */}
             <div className="border-t border-gray-200 pt-3">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Meta Title</label>
-                  <input
-                    type="text"
-                    value={form.metaTitle || ''}
-                    onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
-                    className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="Judul untuk SEO (max 60 chars)"
-                  />
+              <button
+                type="button"
+                onClick={() => setIsSeoOpen(!isSeoOpen)}
+                className="flex items-center justify-between w-full p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <span className="flex items-center gap-2 font-medium text-gray-700">
+                  🔍 Advanced SEO
+                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    Auto
+                  </span>
+                </span>
+                {isSeoOpen ? (
+                  <ChevronUp className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-gray-500" />
+                )}
+              </button>
+
+              {isSeoOpen && (
+                <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Meta Title</label>
+                    <input
+                      type="text"
+                      value={form.metaTitle || ''}
+                      onChange={(e) => {
+                        setIsAutoGenerating(true)
+                        setForm({ ...form, metaTitle: e.target.value })
+                        setTimeout(() => setIsAutoGenerating(false), 100)
+                      }}
+                      className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                      placeholder="Auto-generated from product name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Meta Description</label>
+                    <textarea
+                      rows={2}
+                      value={form.metaDescription || ''}
+                      onChange={(e) => {
+                        setIsAutoGenerating(true)
+                        setForm({ ...form, metaDescription: e.target.value })
+                        setTimeout(() => setIsAutoGenerating(false), 100)
+                      }}
+                      className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                      placeholder="Auto-generated from description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">Canonical URL</label>
+                    <input
+                      type="text"
+                      value={form.canonicalUrl || ''}
+                      onChange={(e) => {
+                        setIsAutoGenerating(true)
+                        setForm({ ...form, canonicalUrl: e.target.value })
+                        setTimeout(() => setIsAutoGenerating(false), 100)
+                      }}
+                      className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                      placeholder="Auto-generated from slug"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700">OG Image URL</label>
+                    <input
+                      type="text"
+                      value={form.ogImageUrl || ''}
+                      onChange={(e) => {
+                        setIsAutoGenerating(true)
+                        setForm({ ...form, ogImageUrl: e.target.value })
+                        setTimeout(() => setIsAutoGenerating(false), 100)
+                      }}
+                      className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                      placeholder="Auto-generated from product image"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Meta Description</label>
-                  <textarea
-                    rows={2}
-                    value={form.metaDescription || ''}
-                    onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
-                    className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="Deskripsi untuk SEO (max 160 chars)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">Canonical URL</label>
-                  <input
-                    type="text"
-                    value={form.canonicalUrl || ''}
-                    onChange={(e) => setForm({ ...form, canonicalUrl: e.target.value })}
-                    className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="https://example.com/canonical-url"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700">OG Image URL</label>
-                  <input
-                    type="text"
-                    value={form.ogImageUrl || ''}
-                    onChange={(e) => setForm({ ...form, ogImageUrl: e.target.value })}
-                    className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="https://example.com/og-image.jpg"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-3">
@@ -733,7 +997,7 @@ export default function EditProductPage() {
           </form>
         </div>
 
-        <div className="lg:w-1/2 sticky top-6">
+        <div className="lg:w-1/2">
           <ProductPreview />
         </div>
       </div>

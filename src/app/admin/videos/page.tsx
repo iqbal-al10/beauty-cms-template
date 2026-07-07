@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, Play, Video, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Image from 'next/image'
 
 interface Video {
   id: string
@@ -25,7 +24,8 @@ const PLATFORMS = [
   { value: 'TIKTOK', label: 'TikTok', color: 'bg-black/10 text-black' },
 ]
 
-const CATEGORIES = ['Tutorial', 'Promo', 'Testimoni', 'Tips', 'Product', 'Booking']
+// 🔥 DEFAULT CATEGORIES
+const DEFAULT_CATEGORIES = ['Tutorial', 'Promo', 'Testimoni', 'Tips', 'Product', 'Booking']
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([])
@@ -33,6 +33,12 @@ export default function VideosPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
   const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
+  
+  // 🔥 STATE UNTUK KATEGORI
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES)
+  const [newCategory, setNewCategory] = useState('')
+  const [showCategoryInput, setShowCategoryInput] = useState(false)
+
   const [form, setForm] = useState({
     title: '',
     sourceType: 'YOUTUBE',
@@ -46,6 +52,7 @@ export default function VideosPage() {
 
   useEffect(() => {
     fetchVideos()
+    loadCategories()
   }, [])
 
   const fetchVideos = async () => {
@@ -63,6 +70,65 @@ export default function VideosPage() {
     }
   }
 
+  // 🔥 LOAD CATEGORIES DARI LOCALSTORAGE
+  const loadCategories = () => {
+    try {
+      const saved = localStorage.getItem('beauty_video_categories')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCategories(parsed)
+          return
+        }
+      }
+      setCategories(DEFAULT_CATEGORIES)
+    } catch (e) {
+      setCategories(DEFAULT_CATEGORIES)
+    }
+  }
+
+  // 🔥 SAVE CATEGORIES KE LOCALSTORAGE
+  const saveCategories = (newCategories: string[]) => {
+    setCategories(newCategories)
+    localStorage.setItem('beauty_video_categories', JSON.stringify(newCategories))
+  }
+
+  // 🔥 TAMBAH KATEGORI
+  const handleAddCategory = () => {
+    const trimmed = newCategory.trim()
+    if (!trimmed) {
+      toast.error('Nama kategori tidak boleh kosong')
+      return
+    }
+    if (categories.includes(trimmed)) {
+      toast.error(`Kategori "${trimmed}" sudah ada`)
+      return
+    }
+    const updated = [...categories, trimmed]
+    saveCategories(updated)
+    setNewCategory('')
+    setShowCategoryInput(false)
+    toast.success(`Kategori "${trimmed}" berhasil ditambahkan!`)
+  }
+
+  // 🔥 HAPUS KATEGORI
+  const handleDeleteCategory = (categoryToDelete: string) => {
+    // Cek apakah ada video yang menggunakan kategori ini
+    const usedInVideos = videos.some(v => v.category === categoryToDelete)
+    if (usedInVideos) {
+      toast.error(`Kategori "${categoryToDelete}" sedang digunakan oleh video. Hapus video terlebih dahulu.`)
+      return
+    }
+    if (!confirm(`Yakin ingin menghapus kategori "${categoryToDelete}"?`)) return
+    const updated = categories.filter(c => c !== categoryToDelete)
+    saveCategories(updated)
+    // Jika kategori yang dihapus sedang dipilih di form, reset
+    if (form.category === categoryToDelete) {
+      setForm({ ...form, category: '' })
+    }
+    toast.success(`Kategori "${categoryToDelete}" berhasil dihapus!`)
+  }
+
   const getEmbedUrl = (url: string, sourceType: string) => {
     if (sourceType === 'YOUTUBE') {
       const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([^&?\/]+)/)?.[1]
@@ -77,8 +143,7 @@ export default function VideosPage() {
       return match ? `https://www.tiktok.com/embed/v2/${match[1]}` : url
     }
     if (sourceType === 'FACEBOOK') {
-      const match = url.match(/facebook\.com\/.*\/videos\/(\d+)/)
-      return match ? `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}` : url
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}`
     }
     return url
   }
@@ -142,14 +207,12 @@ export default function VideosPage() {
       return
     }
 
-    // Auto-generate thumbnail for YouTube
     let thumbnailUrl = form.thumbnailUrl
     if (form.sourceType === 'YOUTUBE' && !thumbnailUrl) {
       const autoThumb = getThumbnail(form.url, form.sourceType)
       if (autoThumb) thumbnailUrl = autoThumb
     }
 
-    // Validate URL format
     const urlPatterns: Record<string, RegExp> = {
       YOUTUBE: /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/,
       INSTAGRAM: /^(https?:\/\/)?(www\.)?instagram\.com\/.+/,
@@ -359,7 +422,6 @@ export default function VideosPage() {
                 onChange={(e) => {
                   const val = e.target.value
                   setForm({ ...form, url: val })
-                  // Auto-generate thumbnail for YouTube
                   if (form.sourceType === 'YOUTUBE' && !form.thumbnailUrl) {
                     const autoThumb = getThumbnail(val, form.sourceType)
                     if (autoThumb) {
@@ -438,38 +500,113 @@ export default function VideosPage() {
               </div>
             </div>
 
+            {/* 🔥 CATEGORY - DENGAN TOMBOL TAMBAH & HAPUS */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Category</label>
-              <div className="flex gap-2 mt-1">
+              <div className="flex flex-wrap gap-2 mt-1">
                 <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 >
                   <option value="">-- Select Category --</option>
-                  {CATEGORIES.map((cat) => (
+                  {categories.map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
-                <input
-                  type="text"
-                  placeholder="New category..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      const val = (e.target as HTMLInputElement).value.trim()
-                      if (val && !CATEGORIES.includes(val)) {
-                        CATEGORIES.push(val)
-                        setForm({ ...form, category: val })
-                        toast.success(`Category "${val}" added!`)
-                        ;(e.target as HTMLInputElement).value = ''
-                      }
-                    }
-                  }}
-                  placeholder="Type new category and press Enter"
-                />
+
+                {/* 🔥 TOMBOL TAMBAH KATEGORI */}
+                {!showCategoryInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryInput(true)}
+                    className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm flex items-center gap-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add
+                  </button>
+                ) : (
+                  <div className="flex gap-1">
+                    <input
+                      type="text"
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      placeholder="New category..."
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400 text-sm w-40"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleAddCategory()
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCategory}
+                      className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCategoryInput(false)
+                        setNewCategory('')
+                      }}
+                      className="px-3 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* 🔥 TOMBOL HAPUS KATEGORI (hanya jika ada kategori yang dipilih) */}
+                {form.category && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(form.category)}
+                    className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm flex items-center gap-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
+                )}
               </div>
+              
+              {/* 🔥 DAFTAR KATEGORI YANG TERSEDIA */}
+              {categories.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {categories.map((cat) => (
+                    <span
+                      key={cat}
+                      className={`px-2 py-0.5 text-xs rounded-full cursor-pointer hover:opacity-70 transition-opacity ${
+                        form.category === cat
+                          ? 'bg-pink-500 text-white'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                      onClick={() => setForm({ ...form, category: cat })}
+                    >
+                      {cat}
+                      {form.category === cat && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteCategory(cat)
+                          }}
+                          className="ml-1 hover:text-red-300"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-1">
+                Klik kategori untuk memilih, atau gunakan tombol Add/Delete
+              </p>
             </div>
 
             <div>

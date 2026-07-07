@@ -53,6 +53,11 @@ interface CategoryOption {
   label: string
 }
 
+interface PromoOption {
+  value: string
+  label: string
+}
+
 const PRESET_COLORS = [
   { value: 'bg-red-500', hex: '#EF4444', label: 'Red' },
   { value: 'bg-blue-500', hex: '#3B82F6', label: 'Blue' },
@@ -71,20 +76,18 @@ const generateSlug = (text: string) => {
   return text
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '')    // Hapus karakter aneh (selain huruf, angka, spasi, -)
-    .replace(/\s+/g, '-')         // Ganti spasi dengan -
-    .replace(/-+/g, '-')          // Ganti multiple - dengan single -
-    .replace(/^-+|-+$/g, '')      // Hapus - di awal dan akhir
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
-export default function NewProductPage() {
+export default function NewServicePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [tags, setTags] = useState<Tag[]>([])
   const [promos, setPromos] = useState<Promo[]>([])
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
-  const [selectedPromoIds, setSelectedPromoIds] = useState<string[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
   const [showMediaPicker, setShowMediaPicker] = useState(false)
@@ -95,17 +98,19 @@ export default function NewProductPage() {
     name: '',
     slug: '',
     description: '',
+    duration: '',
     price: '',
     compareAtPrice: '',
-    stock: '',
-    status: 'DRAFT',
     categoryId: '',
     imageUrl: '',
     isFeatured: false,
+    isActive: true,
     metaTitle: '',
     metaDescription: '',
     canonicalUrl: '',
     ogImageUrl: '',
+    tagIds: [] as string[],
+    promoIds: [] as string[],
   })
 
   useEffect(() => {
@@ -120,7 +125,6 @@ export default function NewProductPage() {
   useEffect(() => {
     if (!settings?.siteName) return
     
-    // Auto-generate Meta Title from product name
     if (form.name && !isAutoGenerating) {
       const generatedTitle = generateMetaTitle(form.name, settings.siteName)
       if (!form.metaTitle || form.metaTitle === '' || form.metaTitle === generateMetaTitle(form.name, settings.siteName)) {
@@ -128,7 +132,6 @@ export default function NewProductPage() {
       }
     }
 
-    // Auto-generate Meta Description from description
     if (form.description && !isAutoGenerating) {
       const generatedDesc = generateMetaDescription(form.description, form.name, settings.siteName)
       if (!form.metaDescription || form.metaDescription === '' || form.metaDescription === generateMetaDescription(form.description, form.name, settings.siteName)) {
@@ -136,7 +139,6 @@ export default function NewProductPage() {
       }
     }
 
-    // Auto-generate Canonical URL from slug
     if (form.slug && !isAutoGenerating) {
       const generatedUrl = generateCanonicalUrl(form.slug)
       if (!form.canonicalUrl || form.canonicalUrl === '' || form.canonicalUrl === generateCanonicalUrl(form.slug)) {
@@ -144,7 +146,6 @@ export default function NewProductPage() {
       }
     }
 
-    // Auto-generate OG Image from product image
     if (form.imageUrl && !isAutoGenerating) {
       const generatedOgImage = generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)
       if (!form.ogImageUrl || form.ogImageUrl === '' || form.ogImageUrl === generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)) {
@@ -153,26 +154,26 @@ export default function NewProductPage() {
     }
   }, [form.name, form.description, form.slug, form.imageUrl, settings])
 
-  // Auto-generate functions
-  const generateMetaTitle = (productName: string, siteName: string) => {
-    if (!productName) return ''
-    return `Jual ${productName} - ${siteName}`
+  // AUTO-GENERATE FUNCTIONS
+  const generateMetaTitle = (serviceName: string, siteName: string) => {
+    if (!serviceName) return ''
+    return `Jual ${serviceName} - ${siteName}`
   }
 
-  const generateMetaDescription = (description: string, productName: string, siteName: string) => {
+  const generateMetaDescription = (description: string, serviceName: string, siteName: string) => {
     if (description && description.length > 10) {
       const clean = description.replace(/\s+/g, ' ').trim()
       return clean.length > 150 ? clean.slice(0, 150) + '...' : clean
     }
-    return `Temukan ${productName || 'produk'} berkualitas di ${siteName}.`
+    return `Temukan ${serviceName || 'layanan'} berkualitas di ${siteName}.`
   }
 
   const generateCanonicalUrl = (slug: string) => {
     if (!slug) return ''
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/products/${slug}`
+      return `${window.location.origin}/booking/${slug}`
     }
-    return `/products/${slug}`
+    return `/booking/${slug}`
   }
 
   const generateOgImage = (imageUrl: string | null, defaultOgImage: string | null, logoUrl: string | null) => {
@@ -181,7 +182,7 @@ export default function NewProductPage() {
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch('/api/admin/categories')
+      const res = await fetch('/api/admin/booking-categories')
       if (!res.ok) {
         console.error('Failed to fetch categories:', res.status)
         setCategories([])
@@ -197,7 +198,7 @@ export default function NewProductPage() {
 
   const fetchTags = async () => {
     try {
-      const res = await fetch('/api/admin/tags')
+      const res = await fetch('/api/admin/booking-tags')
       if (!res.ok) {
         console.error('Failed to fetch tags:', res.status)
         setTags([])
@@ -213,7 +214,7 @@ export default function NewProductPage() {
 
   const fetchPromos = async () => {
     try {
-      const res = await fetch('/api/admin/promos')
+      const res = await fetch('/api/admin/booking-promos')
       if (!res.ok) {
         console.error('Failed to fetch promos:', res.status)
         setPromos([])
@@ -274,7 +275,7 @@ export default function NewProductPage() {
   }
 
   const getSelectedTagOptions = (): TagOption[] => {
-    return selectedTagIds.map(id => {
+    return form.tagIds.map(id => {
       const tag = tags.find(t => t.id === id)
       return {
         value: id,
@@ -301,21 +302,40 @@ export default function NewProductPage() {
     }
   }
 
+  const getPromoOptions = (): PromoOption[] => {
+    return promos.filter(p => p.isActive).map(promo => ({
+      value: promo.id,
+      label: `${promo.code} (Rp ${promo.discount.toLocaleString()})`,
+    }))
+  }
+
+  const getSelectedPromoOptions = (): PromoOption[] => {
+    return form.promoIds.map(id => {
+      const promo = promos.find(p => p.id === id)
+      return {
+        value: id,
+        label: promo ? `${promo.code} (Rp ${promo.discount.toLocaleString()})` : '',
+      }
+    }).filter(opt => opt.label !== '')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      const res = await fetch('/api/admin/products', {
+      const res = await fetch('/api/admin/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
           price: parseFloat(form.price),
           compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
-          stock: parseInt(form.stock),
+          duration: form.duration ? parseInt(form.duration) : null,
+          imageUrl: form.imageUrl || null,
           isFeatured: form.isFeatured,
-          promoIds: selectedPromoIds,
+          tagIds: form.tagIds,
+          promoIds: form.promoIds,
           metaTitle: form.metaTitle || generateMetaTitle(form.name, settings?.siteName || 'Beauty Studio'),
           metaDescription: form.metaDescription || generateMetaDescription(form.description, form.name, settings?.siteName || 'Beauty Studio'),
           canonicalUrl: form.canonicalUrl || generateCanonicalUrl(form.slug),
@@ -325,25 +345,15 @@ export default function NewProductPage() {
 
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to create product')
+        throw new Error(error.error || 'Failed to create service')
       }
 
-      const product = await res.json()
-
-      if (selectedTagIds.length > 0) {
-        await fetch(`/api/admin/products/${product.id}/tags`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tagIds: selectedTagIds }),
-        })
-      }
-
-      toast.success('Produk berhasil ditambahkan!')
-      router.push('/admin/products')
+      toast.success('Layanan berhasil ditambahkan!')
+      router.push('/admin/bookings')
       router.refresh()
     } catch (error: any) {
       console.error('Error:', error)
-      toast.error(error.message || 'Error saat menambahkan produk')
+      toast.error(error.message || 'Error saat menambahkan layanan')
     } finally {
       setLoading(false)
     }
@@ -351,23 +361,27 @@ export default function NewProductPage() {
 
   const getPreviewData = () => {
     const selectedCategory = categories.find(c => c.id === form.categoryId)
-    const selectedTags = tags.filter(t => selectedTagIds.includes(t.id))
+    const selectedTags = tags.filter(t => form.tagIds.includes(t.id))
     const primaryColor = settings?.colorPrimary || '#c4367b'
+    const price = parseFloat(form.price) || 0
+    const compareAtPrice = form.compareAtPrice ? parseFloat(form.compareAtPrice) : null
 
     return {
-      name: form.name || 'Product Name',
-      price: parseFloat(form.price) || 0,
-      compareAtPrice: form.compareAtPrice ? parseFloat(form.compareAtPrice) : null,
+      name: form.name || 'Service Name',
+      price: price,
+      compareAtPrice: compareAtPrice,
       category: selectedCategory?.name || 'Category',
-      status: form.status,
+      isActive: form.isActive,
       tags: selectedTags,
       primaryColor,
-      slug: form.slug || 'product-slug',
+      slug: form.slug || 'service-slug',
       imageUrl: form.imageUrl || null,
+      duration: form.duration,
+      isFeatured: form.isFeatured,
     }
   }
 
-  const ProductPreview = () => {
+  const ServicePreview = () => {
     const preview = getPreviewData()
     const hasTags = preview.tags && preview.tags.length > 0
 
@@ -379,11 +393,11 @@ export default function NewProductPage() {
             Live Preview
           </h3>
           <span className={`text-xs px-2 py-0.5 rounded-full ${
-            preview.status === 'PUBLISHED' 
+            preview.isActive 
               ? 'bg-green-100 text-green-700' 
               : 'bg-yellow-100 text-yellow-700'
           }`}>
-            {preview.status === 'PUBLISHED' ? 'Published' : 'Draft'}
+            {preview.isActive ? 'Active' : 'Inactive'}
           </span>
         </div>
 
@@ -401,13 +415,13 @@ export default function NewProductPage() {
                     if (parent) {
                       const fallback = document.createElement('div')
                       fallback.className = 'w-full h-full flex items-center justify-center'
-                      fallback.innerHTML = '<span class="text-4xl">🧴</span>'
+                      fallback.innerHTML = '<span class="text-4xl">🧖</span>'
                       parent.appendChild(fallback)
                     }
                   }}
                 />
               ) : (
-                <span className="text-4xl">🧴</span>
+                <span className="text-4xl">🧖</span>
               )}
               {preview.compareAtPrice && preview.compareAtPrice > preview.price && (
                 <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -427,12 +441,22 @@ export default function NewProductPage() {
                   ))}
                 </div>
               )}
+              {preview.isFeatured && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400 text-yellow-900">
+                    ⭐ Featured
+                  </span>
+                </div>
+              )}
             </div>
 
             <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">
               {preview.name}
             </h3>
             <p className="text-xs text-gray-500">{preview.category}</p>
+            {preview.duration && (
+              <p className="text-xs text-gray-400 mt-0.5">⏱ {preview.duration} menit</p>
+            )}
 
             <div className="flex items-center gap-2 mt-1">
               <p className="text-base font-bold" style={{ color: preview.primaryColor }}>
@@ -449,7 +473,7 @@ export default function NewProductPage() {
 
         <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
           <span>🔄 Update real-time</span>
-          <span>/products/{preview.slug}</span>
+          <span>/booking/{preview.slug}</span>
         </div>
       </div>
     )
@@ -528,17 +552,17 @@ export default function NewProductPage() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/admin/products" className="p-2 rounded-lg hover:bg-gray-100">
+        <Link href="/admin/bookings" className="p-2 rounded-lg hover:bg-gray-100">
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800">Tambah Produk</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Tambah Layanan</h1>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="lg:w-1/2">
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
+              <label className="block text-sm font-medium text-gray-700">Nama Layanan *</label>
               <input
                 type="text"
                 required
@@ -553,7 +577,7 @@ export default function NewProductPage() {
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Contoh: Moisturizer"
+                placeholder="Contoh: Facial Treatment"
               />
             </div>
 
@@ -572,7 +596,7 @@ export default function NewProductPage() {
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="moisturizer"
+                placeholder="facial-treatment"
               />
             </div>
 
@@ -592,12 +616,12 @@ export default function NewProductPage() {
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Deskripsi produk..."
+                placeholder="Deskripsi layanan..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Gambar Produk</label>
+              <label className="block text-sm font-medium text-gray-700">Gambar Layanan</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -611,7 +635,7 @@ export default function NewProductPage() {
                     })
                   }}
                   className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="https://example.com/gambar-produk.jpg"
+                  placeholder="https://example.com/gambar-layanan.jpg"
                 />
                 <button
                   type="button"
@@ -630,7 +654,7 @@ export default function NewProductPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Featured Product</label>
+              <label className="block text-sm font-medium text-gray-700">Featured Service</label>
               <div className="flex items-center gap-2 mt-1">
                 <input
                   type="checkbox"
@@ -644,7 +668,7 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Harga *</label>
+                <label className="block text-sm font-medium text-gray-700">Harga (Rp) *</label>
                 <input
                   type="number"
                   required
@@ -670,25 +694,26 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Stok *</label>
+                <label className="block text-sm font-medium text-gray-700">Durasi (menit) - Opsional</label>
                 <input
                   type="number"
-                  required
-                  value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                  min="15"
+                  step="15"
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                  placeholder="50"
+                  placeholder="60"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Status</label>
                 <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  value={form.isActive ? 'ACTIVE' : 'INACTIVE'}
+                  onChange={(e) => setForm({ ...form, isActive: e.target.value === 'ACTIVE' })}
                   className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                 >
-                  <option value="DRAFT">Draft</option>
-                  <option value="PUBLISHED">Published</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
             </div>
@@ -741,7 +766,7 @@ export default function NewProductPage() {
                 value={getSelectedTagOptions()}
                 onChange={(selected) => {
                   const ids = selected ? selected.map(item => item.value) : []
-                  setSelectedTagIds(ids)
+                  setForm({ ...form, tagIds: ids })
                 }}
                 placeholder="Cari atau pilih tags..."
                 className="mt-1"
@@ -797,37 +822,68 @@ export default function NewProductPage() {
                 )}
               />
               <p className="text-xs text-gray-400 mt-1">
-                {selectedTagIds.length > 0 ? `${selectedTagIds.length} tag terpilih` : 'Cari dan pilih tags'}
+                {form.tagIds.length > 0 ? `${form.tagIds.length} tag terpilih` : 'Cari dan pilih tags'}
               </p>
             </div>
 
-            {/* PROMOS / VOUCHERS */}
+            {/* PROMOS / VOUCHERS - REACT SELECT */}
             <div>
               <label className="block text-sm font-medium text-gray-700">Voucher</label>
-              <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                {promos.length === 0 ? (
-                  <p className="text-gray-500 text-sm col-span-full">Belum ada voucher. Buat voucher dulu di tab Vouchers.</p>
-                ) : (
-                  promos.filter(p => p.isActive).map((promo) => (
-                    <label key={promo.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selectedPromoIds.includes(promo.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedPromoIds([...selectedPromoIds, promo.id])
-                          } else {
-                            setSelectedPromoIds(selectedPromoIds.filter(id => id !== promo.id))
-                          }
-                        }}
-                        className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                      />
-                      <span className="truncate">{promo.code} (Rp {promo.discount.toLocaleString()})</span>
-                    </label>
-                  ))
-                )}
-              </div>
-              <p className="text-xs text-gray-400 mt-1">Pilih {selectedPromoIds.length} voucher</p>
+              <Select
+                isMulti
+                options={getPromoOptions()}
+                value={getSelectedPromoOptions()}
+                onChange={(selected) => {
+                  const ids = selected ? selected.map(item => item.value) : []
+                  setForm({ ...form, promoIds: ids })
+                }}
+                placeholder="Cari atau pilih voucher..."
+                className="mt-1"
+                classNamePrefix="react-select"
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: '#D1D5DB',
+                    borderRadius: '0.5rem',
+                    padding: '2px',
+                    '&:hover': {
+                      borderColor: '#D1D5DB',
+                    },
+                    '&:focus-within': {
+                      borderColor: '#EC4899',
+                      boxShadow: '0 0 0 2px rgba(236, 72, 153, 0.2)',
+                    },
+                  }),
+                  option: (provided, state) => ({
+                    ...provided,
+                    backgroundColor: state.isSelected ? '#EC4899' : state.isFocused ? '#FCE7F3' : 'white',
+                    color: state.isSelected ? 'white' : '#1F2937',
+                    '&:hover': {
+                      backgroundColor: state.isSelected ? '#EC4899' : '#FCE7F3',
+                    },
+                  }),
+                  multiValue: (provided) => ({
+                    ...provided,
+                    borderRadius: '0.375rem',
+                  }),
+                  multiValueLabel: (provided) => ({
+                    ...provided,
+                    padding: '2px 8px',
+                    fontSize: '0.875rem',
+                  }),
+                  multiValueRemove: (provided) => ({
+                    ...provided,
+                    borderRadius: '0 0.375rem 0.375rem 0',
+                    '&:hover': {
+                      backgroundColor: '#EF4444',
+                      color: 'white',
+                    },
+                  }),
+                }}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                {form.promoIds.length > 0 ? `${form.promoIds.length} voucher terpilih` : 'Cari dan pilih voucher'}
+              </p>
             </div>
 
             {/* SEO DROPDOWN - COLLAPSIBLE */}
@@ -864,7 +920,7 @@ export default function NewProductPage() {
                         setTimeout(() => setIsAutoGenerating(false), 100)
                       }}
                       className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Auto-generated from product name"
+                      placeholder="Auto-generated from service name"
                     />
                   </div>
                   <div>
@@ -906,7 +962,7 @@ export default function NewProductPage() {
                         setTimeout(() => setIsAutoGenerating(false), 100)
                       }}
                       className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Auto-generated from product image"
+                      placeholder="Auto-generated from service image"
                     />
                   </div>
                 </div>
@@ -920,9 +976,9 @@ export default function NewProductPage() {
                 className="bg-pink-500 hover:bg-pink-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50 text-sm"
               >
                 <Save className="w-4 h-4" />
-                {loading ? 'Menyimpan...' : 'Simpan Produk'}
+                {loading ? 'Menyimpan...' : 'Simpan Layanan'}
               </button>
-              <Link href="/admin/products" className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg text-sm">
+              <Link href="/admin/bookings" className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg text-sm">
                 Batal
               </Link>
             </div>
@@ -930,7 +986,7 @@ export default function NewProductPage() {
         </div>
 
         <div className="lg:w-1/2">
-          <ProductPreview />
+          <ServicePreview />
         </div>
       </div>
 

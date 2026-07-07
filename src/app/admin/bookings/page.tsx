@@ -3,21 +3,23 @@
 import { useEffect, useState } from 'react'
 import { 
   Plus, Edit, Trash2, Save, X, Layers, Clock, DollarSign, 
-  Tag, ShoppingBag, Image as ImageIcon, Eye, Search, 
-  Check, Star, Filter, Ticket
+  Tag, Image as ImageIcon, Eye, Search, 
+  Check, Star, Filter, Ticket, Sparkles, ChevronDown, ChevronUp
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
+import Select from 'react-select'
 
 interface Service {
   id: string
   name: string
   slug: string
   description: string | null
-  duration: number
+  duration: number | null
   price: number
+  compareAtPrice: number | null
   categoryId: string
-  category?: { id: string; name: string; icon: string | null } | null
+  category?: { id: string; name: string } | null
   imageUrl: string | null
   isFeatured: boolean
   isActive: boolean
@@ -35,7 +37,6 @@ interface BookingCategory {
   name: string
   slug: string
   description: string | null
-  icon: string | null
   sortOrder: number
   isActive: boolean
   createdAt: string
@@ -75,6 +76,30 @@ interface MediaFile {
   folder: string | null
 }
 
+interface Settings {
+  siteName: string
+  colorPrimary: string
+  colorSecondary: string
+  defaultOgImage: string | null
+  logoUrl: string | null
+}
+
+interface TagOption {
+  value: string
+  label: string
+  color: string
+}
+
+interface CategoryOption {
+  value: string
+  label: string
+}
+
+interface PromoOption {
+  value: string
+  label: string
+}
+
 type TabType = 'services' | 'categories' | 'tags' | 'promos'
 
 const PRESET_COLORS = [
@@ -90,18 +115,16 @@ const PRESET_COLORS = [
   { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
-const ICON_OPTIONS = [
-  { value: '🧖', label: '🧖 Facial' },
-  { value: '💆', label: '💆 Body' },
-  { value: '💇', label: '💇 Hair' },
-  { value: '💅', label: '💅 Nail' },
-  { value: '💄', label: '💄 Makeup' },
-  { value: '🧘', label: '🧘 Spa' },
-  { value: '🏋️', label: '🏋️ Fitness' },
-  { value: '💊', label: '💊 Health' },
-  { value: '🌿', label: '🌿 Herbal' },
-  { value: '📦', label: '📦 Other' },
-]
+// ===== SLUG GENERATOR FUNCTION =====
+const generateSlug = (text: string) => {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('services')
@@ -109,6 +132,9 @@ export default function BookingsPage() {
   // ===== MEDIA PICKER STATE =====
   const [showMediaPicker, setShowMediaPicker] = useState(false)
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([])
+  
+  // ===== SETTINGS STATE =====
+  const [settings, setSettings] = useState<Settings | null>(null)
   
   // ===== SERVICE STATE =====
   const [services, setServices] = useState<Service[]>([])
@@ -119,12 +145,15 @@ export default function BookingsPage() {
   const [selectAll, setSelectAll] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const [isSeoOpen, setIsSeoOpen] = useState(false)
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false)
   const [serviceForm, setServiceForm] = useState({
     name: '',
     slug: '',
     description: '',
-    duration: 60,
+    duration: '',
     price: '',
+    compareAtPrice: '',
     categoryId: '',
     imageUrl: '',
     isFeatured: false,
@@ -146,7 +175,6 @@ export default function BookingsPage() {
     name: '',
     slug: '',
     description: '',
-    icon: '📦',
     sortOrder: 0,
     isActive: true,
   })
@@ -258,6 +286,24 @@ export default function BookingsPage() {
     }
   }
 
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings')
+      if (res.ok) {
+        const data = await res.json()
+        setSettings({
+          siteName: data.siteName || 'Beauty Studio',
+          colorPrimary: data.colorPrimary || '#c4367b',
+          colorSecondary: data.colorSecondary || '#f5dbe8',
+          defaultOgImage: data.defaultOgImage || null,
+          logoUrl: data.logoUrl || null,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    }
+  }
+
   const fetchMediaFiles = async () => {
     try {
       const res = await fetch('/api/admin/media?limit=20')
@@ -276,12 +322,67 @@ export default function BookingsPage() {
     fetchTags()
     fetchPromos()
     fetchAllServices()
+    fetchSettings()
     fetchMediaFiles()
   }, [])
 
-  // ===== GENERATE SLUG =====
-  const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/ /g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').trim()
+  // ===== AUTO-GENERATE SEO FIELDS =====
+  useEffect(() => {
+    if (!settings?.siteName) return
+    
+    if (serviceForm.name && !isAutoGenerating) {
+      const generatedTitle = generateMetaTitle(serviceForm.name, settings.siteName)
+      if (!serviceForm.metaTitle || serviceForm.metaTitle === '' || serviceForm.metaTitle === generateMetaTitle(serviceForm.name, settings.siteName)) {
+        setServiceForm(prev => ({ ...prev, metaTitle: generatedTitle }))
+      }
+    }
+
+    if (serviceForm.description && !isAutoGenerating) {
+      const generatedDesc = generateMetaDescription(serviceForm.description, serviceForm.name, settings.siteName)
+      if (!serviceForm.metaDescription || serviceForm.metaDescription === '' || serviceForm.metaDescription === generateMetaDescription(serviceForm.description, serviceForm.name, settings.siteName)) {
+        setServiceForm(prev => ({ ...prev, metaDescription: generatedDesc }))
+      }
+    }
+
+    if (serviceForm.slug && !isAutoGenerating) {
+      const generatedUrl = generateCanonicalUrl(serviceForm.slug)
+      if (!serviceForm.canonicalUrl || serviceForm.canonicalUrl === '' || serviceForm.canonicalUrl === generateCanonicalUrl(serviceForm.slug)) {
+        setServiceForm(prev => ({ ...prev, canonicalUrl: generatedUrl }))
+      }
+    }
+
+    if (serviceForm.imageUrl && !isAutoGenerating) {
+      const generatedOgImage = generateOgImage(serviceForm.imageUrl, settings.defaultOgImage, settings.logoUrl)
+      if (!serviceForm.ogImageUrl || serviceForm.ogImageUrl === '' || serviceForm.ogImageUrl === generateOgImage(serviceForm.imageUrl, settings.defaultOgImage, settings.logoUrl)) {
+        setServiceForm(prev => ({ ...prev, ogImageUrl: generatedOgImage || '' }))
+      }
+    }
+  }, [serviceForm.name, serviceForm.description, serviceForm.slug, serviceForm.imageUrl, settings])
+
+  // ===== AUTO-GENERATE FUNCTIONS =====
+  const generateMetaTitle = (serviceName: string, siteName: string) => {
+    if (!serviceName) return ''
+    return `Jual ${serviceName} - ${siteName}`
+  }
+
+  const generateMetaDescription = (description: string, serviceName: string, siteName: string) => {
+    if (description && description.length > 10) {
+      const clean = description.replace(/\s+/g, ' ').trim()
+      return clean.length > 150 ? clean.slice(0, 150) + '...' : clean
+    }
+    return `Temukan ${serviceName || 'layanan'} berkualitas di ${siteName}.`
+  }
+
+  const generateCanonicalUrl = (slug: string) => {
+    if (!slug) return ''
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/booking/${slug}`
+    }
+    return `/booking/${slug}`
+  }
+
+  const generateOgImage = (imageUrl: string | null, defaultOgImage: string | null, logoUrl: string | null) => {
+    return imageUrl || defaultOgImage || logoUrl || null
   }
 
   // ===== FORMAT CURRENCY =====
@@ -296,6 +397,60 @@ export default function BookingsPage() {
     const preset = PRESET_COLORS.find(p => p.value === color)
     if (preset) return preset.hex
     return '#6B7280'
+  }
+
+  // ===== GET TAG OPTIONS =====
+  const getTagOptions = (): TagOption[] => {
+    return tags.map(tag => ({
+      value: tag.id,
+      label: tag.name,
+      color: getTagDisplayColor(tag.color),
+    }))
+  }
+
+  const getSelectedTagOptions = (): TagOption[] => {
+    return serviceForm.tagIds.map(id => {
+      const tag = tags.find(t => t.id === id)
+      return {
+        value: id,
+        label: tag?.name || '',
+        color: getTagDisplayColor(tag?.color || null),
+      }
+    }).filter(opt => opt.label !== '')
+  }
+
+  const getCategoryOptions = (): CategoryOption[] => {
+    return categories.map(cat => ({
+      value: cat.id,
+      label: cat.name,
+    }))
+  }
+
+  const getSelectedCategoryOption = (): CategoryOption | null => {
+    if (!serviceForm.categoryId) return null
+    const category = categories.find(c => c.id === serviceForm.categoryId)
+    if (!category) return null
+    return {
+      value: category.id,
+      label: category.name,
+    }
+  }
+
+  const getPromoOptions = (): PromoOption[] => {
+    return promos.filter(p => p.isActive).map(promo => ({
+      value: promo.id,
+      label: `${promo.code} (Rp ${promo.discount.toLocaleString()})`,
+    }))
+  }
+
+  const getSelectedPromoOptions = (): PromoOption[] => {
+    return serviceForm.promoIds.map(id => {
+      const promo = promos.find(p => p.id === id)
+      return {
+        value: id,
+        label: promo ? `${promo.code} (Rp ${promo.discount.toLocaleString()})` : '',
+      }
+    }).filter(opt => opt.label !== '')
   }
 
   // ===== SERVICE ACTIONS =====
@@ -315,10 +470,15 @@ export default function BookingsPage() {
       const payload = {
         ...serviceForm,
         price: parseFloat(serviceForm.price),
-        duration: parseInt(serviceForm.duration.toString()),
+        compareAtPrice: serviceForm.compareAtPrice ? parseFloat(serviceForm.compareAtPrice) : null,
+        duration: serviceForm.duration ? parseInt(serviceForm.duration) : null,
         imageUrl: serviceForm.imageUrl || null,
         tagIds: serviceForm.tagIds,
         promoIds: serviceForm.promoIds,
+        metaTitle: serviceForm.metaTitle || generateMetaTitle(serviceForm.name, settings?.siteName || 'Beauty Studio'),
+        metaDescription: serviceForm.metaDescription || generateMetaDescription(serviceForm.description, serviceForm.name, settings?.siteName || 'Beauty Studio'),
+        canonicalUrl: serviceForm.canonicalUrl || generateCanonicalUrl(serviceForm.slug),
+        ogImageUrl: serviceForm.ogImageUrl || generateOgImage(serviceForm.imageUrl, settings?.defaultOgImage || null, settings?.logoUrl || null),
       }
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) {
@@ -357,8 +517,9 @@ export default function BookingsPage() {
       name: service.name,
       slug: service.slug,
       description: service.description || '',
-      duration: service.duration,
+      duration: service.duration?.toString() || '',
       price: service.price.toString(),
+      compareAtPrice: service.compareAtPrice?.toString() || '',
       categoryId: service.categoryId,
       imageUrl: service.imageUrl || '',
       isFeatured: service.isFeatured,
@@ -380,8 +541,9 @@ export default function BookingsPage() {
       name: '',
       slug: '',
       description: '',
-      duration: 60,
+      duration: '',
       price: '',
+      compareAtPrice: '',
       categoryId: '',
       imageUrl: '',
       isFeatured: false,
@@ -393,6 +555,7 @@ export default function BookingsPage() {
       tagIds: [],
       promoIds: [],
     })
+    setIsSeoOpen(false)
   }
 
   const toggleServiceActive = async (id: string, currentStatus: boolean, name: string) => {
@@ -544,7 +707,6 @@ export default function BookingsPage() {
       name: category.name,
       slug: category.slug,
       description: category.description || '',
-      icon: category.icon || '📦',
       sortOrder: category.sortOrder,
       isActive: category.isActive,
     })
@@ -558,7 +720,6 @@ export default function BookingsPage() {
       name: '',
       slug: '',
       description: '',
-      icon: '📦',
       sortOrder: 0,
       isActive: true,
     })
@@ -851,6 +1012,108 @@ export default function BookingsPage() {
     )
   }
 
+  // ===== SERVICE PREVIEW COMPONENT =====
+  const ServicePreview = () => {
+    const selectedCategory = categories.find(c => c.id === serviceForm.categoryId)
+    const selectedTags = tags.filter(t => serviceForm.tagIds.includes(t.id))
+    const primaryColor = settings?.colorPrimary || '#c4367b'
+    const price = parseFloat(serviceForm.price) || 0
+    const compareAtPrice = serviceForm.compareAtPrice ? parseFloat(serviceForm.compareAtPrice) : null
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            Live Preview
+          </h3>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            serviceForm.isActive 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-yellow-100 text-yellow-700'
+          }`}>
+            {serviceForm.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        <div className="border rounded-xl overflow-hidden border-gray-100">
+          <div className="bg-white p-3">
+            <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center relative">
+              {serviceForm.imageUrl ? (
+                <img 
+                  src={serviceForm.imageUrl} 
+                  alt={serviceForm.name || 'Service'}
+                  className="w-full h-full object-cover rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const parent = e.currentTarget.parentElement
+                    if (parent) {
+                      const fallback = document.createElement('div')
+                      fallback.className = 'w-full h-full flex items-center justify-center'
+                      fallback.innerHTML = '<span class="text-4xl">🧖</span>'
+                      parent.appendChild(fallback)
+                    }
+                  }}
+                />
+              ) : (
+                <span className="text-4xl">🧖</span>
+              )}
+              {compareAtPrice && compareAtPrice > price && (
+                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  SALE
+                </span>
+              )}
+              {selectedTags.length > 0 && (
+                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                  {selectedTags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
+                      style={{ backgroundColor: getTagDisplayColor(tag.color) }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {serviceForm.isFeatured && (
+                <div className="absolute bottom-2 left-2">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400 text-yellow-900">
+                    ⭐ Featured
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">
+              {serviceForm.name || 'Service Name'}
+            </h3>
+            <p className="text-xs text-gray-500">{selectedCategory?.name || 'Category'}</p>
+            {serviceForm.duration && (
+              <p className="text-xs text-gray-400 mt-0.5">⏱ {serviceForm.duration} menit</p>
+            )}
+
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-base font-bold" style={{ color: primaryColor }}>
+                Rp {price.toLocaleString()}
+              </p>
+              {compareAtPrice && compareAtPrice > price && (
+                <p className="text-xs text-gray-400 line-through">
+                  Rp {compareAtPrice.toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
+          <span>🔄 Update real-time</span>
+          <span>/booking/{serviceForm.slug || 'service-slug'}</span>
+        </div>
+      </div>
+    )
+  }
+
   if (loadingServices || loadingCategories || loadingTags || loadingPromos) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -864,32 +1127,12 @@ export default function BookingsPage() {
     switch (activeTab) {
       case 'services':
         return (
-          <button
-            onClick={() => {
-              setEditingService(null)
-              setServiceForm({
-                name: '',
-                slug: '',
-                description: '',
-                duration: 60,
-                price: '',
-                categoryId: '',
-                imageUrl: '',
-                isFeatured: false,
-                isActive: true,
-                metaTitle: '',
-                metaDescription: '',
-                canonicalUrl: '',
-                ogImageUrl: '',
-                tagIds: [],
-                promoIds: [],
-              })
-              setShowServiceForm(!showServiceForm)
-            }}
+          <Link
+            href="/admin/bookings/new"
             className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" /> Add Services
-          </button>
+            <Plus className="w-5 h-5" /> Add Service
+          </Link>
         )
       case 'categories':
         return (
@@ -900,7 +1143,6 @@ export default function BookingsPage() {
                 name: '',
                 slug: '',
                 description: '',
-                icon: '📦',
                 sortOrder: categories.length,
                 isActive: true,
               })
@@ -947,17 +1189,17 @@ export default function BookingsPage() {
     <div>
       {/* ===== HEADER WITH BUTTON ===== */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">📅 Booking</h1>
+        <h1 className="text-2xl font-bold text-gray-800">📅 Booking Services</h1>
         {renderHeaderButton()}
       </div>
 
       {/* TABS */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
         <button onClick={() => setActiveTab('services')} className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${activeTab === 'services' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          <Clock className="w-4 h-4 inline mr-2" /> Layanan ({services.length})
+          <Clock className="w-4 h-4 inline mr-2" /> Services ({services.length})
         </button>
         <button onClick={() => setActiveTab('categories')} className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${activeTab === 'categories' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          <Layers className="w-4 h-4 inline mr-2" /> Kategori ({categories.length})
+          <Layers className="w-4 h-4 inline mr-2" /> Categories ({categories.length})
         </button>
         <button onClick={() => setActiveTab('tags')} className={`px-6 py-3 font-medium text-sm transition-colors border-b-2 whitespace-nowrap ${activeTab === 'tags' ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
           <Tag className="w-4 h-4 inline mr-2" /> Tags ({tags.length})
@@ -991,7 +1233,7 @@ export default function BookingsPage() {
                 >
                   <option value="">Semua Kategori</option>
                   {categories.filter(c => c.isActive).map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </select>
               </div>
@@ -1005,217 +1247,6 @@ export default function BookingsPage() {
               <button onClick={() => handleBulkStatus(false)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"><X className="w-4 h-4" /> Nonaktif</button>
               <button onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1"><Trash2 className="w-4 h-4" /> Hapus</button>
               <button onClick={() => { setSelectedIds([]); setSelectAll(false) }} className="text-gray-500 hover:text-gray-700 text-sm">Batal</button>
-            </div>
-          )}
-
-          {showServiceForm && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-              <h2 className="text-lg font-semibold mb-4">{editingService ? 'Edit Layanan' : 'Tambah Layanan'}</h2>
-              <form onSubmit={handleServiceSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Nama Layanan *</label>
-                    <input type="text" required value={serviceForm.name} onChange={(e) => { const name = e.target.value; setServiceForm({ ...serviceForm, name, slug: generateSlug(name) }) }} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Contoh: Facial Treatment" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Slug *</label>
-                    <input type="text" required value={serviceForm.slug} onChange={(e) => setServiceForm({ ...serviceForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="facial-treatment" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Kategori *</label>
-                    <select
-                      required
-                      value={serviceForm.categoryId}
-                      onChange={(e) => setServiceForm({ ...serviceForm, categoryId: e.target.value })}
-                      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    >
-                      <option value="">Pilih Kategori</option>
-                      {categories.filter(c => c.isActive).map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.icon || '📁'} {cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Durasi (menit) *</label>
-                    <input type="number" required min="15" step="15" value={serviceForm.duration} onChange={(e) => setServiceForm({ ...serviceForm, duration: parseInt(e.target.value) || 0 })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="60" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Harga (Rp) *</label>
-                    <input type="number" required min="0" step="1000" value={serviceForm.price} onChange={(e) => setServiceForm({ ...serviceForm, price: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="100000" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
-                  <textarea rows={2} value={serviceForm.description} onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Deskripsi layanan..." />
-                </div>
-
-                {/* GAMBAR LAYANAN - MEDIA PICKER */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Gambar Layanan</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={serviceForm.imageUrl}
-                      onChange={(e) => setServiceForm({ ...serviceForm, imageUrl: e.target.value })}
-                      className="flex-1 mt-1 block px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="https://example.com/gambar-layanan.jpg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        fetchMediaFiles()
-                        setShowMediaPicker(true)
-                      }}
-                      className="mt-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors"
-                    >
-                      <ImageIcon className="w-4 h-4" />
-                      Pilih
-                    </button>
-                  </div>
-                  {serviceForm.imageUrl && (
-                    <div className="mt-2">
-                      <img src={serviceForm.imageUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
-                    </div>
-                  )}
-                </div>
-
-                {/* FEATURED TOGGLE */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={serviceForm.isFeatured}
-                    onChange={(e) => setServiceForm({ ...serviceForm, isFeatured: e.target.checked })}
-                    className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                  />
-                  <label className="text-sm text-gray-700">
-                    <Star className="w-4 h-4 inline mr-1 text-yellow-400" />
-                    Featured Service (tampil di halaman utama)
-                  </label>
-                </div>
-
-                {/* TAGS */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Tags</label>
-                  <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {tags.length === 0 ? (
-                      <p className="text-gray-500 text-sm col-span-full">Belum ada tag. Buat tag dulu di tab Tags.</p>
-                    ) : (
-                      tags.map((tag) => (
-                        <label key={tag.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={serviceForm.tagIds.includes(tag.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setServiceForm({ ...serviceForm, tagIds: [...serviceForm.tagIds, tag.id] })
-                              } else {
-                                setServiceForm({ ...serviceForm, tagIds: serviceForm.tagIds.filter(id => id !== tag.id) })
-                              }
-                            }}
-                            className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                          />
-                          <span className="truncate">{tag.name}</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Pilih {serviceForm.tagIds.length} tag</p>
-                </div>
-
-                {/* PROMOS (VOUCHERS) */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Voucher</label>
-                  <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                    {promos.length === 0 ? (
-                      <p className="text-gray-500 text-sm col-span-full">Belum ada voucher. Buat voucher dulu di tab Vouchers.</p>
-                    ) : (
-                      promos.filter(p => p.isActive).map((promo) => (
-                        <label key={promo.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={serviceForm.promoIds.includes(promo.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setServiceForm({ ...serviceForm, promoIds: [...serviceForm.promoIds, promo.id] })
-                              } else {
-                                setServiceForm({ ...serviceForm, promoIds: serviceForm.promoIds.filter(id => id !== promo.id) })
-                              }
-                            }}
-                            className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                          />
-                          <span className="truncate">{promo.code} (Rp {promo.discount.toLocaleString()})</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">Pilih {serviceForm.promoIds.length} voucher</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" checked={serviceForm.isActive} onChange={(e) => setServiceForm({ ...serviceForm, isActive: e.target.checked })} className="w-4 h-4 text-pink-500 rounded border-gray-300" />
-                  <label className="text-sm text-gray-700">Aktif (dapat dipilih customer)</label>
-                </div>
-
-                {/* SEO FIELDS */}
-                <div className="border-t border-gray-200 pt-3">
-                  <h3 className="text-sm font-semibold text-gray-800 mb-2">🔍 SEO</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700">Meta Title</label>
-                      <input
-                        type="text"
-                        value={serviceForm.metaTitle}
-                        onChange={(e) => setServiceForm({ ...serviceForm, metaTitle: e.target.value })}
-                        className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                        placeholder="Judul untuk SEO (max 60 chars)"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700">Meta Description</label>
-                      <textarea
-                        rows={2}
-                        value={serviceForm.metaDescription}
-                        onChange={(e) => setServiceForm({ ...serviceForm, metaDescription: e.target.value })}
-                        className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                        placeholder="Deskripsi untuk SEO (max 160 chars)"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700">Canonical URL</label>
-                      <input
-                        type="text"
-                        value={serviceForm.canonicalUrl}
-                        onChange={(e) => setServiceForm({ ...serviceForm, canonicalUrl: e.target.value })}
-                        className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                        placeholder="https://example.com/canonical-url"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700">OG Image URL</label>
-                      <input
-                        type="text"
-                        value={serviceForm.ogImageUrl}
-                        onChange={(e) => setServiceForm({ ...serviceForm, ogImageUrl: e.target.value })}
-                        className="mt-1 block w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                        placeholder="https://example.com/og-image.jpg"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                    <Save className="w-4 h-4" /> {editingService ? 'Update' : 'Simpan'}
-                  </button>
-                  <button type="button" onClick={handleServiceCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
-                    Batal
-                  </button>
-                </div>
-              </form>
             </div>
           )}
 
@@ -1238,7 +1269,7 @@ export default function BookingsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {filteredServices.length === 0 ? (
-                    <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-500">Belum ada layanan</td></tr>
+                    <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-500">Belum ada layanan. <Link href="/admin/bookings/new" className="text-pink-500 hover:underline">Tambah layanan pertama</Link></td></tr>
                   ) : (
                     filteredServices.map((service) => {
                       const isChecked = selectedIds.includes(service.id)
@@ -1280,9 +1311,20 @@ export default function BookingsPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
-                            <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-gray-400" /> {service.duration} menit</span>
+                            {service.duration ? (
+                              <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-gray-400" /> {service.duration} menit</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{formatCurrency(service.price)}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            {formatCurrency(service.price)}
+                            {service.compareAtPrice && service.compareAtPrice > service.price && (
+                              <span className="text-xs text-gray-400 line-through ml-1">
+                                {formatCurrency(service.compareAtPrice)}
+                              </span>
+                            )}
+                          </td>
                           <td className="px-6 py-4">
                             <button onClick={() => toggleServiceFeatured(service.id, service.isFeatured, service.name)} className={`px-2 py-1 text-xs rounded-full transition-colors ${service.isFeatured ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
                               {service.isFeatured ? '⭐ Yes' : 'No'}
@@ -1290,18 +1332,25 @@ export default function BookingsPage() {
                           </td>
                           <td className="px-6 py-4">
                             <button onClick={() => toggleServiceActive(service.id, service.isActive, service.name)} className={`px-2 py-1 text-xs rounded-full transition-colors ${service.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                              {service.isActive ? '✅ Published' : '📝 Draft'}
+                              {service.isActive ? '✅ Active' : '📝 Inactive'}
                             </button>
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button 
-                                onClick={() => handleEditService(service)} 
+                              <Link 
+                                href={`/admin/bookings/${service.id}`} 
+                                className="p-1 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-800 transition-colors"
+                                title="Lihat Detail"
+                              >
+                                <Eye className="w-5 h-5" />
+                              </Link>
+                              <Link 
+                                href={`/admin/bookings/${service.id}/edit`} 
                                 className="p-1 rounded-lg hover:bg-yellow-50 text-yellow-600 hover:text-yellow-800 transition-colors"
                                 title="Edit Layanan"
                               >
                                 <Edit className="w-5 h-5" />
-                              </button>
+                              </Link>
                               <button 
                                 onClick={() => handleDeleteService(service.id, service.name)} 
                                 className="p-1 rounded-lg hover:bg-red-50 text-red-600 hover:text-red-800 transition-colors"
@@ -1312,7 +1361,7 @@ export default function BookingsPage() {
                               <Link 
                                 href={`/booking/${service.slug}`} 
                                 target="_blank" 
-                                className="p-1 rounded-lg hover:bg-blue-50 text-blue-600 hover:text-blue-800 transition-colors"
+                                className="p-1 rounded-lg hover:bg-purple-50 text-purple-600 hover:text-purple-800 transition-colors"
                                 title="Lihat di Frontend"
                               >
                                 <Eye className="w-5 h-5" />
@@ -1346,8 +1395,7 @@ export default function BookingsPage() {
                   <div><label className="block text-sm font-medium text-gray-700">Slug *</label><input type="text" required value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="facial-treatment" /></div>
                 </div>
                 <div><label className="block text-sm font-medium text-gray-700">Deskripsi</label><textarea rows={2} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Deskripsi kategori..." /></div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700">Icon</label><select value={categoryForm.icon} onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400">{ICON_OPTIONS.map((opt) => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}</select></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div><label className="block text-sm font-medium text-gray-700">Sort Order</label><input type="number" value={categoryForm.sortOrder} onChange={(e) => setCategoryForm({ ...categoryForm, sortOrder: parseInt(e.target.value) || 0 })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" /></div>
                   <div className="flex items-center gap-2 mt-6"><input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} className="w-4 h-4 text-pink-500 rounded border-gray-300" /><label className="text-sm text-gray-700">Aktif</label></div>
                 </div>
@@ -1359,7 +1407,6 @@ export default function BookingsPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Icon</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slug</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -1367,10 +1414,9 @@ export default function BookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {categories.length === 0 ? (<tr><td colSpan={5} className="px-6 py-8 text-center text-gray-500">Belum ada kategori booking</td></tr>) : (
+                {categories.length === 0 ? (<tr><td colSpan={4} className="px-6 py-8 text-center text-gray-500">Belum ada kategori booking</td></tr>) : (
                   categories.map((category) => (
                     <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-2xl">{category.icon || '📦'}</td>
                       <td className="px-6 py-4"><div className="text-sm font-medium text-gray-900">{category.name}</div>{category.description && <div className="text-xs text-gray-500">{category.description}</div>}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{category.slug}</td>
                       <td className="px-6 py-4"><button onClick={() => toggleCategoryActive(category.id, category.isActive, category.name)} className={`px-2 py-1 text-xs rounded-full transition-colors ${category.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{category.isActive ? '✅ Aktif' : '❌ Nonaktif'}</button></td>
