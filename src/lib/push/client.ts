@@ -55,12 +55,13 @@ export async function subscribeToPush(
   try {
     const registration = await navigator.serviceWorker.ready
 
-    // Convert VAPID public key
+    // Convert VAPID public key ke Uint8Array
     const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey)
 
+    // 🔥 PERBAIKAN: Cast ke BufferSource
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey,
+      applicationServerKey: applicationServerKey as BufferSource,
     })
 
     console.log('✅ Subscribed to push notifications')
@@ -137,14 +138,21 @@ export async function deleteSubscription(): Promise<boolean> {
 
 /**
  * Helper: base64 URL ke Uint8Array
+ * 🔥 PERBAIKAN: Gunakan Buffer untuk kompatibilitas
  */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  // Tambahkan padding jika diperlukan
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  
+  // Decode base64 ke string
   const rawData = atob(base64)
+  
+  // Konversi ke Uint8Array
   const outputArray = new Uint8Array(rawData.length)
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i)
   }
+  
   return outputArray
 }
