@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Clock, Home, RefreshCw, AlertCircle } from 'lucide-react'
+import { Clock, Home, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function PaymentPendingPage() {
@@ -18,11 +18,9 @@ export default function PaymentPendingPage() {
       router.push('/')
       return
     }
-    // 🔥 GANTI toast.info MENJADI toast.loading
     toast.loading('⏳ Menunggu pembayaran...', { duration: 3000 })
   }, [orderId, router])
 
-  // Countdown untuk auto-check status
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
@@ -33,7 +31,6 @@ export default function PaymentPendingPage() {
   const handleCheckStatus = async () => {
     setIsChecking(true)
     try {
-      // Cek status payment via API
       const res = await fetch(`/api/payment/status?orderId=${orderId}`)
       const data = await res.json()
       
@@ -55,7 +52,6 @@ export default function PaymentPendingPage() {
     }
   }
 
-  // Cek status otomatis setiap 30 detik
   useEffect(() => {
     if (countdown === 0) {
       handleCheckStatus()
@@ -65,14 +61,11 @@ export default function PaymentPendingPage() {
   return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
       <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-8 text-center">
-        {/* Icon */}
         <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
           <Clock className="w-10 h-10 text-yellow-500" />
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          ⏳ Menunggu Pembayaran
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">⏳ Menunggu Pembayaran</h1>
         
         <p className="text-gray-600 mb-2">
           Kami menunggu konfirmasi pembayaran Anda.
@@ -84,7 +77,6 @@ export default function PaymentPendingPage() {
           Halaman ini akan otomatis terupdate setelah pembayaran berhasil.
         </p>
 
-        {/* Order ID */}
         {orderId && (
           <div className="bg-white rounded-lg p-4 mb-6 inline-block shadow-sm">
             <p className="text-xs text-gray-500">ID Transaksi</p>
@@ -92,7 +84,6 @@ export default function PaymentPendingPage() {
           </div>
         )}
 
-        {/* Countdown */}
         <div className="mb-6">
           <p className="text-sm text-gray-500">
             Cek status otomatis dalam <span className="font-bold text-yellow-600">{countdown}</span> detik
@@ -108,7 +99,6 @@ export default function PaymentPendingPage() {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={handleCheckStatus}
@@ -130,7 +120,6 @@ export default function PaymentPendingPage() {
           </Link>
         </div>
 
-        {/* Info */}
         <div className="mt-6 p-4 bg-yellow-100/50 rounded-lg text-sm text-yellow-800">
           <p>💡 Jika sudah melakukan pembayaran, tunggu beberapa saat hingga sistem memproses.</p>
           <p className="mt-1">📱 Atau hubungi admin via WhatsApp untuk konfirmasi manual.</p>
