@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { prisma } from '@/lib/prisma'
 import Script from 'next/script'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -132,6 +133,7 @@ export default async function RootLayout({
             `,
           }}
         />
+        <SpeedInsights />
       </body>
     </html>
   )
