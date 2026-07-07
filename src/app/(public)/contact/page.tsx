@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Phone, Mail, Clock } from 'lucide-react'
+import { ArrowLeft, MapPin, Phone, Mail, Clock, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Settings {
@@ -31,9 +31,13 @@ interface Settings {
   operatingHours: any
 }
 
+// 🔥 KEY UNTUK LOCALSTORAGE
+const CONTACT_STORAGE_KEY = 'beauty_contact_data'
+
 export default function ContactPage() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [submitted, setSubmitted] = useState(false)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -47,6 +51,24 @@ export default function ContactPage() {
   const bodyFontSize = '16px'
   const smallFontSize = '14px'
   const fontFamily = 'Inter'
+
+  // 🔥 LOAD DATA DARI LOCALSTORAGE
+  useEffect(() => {
+    const savedData = localStorage.getItem(CONTACT_STORAGE_KEY)
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData)
+        setForm(prev => ({
+          ...prev,
+          name: data.name || '',
+          email: data.email || '',
+          whatsapp: data.whatsapp || '',
+        }))
+      } catch (e) {
+        console.error('Error loading contact data:', e)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     fetchSettings()
@@ -66,11 +88,39 @@ export default function ContactPage() {
     }
   }
 
+  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!form.name.trim() || !form.message.trim()) {
-      toast.error('Nama dan pesan harus diisi')
+    // Validasi
+    if (!form.name.trim()) {
+      toast.error('Nama wajib diisi')
+      return
+    }
+    if (!form.email.trim()) {
+      toast.error('Email wajib diisi')
+      return
+    }
+    if (!form.whatsapp.trim()) {
+      toast.error('Nomor WhatsApp wajib diisi')
+      return
+    }
+    if (!form.message.trim()) {
+      toast.error('Pesan wajib diisi')
+      return
+    }
+
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(form.email.trim())) {
+      toast.error('Format email tidak valid')
+      return
+    }
+
+    // Validasi format WhatsApp
+    const whatsappClean = form.whatsapp.replace(/[^0-9]/g, '')
+    if (whatsappClean.length < 10) {
+      toast.error('Nomor WhatsApp tidak valid (minimal 10 digit)')
       return
     }
 
@@ -80,7 +130,12 @@ export default function ContactPage() {
       const res = await fetch('/api/public/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          whatsapp: whatsappClean,
+          message: form.message.trim(),
+        }),
       })
 
       const data = await res.json()
@@ -89,14 +144,48 @@ export default function ContactPage() {
         throw new Error(data.error || 'Failed to send message')
       }
 
-      const successMsg = settings?.contactSuccessMessage || 'Thank you for your message! We will get back to you soon.'
+      // 🔥 SIMPAN DATA KE LOCALSTORAGE
+      localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        whatsapp: whatsappClean,
+      }))
+
+      // 🔥 TAMPILKAN PEMBERITAHUAN SUKSES
+      const successMsg = settings?.contactSuccessMessage || '✅ Pesan Anda telah terkirim! Kami akan segera merespon.'
       toast.success(successMsg)
+      
+      // 🔥 SET SUBMITTED = TRUE UNTUK MENAMPILKAN PEMBERITAHUAN
+      setSubmitted(true)
+      
+      // Kosongkan form (kecuali data yang sudah tersimpan di localStorage)
       setForm({ name: '', email: '', whatsapp: '', message: '' })
+
     } catch (error: any) {
       console.error('Error sending message:', error)
       toast.error(error.message || 'Gagal mengirim pesan')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // 🔥 RESET SUBMITTED STATE
+  const handleSendAnother = () => {
+    setSubmitted(false)
+    // Reload data dari localStorage
+    const savedData = localStorage.getItem(CONTACT_STORAGE_KEY)
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData)
+        setForm(prev => ({
+          ...prev,
+          name: data.name || '',
+          email: data.email || '',
+          whatsapp: data.whatsapp || '',
+        }))
+      } catch (e) {
+        console.error('Error loading contact data:', e)
+      }
     }
   }
 
@@ -146,115 +235,146 @@ export default function ContactPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Contact Info */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>Get in Touch</h3>
-            {address && (
-              <div className="flex items-start gap-3 mb-3">
-                <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: primaryColor }} />
-                <p className="text-gray-600" style={{ fontSize: smallFontSize }}>{address}</p>
-              </div>
-            )}
-            {whatsappNumber && (
-              <div className="flex items-center gap-3 mb-3">
-                <Phone className="w-5 h-5 flex-shrink-0" style={{ color: primaryColor }} />
-                <a href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`} className="text-gray-600 hover:opacity-70" style={{ fontSize: smallFontSize }}>
-                  {whatsappNumber}
-                </a>
-              </div>
-            )}
-            {email && (
-              <div className="flex items-center gap-3 mb-3">
-                <Mail className="w-5 h-5 flex-shrink-0" style={{ color: primaryColor }} />
-                <a href={`mailto:${email}`} className="text-gray-600 hover:opacity-70" style={{ fontSize: smallFontSize }}>
-                  {email}
-                </a>
-              </div>
-            )}
-            {operatingHours && (
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: primaryColor }} />
-                <div>
-                  {typeof operatingHours === 'object' && !Array.isArray(operatingHours) ? (
-                    Object.entries(operatingHours).map(([day, hours]) => (
-                      <p key={day} className="text-gray-600" style={{ fontSize: smallFontSize }}>
-                        {day}: {String(hours)}
-                      </p>
-                    ))
-                  ) : (
-                    <p className="text-gray-600" style={{ fontSize: smallFontSize }}>{String(operatingHours)}</p>
-                  )}
-                </div>
-              </div>
-            )}
+      {/* 🔥 PEMBERITAHUAN SUKSES */}
+      {submitted && (
+        <div className="mb-8 bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-8 h-8 text-green-500" />
           </div>
+          <h3 className="text-lg font-semibold text-green-800">✅ Pesan Terkirim!</h3>
+          <p className="text-green-600 text-sm mt-1">
+            {settings?.contactSuccessMessage || 'Terima kasih! Kami akan segera merespon pesan Anda.'}
+          </p>
+          <button
+            onClick={handleSendAnother}
+            className="mt-4 px-6 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Kirim Pesan Lain
+          </button>
         </div>
+      )}
 
-        {/* Contact Form */}
-        <div className="lg:col-span-2">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>{contactFormTitle}</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>Nama *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none"
-                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-                  placeholder="Nama Anda"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>Email</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none"
-                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-                  placeholder="email@example.com"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>WhatsApp</label>
-                <input
-                  type="text"
-                  value={form.whatsapp}
-                  onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none"
-                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-                  placeholder="6281234567890"
-                />
-              </div>
-              <div>
-                <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>Pesan *</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={form.message}
-                  onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:outline-none resize-none"
-                  style={{ '--tw-ring-color': primaryColor } as React.CSSProperties}
-                  placeholder="Tulis pesan Anda..."
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: primaryColor, fontSize: bodyFontSize }}
-              >
-                {submitting ? 'Mengirim...' : 'Kirim Pesan'}
-              </button>
-            </form>
+      {/* 🔥 FORM - SEMBUNYIKAN JIKA SUBMITTED */}
+      {!submitted && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Contact Info */}
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>Get in Touch</h3>
+              {address && (
+                <div className="flex items-start gap-3 mb-3">
+                  <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: primaryColor }} />
+                  <p className="text-gray-600" style={{ fontSize: smallFontSize }}>{address}</p>
+                </div>
+              )}
+              {whatsappNumber && (
+                <div className="flex items-center gap-3 mb-3">
+                  <Phone className="w-5 h-5 flex-shrink-0" style={{ color: primaryColor }} />
+                  <a href={`https://wa.me/${whatsappNumber.replace(/[^0-9]/g, '')}`} className="text-gray-600 hover:opacity-70" style={{ fontSize: smallFontSize }}>
+                    {whatsappNumber}
+                  </a>
+                </div>
+              )}
+              {email && (
+                <div className="flex items-center gap-3 mb-3">
+                  <Mail className="w-5 h-5 flex-shrink-0" style={{ color: primaryColor }} />
+                  <a href={`mailto:${email}`} className="text-gray-600 hover:opacity-70" style={{ fontSize: smallFontSize }}>
+                    {email}
+                  </a>
+                </div>
+              )}
+              {operatingHours && (
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: primaryColor }} />
+                  <div>
+                    {typeof operatingHours === 'object' && !Array.isArray(operatingHours) ? (
+                      Object.entries(operatingHours).map(([day, hours]) => (
+                        <p key={day} className="text-gray-600" style={{ fontSize: smallFontSize }}>
+                          {day}: {String(hours)}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-gray-600" style={{ fontSize: smallFontSize }}>{String(operatingHours)}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Contact Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>{contactFormTitle}</h3>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>
+                    Nama <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all"
+                    placeholder="Nama Anda"
+                  />
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all"
+                    placeholder="email@example.com"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Email diperlukan untuk membalas pesan Anda</p>
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>
+                    WhatsApp <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.whatsapp}
+                    onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all"
+                    placeholder="6281234567890"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Nomor WhatsApp yang bisa dihubungi</p>
+                </div>
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1" style={{ fontSize: smallFontSize }}>
+                    Pesan <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all resize-none"
+                    placeholder="Tulis pesan Anda..."
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: primaryColor, fontSize: bodyFontSize }}
+                >
+                  {submitting ? 'Mengirim...' : 'Kirim Pesan'}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Google Maps */}
       {googleMapsEmbedUrl && (
