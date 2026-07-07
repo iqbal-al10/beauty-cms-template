@@ -146,6 +146,7 @@ model User {
   orders           Order[]
   transactions     Transaction[]
   approvedBookings Booking[]     @relation("ApprovedBookings")
+  pushSubscription PushSubscription?
 }
 
 model Category {
