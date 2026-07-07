@@ -44,11 +44,35 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
     ? 'bottom-20 left-0'
     : 'bottom-20 right-0'
 
+  // 🔥 EFFECT: BLINKING - muncul 3 detik, hilang 10 detik, berulang
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!isOpen) setIsVisible(false)
-    }, 10000)
-    return () => clearTimeout(timer)
+    // Jangan jalankan efek jika popup sedang terbuka
+    if (isOpen) {
+      setIsVisible(true)
+      return
+    }
+
+    let timeoutId: NodeJS.Timeout
+
+    const blink = () => {
+      // Muncul selama 3 detik
+      setIsVisible(true)
+      
+      // Setelah 3 detik, hilang selama 10 detik
+      timeoutId = setTimeout(() => {
+        setIsVisible(false)
+        
+        // Setelah 10 detik, muncul lagi (loop)
+        timeoutId = setTimeout(() => {
+          blink()
+        }, 10000) // 10 detik hilang
+      }, 3000) // 3 detik muncul
+    }
+
+    // Mulai blinking
+    blink()
+
+    return () => clearTimeout(timeoutId)
   }, [isOpen])
 
   if (!cleanNumber) return null
@@ -59,6 +83,7 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
     <div className={`fixed ${positionClasses} z-50`}>
       {isOpen && (
         <div className={`absolute ${popupPosition} w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300`}>
+          {/* Header */}
           <div
             className="px-4 py-3 flex items-center gap-3 text-white"
             style={{ backgroundColor: buttonColor }}
@@ -82,6 +107,7 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
             </button>
           </div>
 
+          {/* Quick Replies */}
           <div className="p-3 space-y-2">
             <p className="text-xs text-gray-400 font-medium">Quick replies:</p>
             <div className="flex flex-wrap gap-2">
@@ -99,6 +125,7 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
             </div>
           </div>
 
+          {/* Send Button */}
           <div className="border-t border-gray-100 p-3">
             <a
               href={whatsappUrl}
@@ -113,10 +140,11 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
         </div>
       )}
 
+      {/* Button */}
       <button
         onClick={() => {
-          if (!isOpen) setIsVisible(true)
           setIsOpen(!isOpen)
+          if (!isOpen) setIsVisible(true)
         }}
         className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
           isOpen ? 'scale-90' : 'hover:scale-110'
@@ -135,6 +163,7 @@ export default function WhatsAppFloat({ settings }: WhatsAppFloatProps) {
         )}
       </button>
 
+      {/* Notification Dot */}
       {!isOpen && isVisible && (
         <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full animate-pulse border-2 border-white" />
       )}

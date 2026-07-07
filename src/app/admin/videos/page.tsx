@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Edit, Trash2, Play, Video } from 'lucide-react'
+import { Plus, Edit, Trash2, Play, Video, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Image from 'next/image'
 
 interface Video {
   id: string
@@ -10,20 +11,35 @@ interface Video {
   sourceType: string
   url: string
   thumbnailUrl: string | null
+  category: string | null
+  description: string | null
   sortOrder: number
   isPublished: boolean
   createdAt: string
 }
+
+const PLATFORMS = [
+  { value: 'YOUTUBE', label: 'YouTube', color: 'bg-red-100 text-red-700' },
+  { value: 'INSTAGRAM', label: 'Instagram', color: 'bg-pink-100 text-pink-700' },
+  { value: 'FACEBOOK', label: 'Facebook', color: 'bg-blue-100 text-blue-700' },
+  { value: 'TIKTOK', label: 'TikTok', color: 'bg-black/10 text-black' },
+]
+
+const CATEGORIES = ['Tutorial', 'Promo', 'Testimoni', 'Tips', 'Product', 'Booking']
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Video | null>(null)
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false)
   const [form, setForm] = useState({
     title: '',
+    sourceType: 'YOUTUBE',
     url: '',
     thumbnailUrl: '',
+    category: '',
+    description: '',
     sortOrder: 0,
     isPublished: true,
   })
@@ -47,17 +63,102 @@ export default function VideosPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!form.title.trim() || !form.url.trim()) {
-      toast.error('Title dan URL harus diisi')
+  const getEmbedUrl = (url: string, sourceType: string) => {
+    if (sourceType === 'YOUTUBE') {
+      const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([^&?\/]+)/)?.[1]
+      return videoId ? `https://www.youtube.com/embed/${videoId}` : url
+    }
+    if (sourceType === 'INSTAGRAM') {
+      const match = url.match(/instagram\.com\/p\/([^/?]+)/)
+      return match ? `https://www.instagram.com/p/${match[1]}/embed` : url
+    }
+    if (sourceType === 'TIKTOK') {
+      const match = url.match(/tiktok\.com\/@[^\/]+\/video\/(\d+)/)
+      return match ? `https://www.tiktok.com/embed/v2/${match[1]}` : url
+    }
+    if (sourceType === 'FACEBOOK') {
+      const match = url.match(/facebook\.com\/.*\/videos\/(\d+)/)
+      return match ? `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}` : url
+    }
+    return url
+  }
+
+  const getThumbnail = (url: string, sourceType: string) => {
+    if (sourceType === 'YOUTUBE') {
+      const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([^&?\/]+)/)?.[1]
+      return videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : null
+    }
+    return null
+  }
+
+  const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Hanya file gambar yang diizinkan')
       return
     }
 
-    const isYoutube = form.url.includes('youtube.com') || form.url.includes('youtu.be')
-    if (!isYoutube) {
-      toast.error('Hanya URL YouTube yang didukung')
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 5MB')
+      return
+    }
+
+    setUploadingThumbnail(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch('/api/admin/media', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setForm({ ...form, thumbnailUrl: data.url })
+        toast.success('Thumbnail berhasil diupload!')
+      } else {
+        toast.error('Gagal upload thumbnail')
+      }
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error)
+      toast.error('Gagal upload thumbnail')
+    } finally {
+      setUploadingThumbnail(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!form.title.trim()) {
+      toast.error('Title harus diisi')
+      return
+    }
+    if (!form.url.trim()) {
+      toast.error('URL harus diisi')
+      return
+    }
+
+    // Auto-generate thumbnail for YouTube
+    let thumbnailUrl = form.thumbnailUrl
+    if (form.sourceType === 'YOUTUBE' && !thumbnailUrl) {
+      const autoThumb = getThumbnail(form.url, form.sourceType)
+      if (autoThumb) thumbnailUrl = autoThumb
+    }
+
+    // Validate URL format
+    const urlPatterns: Record<string, RegExp> = {
+      YOUTUBE: /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/,
+      INSTAGRAM: /^(https?:\/\/)?(www\.)?instagram\.com\/.+/,
+      FACEBOOK: /^(https?:\/\/)?(www\.)?(facebook\.com|fb\.com)\/.+/,
+      TIKTOK: /^(https?:\/\/)?(www\.)?tiktok\.com\/.+/,
+    }
+
+    if (!urlPatterns[form.sourceType]?.test(form.url)) {
+      toast.error(`URL tidak valid untuk ${form.sourceType}`)
       return
     }
 
@@ -65,10 +166,15 @@ export default function VideosPage() {
       const url = editing ? `/api/admin/videos/${editing.id}` : '/api/admin/videos'
       const method = editing ? 'PUT' : 'POST'
 
+      const payload = {
+        ...form,
+        thumbnailUrl,
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
@@ -110,8 +216,11 @@ export default function VideosPage() {
     setEditing(video)
     setForm({
       title: video.title,
+      sourceType: video.sourceType,
       url: video.url,
       thumbnailUrl: video.thumbnailUrl || '',
+      category: video.category || '',
+      description: video.description || '',
       sortOrder: video.sortOrder,
       isPublished: video.isPublished,
     })
@@ -123,8 +232,11 @@ export default function VideosPage() {
     setEditing(null)
     setForm({
       title: '',
+      sourceType: 'YOUTUBE',
       url: '',
       thumbnailUrl: '',
+      category: '',
+      description: '',
       sortOrder: 0,
       isPublished: true,
     })
@@ -162,13 +274,12 @@ export default function VideosPage() {
     }
   }
 
-  const getEmbedUrl = (url: string) => {
-    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1]
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : url
+  const getPlatformLabel = (type: string) => {
+    return PLATFORMS.find(p => p.value === type)?.label || type
   }
 
-  const isYouTube = (url: string) => {
-    return url.includes('youtube.com') || url.includes('youtu.be')
+  const getPlatformColor = (type: string) => {
+    return PLATFORMS.find(p => p.value === type)?.color || 'bg-gray-100 text-gray-700'
   }
 
   if (loading) {
@@ -188,8 +299,11 @@ export default function VideosPage() {
             setEditing(null)
             setForm({
               title: '',
+              sourceType: 'YOUTUBE',
               url: '',
               thumbnailUrl: '',
+              category: '',
+              description: '',
               sortOrder: videos.length,
               isPublished: true,
             })
@@ -202,6 +316,7 @@ export default function VideosPage() {
         </button>
       </div>
 
+      {/* Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
           <h2 className="text-lg font-semibold mb-4">
@@ -221,28 +336,150 @@ export default function VideosPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">YouTube URL *</label>
+              <label className="block text-sm font-medium text-gray-700">Platform *</label>
+              <select
+                value={form.sourceType}
+                onChange={(e) => {
+                  setForm({ ...form, sourceType: e.target.value, url: '', thumbnailUrl: '' })
+                }}
+                className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+              >
+                {PLATFORMS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">URL *</label>
               <input
                 type="text"
                 required
                 value={form.url}
-                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setForm({ ...form, url: val })
+                  // Auto-generate thumbnail for YouTube
+                  if (form.sourceType === 'YOUTUBE' && !form.thumbnailUrl) {
+                    const autoThumb = getThumbnail(val, form.sourceType)
+                    if (autoThumb) {
+                      setForm(prev => ({ ...prev, url: val, thumbnailUrl: autoThumb }))
+                      return
+                    }
+                  }
+                  setForm(prev => ({ ...prev, url: val }))
+                }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://www.youtube.com/watch?v=..."
+                placeholder={
+                  form.sourceType === 'YOUTUBE' 
+                    ? 'https://www.youtube.com/watch?v=...' 
+                    : form.sourceType === 'INSTAGRAM'
+                    ? 'https://www.instagram.com/p/...'
+                    : form.sourceType === 'TIKTOK'
+                    ? 'https://www.tiktok.com/@username/video/...'
+                    : 'https://www.facebook.com/...'
+                }
               />
               <p className="text-xs text-gray-400 mt-1">
-                Masukkan URL YouTube (contoh: https://www.youtube.com/watch?v=abc123)
+                {form.sourceType === 'YOUTUBE' && 'YouTube auto-thumbnail akan digenerate otomatis'}
+                {(form.sourceType === 'INSTAGRAM' || form.sourceType === 'FACEBOOK' || form.sourceType === 'TIKTOK') && 
+                  'Upload thumbnail manual di bawah'}
               </p>
             </div>
 
+            {/* Thumbnail Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Thumbnail URL (optional)</label>
-              <input
-                type="text"
-                value={form.thumbnailUrl}
-                onChange={(e) => setForm({ ...form, thumbnailUrl: e.target.value })}
+              <label className="block text-sm font-medium text-gray-700">
+                Thumbnail {form.sourceType !== 'YOUTUBE' && '*'}
+              </label>
+              <div className="flex items-center gap-4 mt-1">
+                {form.thumbnailUrl ? (
+                  <div className="relative w-32 h-20 bg-gray-100 rounded-lg overflow-hidden">
+                    <img src={form.thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, thumbnailUrl: '' })}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-32 h-20 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs">
+                    No thumbnail
+                  </div>
+                )}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailUpload}
+                    className="hidden"
+                    id="thumbnailUpload"
+                    disabled={uploadingThumbnail}
+                  />
+                  <label
+                    htmlFor="thumbnailUpload"
+                    className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer ${
+                      form.sourceType === 'YOUTUBE'
+                        ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'bg-pink-500 hover:bg-pink-600 text-white'
+                    }`}
+                  >
+                    {uploadingThumbnail ? 'Uploading...' : 'Upload Thumbnail'}
+                  </label>
+                  {form.sourceType === 'YOUTUBE' && (
+                    <p className="text-xs text-green-600 mt-1">✅ Auto-thumbnail from YouTube</p>
+                  )}
+                  {(form.sourceType === 'INSTAGRAM' || form.sourceType === 'FACEBOOK' || form.sourceType === 'TIKTOK') && (
+                    <p className="text-xs text-gray-400 mt-1">Upload thumbnail untuk video ini</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Category</label>
+              <div className="flex gap-2 mt-1">
+                <select
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                >
+                  <option value="">-- Select Category --</option>
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="New category..."
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const val = (e.target as HTMLInputElement).value.trim()
+                      if (val && !CATEGORIES.includes(val)) {
+                        CATEGORIES.push(val)
+                        setForm({ ...form, category: val })
+                        toast.success(`Category "${val}" added!`)
+                        ;(e.target as HTMLInputElement).value = ''
+                      }
+                    }
+                  }}
+                  placeholder="Type new category and press Enter"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="https://example.com/thumbnail.jpg"
+                placeholder="Video description..."
               />
             </div>
 
@@ -267,26 +504,19 @@ export default function VideosPage() {
               </div>
             </div>
 
-            {form.url && isYouTube(form.url) && (
+            {/* Preview */}
+            {form.url && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-500 mb-2">Preview:</p>
                 <div className="aspect-video bg-black rounded-lg overflow-hidden">
                   <iframe
-                    src={getEmbedUrl(form.url)}
+                    src={getEmbedUrl(form.url, form.sourceType)}
                     className="w-full h-full"
                     allowFullScreen
                     loading="lazy"
+                    title={form.title}
                   />
                 </div>
-              </div>
-            )}
-
-            {form.url && !isYouTube(form.url) && (
-              <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                <p className="text-sm text-yellow-700 flex items-center gap-2">
-                  <Video className="w-4 h-4" />
-                  URL tidak valid. Masukkan URL YouTube.
-                </p>
               </div>
             )}
 
@@ -309,6 +539,7 @@ export default function VideosPage() {
         </div>
       )}
 
+      {/* Video List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="divide-y divide-gray-200">
           {videos.length === 0 ? (
@@ -322,7 +553,7 @@ export default function VideosPage() {
                       <img src={video.thumbnailUrl} alt={video.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-gray-800 text-white">
-                        <Video className="w-8 h-8 text-red-500" />
+                        <Video className="w-8 h-8" />
                       </div>
                     )}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -331,14 +562,20 @@ export default function VideosPage() {
                   </div>
 
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-800">{video.title}</h3>
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                        <Video className="w-3 h-3" />
-                        YouTube
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${getPlatformColor(video.sourceType)}`}>
+                        {getPlatformLabel(video.sourceType)}
                       </span>
+                      {video.category && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">
+                          📂 {video.category}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{video.url}</p>
+                    {video.description && (
+                      <p className="text-sm text-gray-500 truncate">{video.description}</p>
+                    )}
                     <p className="text-xs text-gray-400">Sort: {video.sortOrder}</p>
                   </div>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronDown, ChevronUp, HelpCircle, Search } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, HelpCircle, Search, X } from 'lucide-react'
 
 interface FAQ {
   id: string
@@ -30,8 +30,6 @@ export default function PublicFAQPage() {
   const [loading, setLoading] = useState(true)
   const [openIndex, setOpenIndex] = useState<number | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
-  
-  // 🔥 TAMBAHKAN STATE UNTUK PENCARIAN
   const [searchQuery, setSearchQuery] = useState('')
 
   const primaryColor = '#c4367b'
@@ -75,8 +73,8 @@ export default function PublicFAQPage() {
     setOpenIndex(openIndex === index ? null : index)
   }
 
-  // 🔥 FILTER FAQ BERDASARKAN SEARCH QUERY
-  const activeFaqs = faqs
+  // Filter FAQ berdasarkan search query
+  const filteredFaqs = faqs
     .filter(faq => faq.isActive)
     .filter(faq => {
       if (!searchQuery.trim()) return true
@@ -86,8 +84,7 @@ export default function PublicFAQPage() {
     })
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
 
-  // 🔥 HITUNG JUMLAH HASIL PENCARIAN
-  const totalResults = activeFaqs.length
+  const totalResults = filteredFaqs.length
 
   if (loading) {
     return (
@@ -129,62 +126,77 @@ export default function PublicFAQPage() {
         </p>
       </div>
 
-      {/* 🔥 SEARCH BOX */}
-      <div className="max-w-2xl mx-auto mb-8">
+      {/* 🔥 SEARCH BOX - LEBAR DIPERKECIL */}
+      <div className="max-w-2xl mx-auto mb-6">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search question here..."
-            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-all"
-            style={{ fontSize: bodyFontSize }}
+            className="w-full pl-10 pr-4 py-2.5 border-2 border-pink-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-colors"
+            style={{ 
+              fontSize: bodyFontSize,
+            }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Clear search"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           )}
         </div>
+        
+        {/* Hasil pencarian */}
         {searchQuery && (
           <p className="text-sm text-gray-500 mt-2" style={{ fontSize: smallFontSize }}>
-            Menampilkan <span className="font-medium text-pink-500">{totalResults}</span> hasil untuk "{searchQuery}"
+            Menampilkan <span className="font-medium" style={{ color: primaryColor }}>{totalResults}</span> hasil
           </p>
         )}
       </div>
 
+      {/* Hasil pencarian */}
+      {searchQuery && (
+        <p className="text-sm text-gray-500 mb-4" style={{ fontSize: smallFontSize }}>
+          Menampilkan <span className="font-medium" style={{ color: primaryColor }}>{totalResults}</span> hasil
+        </p>
+      )}
+
       {/* FAQ List */}
       <div className="max-w-3xl mx-auto">
-        {activeFaqs.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl">
-            <p className="text-gray-500" style={{ fontSize: bodyFontSize }}>
-              {searchQuery ? 'Tidak ada pertanyaan yang sesuai dengan pencarian Anda.' : 'Belum ada pertanyaan yang sering diajukan.'}
+        {filteredFaqs.length === 0 ? (
+          <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-100">
+            <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 className="text-lg font-semibold text-gray-600" style={{ fontSize: headingFontSize }}>
+              {searchQuery ? 'Tidak ada pertanyaan yang sesuai' : 'Belum ada pertanyaan'}
+            </h3>
+            <p className="text-gray-400 text-sm" style={{ fontSize: bodyFontSize }}>
+              {searchQuery ? 'Coba dengan kata kunci lain' : 'Silakan hubungi kami jika ada pertanyaan'}
             </p>
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="mt-2 text-sm font-medium hover:underline"
-                style={{ color: primaryColor }}
+                className="inline-block mt-4 px-6 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:opacity-90"
+                style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
               >
                 Hapus filter
               </button>
             )}
-            <p className="text-sm text-gray-400 mt-1" style={{ fontSize: smallFontSize }}>
-              {!searchQuery && 'Silakan hubungi kami jika ada pertanyaan.'}
-            </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {activeFaqs.map((faq, index) => {
+            {filteredFaqs.map((faq, index) => {
               const isOpen = openIndex === index
               return (
                 <div
                   key={faq.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md"
+                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md"
                   style={{ borderColor: isOpen ? primaryColor : undefined }}
                 >
                   <button
@@ -217,18 +229,20 @@ export default function PublicFAQPage() {
         )}
 
         {/* Still have questions? */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500" style={{ fontSize: bodyFontSize }}>
-            Masih ada pertanyaan?
-          </p>
-          <Link
-            href="/contact"
-            className="inline-block mt-2 px-6 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
-            style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
-          >
-            Hubungi Kami
-          </Link>
-        </div>
+        {filteredFaqs.length > 0 && (
+          <div className="mt-8 text-center">
+            <p className="text-gray-500" style={{ fontSize: bodyFontSize }}>
+              Masih ada pertanyaan?
+            </p>
+            <Link
+              href="/contact"
+              className="inline-block mt-2 px-6 py-2 rounded-lg text-white font-medium transition-all hover:opacity-90"
+              style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
+            >
+              Hubungi Kami
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* CTA */}

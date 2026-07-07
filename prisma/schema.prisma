@@ -417,9 +417,11 @@ model PageView {
 model VideoContent {
   id           String   @id @default(cuid())
   title        String
-  sourceType   String
+  sourceType   String   // YOUTUBE, INSTAGRAM, FACEBOOK, TIKTOK
   url          String
   thumbnailUrl String?
+  category     String?  // 🔥 TAMBAHKAN - Tutorial, Promo, Testimoni, dll
+  description  String?  // 🔥 TAMBAHKAN - Deskripsi video
   sortOrder    Int      @default(0)
   isPublished  Boolean  @default(true)
   createdAt    DateTime @default(now())
