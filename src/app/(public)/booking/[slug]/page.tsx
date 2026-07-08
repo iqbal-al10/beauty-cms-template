@@ -58,7 +58,8 @@ export async function generateMetadata({ params }: BookingDetailPageProps) {
 export default async function BookingDetailPage({ params }: BookingDetailPageProps) {
   const { slug } = await params
 
-  // PASTIKAN include reviews
+  const now = new Date()
+
   const service = await prisma.service.findUnique({
     where: { slug },
     include: {
@@ -84,6 +85,35 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
     notFound()
   }
 
+  // ===== HITUNG PROMO AKTIF =====
+  const activePromos = service.promos
+    ?.map((pp: any) => pp.promo)
+    .filter((p: any) => p && p.isActive)
+    .filter((p: any) => {
+      const start = new Date(p.startDate)
+      const end = new Date(p.endDate)
+      return start <= now && end >= now
+    }) || []
+
+  let finalPrice = service.price
+  let discountAmount = 0
+  let appliedPromo = null
+
+  if (activePromos.length > 0) {
+    const promo = activePromos[0]
+    appliedPromo = promo
+
+    if (promo.discountValue && promo.discountValue > 0) {
+      if (promo.discountType === 'PERCENTAGE') {
+        discountAmount = (service.price * promo.discountValue) / 100
+        finalPrice = service.price - discountAmount
+      } else if (promo.discountType === 'FIXED') {
+        discountAmount = promo.discountValue
+        finalPrice = Math.max(0, service.price - discountAmount)
+      }
+    }
+  }
+
   const settings = await prisma.settings.findUnique({
     where: { id: 'default' },
   })
@@ -101,8 +131,12 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
   const tags = service.tags?.map((st) => st.tag) || []
   const reviews = service.reviews || []
 
-  console.log(`📝 Reviews for ${service.name}:`, reviews.length)
+  // ===== CEK COMPAREATPRICE =====
+  const hasComparePrice = service.compareAtPrice && service.compareAtPrice > service.price
+  const hasPromo = appliedPromo !== null && discountAmount > 0
+  const displayPrice = Math.round(finalPrice)
 
+  // ===== RELATED SERVICES =====
   const relatedServices = await prisma.service.findMany({
     where: {
       categoryId: service.categoryId,
@@ -124,9 +158,10 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
     tags: s.tags?.map((st) => st.tag) || [],
   }))
 
+  // ===== WHATSAPP & SHARE =====
   const whatsappNumber = settings?.whatsappNumber || ''
   const cleanWhatsapp = whatsappNumber.replace(/[^0-9]/g, '')
-  const whatsappMessage = `Halo%20saya%20tertarik%20dengan%20layanan%20${encodeURIComponent(service.name)}%20harga%20Rp%20${Math.round(service.price).toLocaleString()}`
+  const whatsappMessage = `Halo%20saya%20tertarik%20dengan%20layanan%20${encodeURIComponent(service.name)}%20harga%20Rp%20${Math.round(displayPrice).toLocaleString()}`
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/booking/${service.slug}`
 
   return (
@@ -157,6 +192,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             <span className="text-8xl">🧖</span>
           )}
           
+          {/* TAGS DI KIRI ATAS */}
           {tags.length > 0 && (
             <div className="absolute top-4 left-4 flex flex-col gap-1">
               {tags.slice(0, 2).map((tag) => (
@@ -170,6 +206,20 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               ))}
             </div>
           )}
+
+          {/* SALE BADGE - SAMA SEPERTI PRODUCT */}
+          {hasComparePrice && (
+            <span className="absolute top-4 right-4 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
+              SALE
+            </span>
+          )}
+
+          {/* PROMO BADGE - SAMA SEPERTI PRODUCT */}
+          {hasPromo && (
+            <span className="absolute bottom-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
+              🔥 {appliedPromo?.title || 'Promo'}
+            </span>
+          )}
         </div>
 
         {/* INFO - KANAN */}
@@ -177,7 +227,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
           <h1 className="text-3xl font-bold text-gray-800 mb-2" style={{ fontSize: headingFontSize }}>{service.name}</h1>
           <p className="text-gray-500 mb-4" style={{ fontSize: bodyFontSize }}>{service.category?.name}</p>
 
-          {/* RATING - TAMPILKAN JIKA ADA REVIEW */}
+          {/* RATING */}
           {reviews.length > 0 && (
             <div className="flex items-center gap-2 mb-4">
               <div className="flex text-yellow-400">
@@ -193,23 +243,58 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             </div>
           )}
 
-          {/* HARGA */}
+          {/* HARGA - SAMA SEPERTI PRODUCT */}
           <div className="flex items-center gap-3 mb-6">
             <span className="text-3xl font-bold" style={{ color: primaryColor, fontSize: headingFontSize }}>
-              Rp {service.price.toLocaleString()}
+              Rp {displayPrice.toLocaleString()}
             </span>
+            {hasComparePrice && (
+              <span className="text-lg text-gray-400 line-through" style={{ fontSize: bodyFontSize }}>
+                Rp {service.compareAtPrice ? service.compareAtPrice.toLocaleString() : ''}
+              </span>
+            )}
           </div>
 
-          {/* DURASI & STATUS */}
-          <div className="flex flex-wrap gap-4 mb-6">
-            <span className="text-sm text-gray-600 flex items-center gap-1" style={{ fontSize: smallFontSize }}>
-              ⏱️ {service.duration} menit
-            </span>
-            <span className={`text-sm font-medium ${service.isActive ? 'text-green-600' : 'text-red-600'}`} style={{ fontSize: smallFontSize }}>
+          {/* HEMAT - SAMA SEPERTI PRODUCT */}
+          {hasComparePrice && service.compareAtPrice && service.compareAtPrice > displayPrice && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-4">
+              <p className="text-sm text-green-700" style={{ fontSize: smallFontSize }}>
+                💰 Hemat Rp {(service.compareAtPrice - displayPrice).toLocaleString()}
+              </p>
+            </div>
+          )}
+
+          {/* PROMO INFO - SAMA SEPERTI PRODUCT */}
+          {hasPromo && appliedPromo && (
+            <div className="bg-pink-100 border border-pink-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-pink-800" style={{ fontSize: smallFontSize }}>
+                🔥 <span className="font-semibold">{appliedPromo.title}</span>
+                {appliedPromo.discountType === 'PERCENTAGE' && appliedPromo.discountValue
+                  ? ` - ${appliedPromo.discountValue}% OFF` 
+                  : appliedPromo.discountType === 'FIXED' && appliedPromo.discountValue
+                  ? ` - Rp ${appliedPromo.discountValue.toLocaleString()} OFF`
+                  : ''}
+              </p>
+            </div>
+          )}
+
+          {/* STATUS - TERSEDIA (TANPA JUMLAH UNIT) */}
+          <div className="mb-6">
+            <span className={`text-sm font-medium ${
+              service.isActive ? 'text-green-600' : 'text-red-600'
+            }`} style={{ fontSize: smallFontSize }}>
               {service.isActive ? '✅ Tersedia' : '❌ Tidak Tersedia'}
             </span>
           </div>
 
+          {/* DURASI */}
+          <div className="mb-6">
+            <span className="text-sm text-gray-600 flex items-center gap-1" style={{ fontSize: smallFontSize }}>
+              ⏱️ {service.duration} menit
+            </span>
+          </div>
+
+          {/* DESKRIPSI */}
           {service.description && (
             <div className="mb-6">
               <h3 className="font-semibold text-gray-800 mb-2" style={{ fontSize: bodyFontSize }}>Deskripsi</h3>
@@ -248,7 +333,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
             <p className="text-sm text-gray-500 mb-2" style={{ fontSize: smallFontSize }}>Share this service:</p>
             <div className="flex gap-2">
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`${service.name} - Rp ${service.price.toLocaleString()} - ${shareUrl}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`${service.name} - Rp ${displayPrice.toLocaleString()} - ${shareUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white text-sm transition-colors"
@@ -263,16 +348,63 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
               />
             </div>
           </div>
+
+          {/* ===== KETERANGAN HARGA BOX - SAMA SEPERTI PRODUCT ===== */}
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-700 mt-3" style={{ fontSize: bodyFontSize }}>Keterangan Harga</h4>
+            <div className="bg-gray-50 rounded-xl p-1 space-y-0.5">
+              {hasComparePrice && (
+                <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
+                  <span className="text-gray-500">Harga Normal</span>
+                  <span className="text-gray-500 line-through">
+                    Rp {service.compareAtPrice ? service.compareAtPrice.toLocaleString() : ''}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
+                <span className="text-pink-500">Harga Diskon</span>
+                <span className="text-pink-500 font-medium">
+                  Rp {service.price.toLocaleString()}
+                </span>
+              </div>
+
+              {hasPromo && (
+                <div className="flex justify-between text-sm" style={{ fontSize: smallFontSize }}>
+                  <span className="font-medium" style={{ color: primaryColor }}>
+                    Harga Promo
+                  </span>
+                  <span className="font-bold" style={{ color: primaryColor }}>
+                    Rp {displayPrice.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {hasComparePrice && service.compareAtPrice && service.compareAtPrice > displayPrice && (
+                <div className="flex justify-between text-sm text-green-600 font-medium" style={{ fontSize: smallFontSize }}>
+                  <span>Anda Hemat</span>
+                  <span>Rp {(service.compareAtPrice - displayPrice).toLocaleString()}</span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-gray-200">
+                <p className="text-xs font-extralight text-gray-400 italic" style={{ fontSize: smallFontSize }}>
+                  * Harga dapat berubah sewaktu-waktu
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* RELATED SERVICES */}
+      {/* ===== RELATED SERVICES ===== */}
       {transformedRelated.length > 0 && (
         <div className="mt-16">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Layanan Terkait</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {transformedRelated.map((related) => {
               const relatedTags = related.tags || []
+              const hasRelatedCompare = related.compareAtPrice && related.compareAtPrice > related.price
               return (
                 <Link
                   key={related.id}
@@ -303,6 +435,11 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                         ))}
                       </div>
                     )}
+                    {hasRelatedCompare && (
+                      <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        SALE
+                      </span>
+                    )}
                   </div>
                   <div className="p-3">
                     <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1 text-sm" style={{ fontSize: smallFontSize }}>
@@ -312,6 +449,11 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
                       <p className="text-sm font-bold" style={{ color: primaryColor, fontSize: smallFontSize }}>
                         Rp {related.price.toLocaleString()}
                       </p>
+                      {hasRelatedCompare && (
+                        <p className="text-xs text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
+                          Rp {related.compareAtPrice ? related.compareAtPrice.toLocaleString() : ''}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </Link>
@@ -321,7 +463,7 @@ export default async function BookingDetailPage({ params }: BookingDetailPagePro
         </div>
       )}
 
-      {/* REVIEWS - TAMPILKAN JIKA ADA */}
+      {/* ===== REVIEWS ===== */}
       {reviews.length > 0 && (
         <div className="mt-12">
           <h2 className="text-2xl font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>Customer Reviews</h2>

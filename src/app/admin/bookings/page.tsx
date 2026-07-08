@@ -1156,7 +1156,7 @@ export default function BookingsPage() {
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
                             {service.duration ? (
-                              <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-gray-400" /> {service.duration} menit</span>
+                              <span className="flex items-center gap-1">{service.duration} menit</span>
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}

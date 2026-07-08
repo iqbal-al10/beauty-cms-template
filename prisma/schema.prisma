@@ -199,6 +199,7 @@ model Service {
   description String?
   duration    Int
   price       Float
+  compareAtPrice Float?
   categoryId  String?
   category    BookingCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   imageUrl    String?

@@ -70,7 +70,8 @@ export async function POST(request: NextRequest) {
       slug, 
       description, 
       duration, 
-      price, 
+      price,
+      compareAtPrice,
       categoryId, 
       imageUrl,
       isFeatured,
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
         description: description || '',
         duration: parseInt(duration),
         price: parseFloat(price),
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
         categoryId: categoryId || 'OTHER',
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
@@ -175,7 +177,8 @@ export async function PUT(request: NextRequest) {
       slug, 
       description, 
       duration, 
-      price, 
+      price,
+      compareAtPrice,
       categoryId, 
       imageUrl,
       isFeatured,
@@ -221,6 +224,7 @@ export async function PUT(request: NextRequest) {
     const validTagIds = (tagIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
     const validPromoIds = (promoIds || []).filter((id: string) => id && id !== 'null' && id !== 'undefined')
 
+    // Hapus relasi lama
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })
@@ -236,6 +240,7 @@ export async function PUT(request: NextRequest) {
         description: description || '',
         duration: parseInt(duration),
         price: parseFloat(price),
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
         categoryId: categoryId || 'OTHER',
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
@@ -313,6 +318,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    // Hapus relasi terlebih dahulu
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })

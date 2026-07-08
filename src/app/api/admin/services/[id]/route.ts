@@ -71,7 +71,8 @@ export async function PUT(
       slug, 
       description, 
       duration, 
-      price, 
+      price,
+      compareAtPrice,
       categoryId, 
       imageUrl,
       isFeatured,
@@ -135,6 +136,7 @@ export async function PUT(
         description: description || '',
         duration: parseInt(duration),
         price: parseFloat(price),
+        compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null,
         categoryId: categoryId || 'OTHER',
         imageUrl: imageUrl || null,
         isFeatured: isFeatured || false,
@@ -207,6 +209,7 @@ export async function DELETE(
       )
     }
 
+    // Hapus relasi terlebih dahulu
     await prisma.serviceBookingTag.deleteMany({
       where: { serviceId: id },
     })

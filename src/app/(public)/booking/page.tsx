@@ -12,8 +12,9 @@ interface Service {
   description: string | null
   duration: number
   price: number
+  compareAtPrice: number | null
   categoryId: string
-  category?: { id: string; name: string; icon: string | null } | null
+  category?: { id: string; name: string } | null
   isActive: boolean
   imageUrl: string | null
   tags: Array<{ id: string; name: string; color: string | null }>
@@ -23,7 +24,6 @@ interface BookingCategory {
   id: string
   name: string
   slug: string
-  icon: string | null
 }
 
 interface Settings {
@@ -150,7 +150,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Category Filter */}
+      {/* Category Filter - TANPA ICON */}
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           <button
@@ -175,7 +175,6 @@ export default function BookingPage() {
               }`}
               style={selectedCategory === category.id ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
             >
-              {category.icon && <span className="mr-1">{category.icon}</span>}
               {category.name}
             </button>
           ))}
@@ -200,10 +199,16 @@ export default function BookingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => {
             const serviceTags = service.tags || []
+            const displayPrice = service.compareAtPrice && service.compareAtPrice > service.price 
+              ? service.compareAtPrice 
+              : service.price
+            const hasCompare = service.compareAtPrice && service.compareAtPrice > service.price
+            const discountAmount = hasCompare ? (service.compareAtPrice || 0) - service.price : 0
+
             return (
               <div
                 key={service.id}
-                className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
+                className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
                 style={{ borderColor: `${primaryColor}20` }}
               >
                 {/* Gambar Layanan */}
@@ -221,7 +226,7 @@ export default function BookingPage() {
                       </div>
                     )}
                     
-                    {/* Tags di card - SAMA SEPERTI PRODUCT */}
+                    {/* Tags di card */}
                     {serviceTags.length > 0 && (
                       <div className="absolute top-3 left-3 flex flex-col gap-1">
                         {serviceTags.slice(0, 2).map((tag) => (
@@ -235,45 +240,65 @@ export default function BookingPage() {
                         ))}
                       </div>
                     )}
+
+                    {/* SALE Badge */}
+                    {hasCompare && (
+                      <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                        SALE
+                      </span>
+                    )}
                   </div>
                 </Link>
 
-                <div className="p-5">
+                <div className="p-4">
                   <Link href={`/booking/${service.slug}`}>
-                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors" style={{ fontSize: bodyFontSize }}>
+                    <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1" style={{ fontSize: bodyFontSize }}>
                       {service.name}
                     </h3>
-                    {/* KATEGORI - SEKARANG MUNCUL */}
+                    {/* KATEGORI - TETAP MUNCUL */}
                     <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
                       {service.category?.name || 'Tanpa Kategori'}
                     </p>
                   </Link>
 
-                  {/* Description */}
-                  {service.description && (
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2" style={{ fontSize: smallFontSize }}>
-                      {service.description}
-                    </p>
-                  )}
+                  {/* ❌ DESKRIPSI DIHAPUS */}
 
                   {/* Details */}
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-3" style={{ fontSize: smallFontSize }}>
+                  <div className="flex items-center gap-4 text-sm text-gray-500 mt-2" style={{ fontSize: smallFontSize }}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {service.duration} menit
                     </span>
-                    <span className="flex items-center gap-1 font-bold" style={{ color: primaryColor }}>
-                      {formatCurrency(service.price)}
-                    </span>
                   </div>
+
+                  {/* Harga + Hemat */}
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
+                      {formatCurrency(service.price)}
+                    </p>
+                    {hasCompare && (
+                      <p className="text-sm text-gray-400 line-through" style={{ fontSize: smallFontSize }}>
+                        {formatCurrency(service.compareAtPrice || 0)}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* ✅ TAMBAHKAN "Hemat Rp" */}
+                  {hasCompare && discountAmount > 0 && (
+                    <div className="mt-1">
+                      <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                        Hemat Rp {discountAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Button */}
                   <Link
                     href={`/booking/${service.slug}`}
-                    className="mt-4 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
+                    className="mt-3 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
                     style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                   >
-                    Views Details <ArrowRight className="w-4 h-4" />
+                    View Details <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </div>

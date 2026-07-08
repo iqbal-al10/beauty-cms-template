@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         slots: [],
         isClosed: true,
-        message: `Maaf, kami tutup pada hari ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}`
+        message: `Sorry, We are closed on ${dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1)}`
       })
     }
 

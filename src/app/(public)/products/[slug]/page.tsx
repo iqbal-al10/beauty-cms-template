@@ -191,6 +191,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <span className="text-8xl">🧴</span>
           )}
           
+          {/* TAGS DI KIRI ATAS */}
           {productTags.length > 0 && (
             <div className="absolute top-4 left-4 flex flex-col gap-1">
               {productTags.slice(0, 2).map((tag) => (
@@ -205,8 +206,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             </div>
           )}
 
+          {/* ✅ SALE BADGE - SAMA SEPERTI BOOKING DETAIL */}
+          {hasComparePrice && (
+            <span className="absolute top-4 right-4 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
+              SALE
+            </span>
+          )}
+
+          {/* PROMO BADGE - TETAP ADA */}
           {hasPromo && (
-            <span className="absolute top-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
+            <span className="absolute bottom-4 right-4 bg-pink-800 text-white text-sm font-bold px-3 py-1.5 rounded-full" style={{ fontSize: smallFontSize }}>
               🔥 {appliedPromo?.title}
             </span>
           )}
@@ -365,7 +374,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               )}
 
               <div className="pt-2 border-t border-gray-200">
-                <p className="text-xs text-gray-400 italic" style={{ fontSize: smallFontSize }}>
+                <p className="text-xs font-extralight text-gray-400 italic" style={{ fontSize: smallFontSize }}>
                   * Harga dapat berubah sewaktu-waktu
                 </p>
               </div>

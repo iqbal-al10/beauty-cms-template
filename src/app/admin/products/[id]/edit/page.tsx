@@ -336,6 +336,29 @@ export default function EditProductPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // ===== VALIDASI FRONTEND =====
+    if (!form.name.trim()) {
+      toast.error('Nama produk wajib diisi')
+      return
+    }
+    if (!form.slug.trim()) {
+      toast.error('Slug wajib diisi')
+      return
+    }
+    if (!form.price || form.price <= 0) {
+      toast.error('Harga wajib diisi dan harus lebih dari 0')
+      return
+    }
+    if (!form.stock || form.stock < 0) {
+      toast.error('Stok wajib diisi dan tidak boleh negatif')
+      return
+    }
+    if (!form.categoryId) {
+      toast.error('Silakan pilih kategori terlebih dahulu')
+      return
+    }
+    
     setLoading(true)
 
     try {
