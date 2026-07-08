@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const {
       customerName,
       customerWhatsapp,
+      email,
       address,
       city,
       province,
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         orderNumber,
         customerName,
         customerWhatsapp,
+        email: email || null,
         address,
         city: city || '',
         province: province || '',
@@ -81,6 +83,7 @@ export async function POST(request: NextRequest) {
         note: note || '',
         voucherCode: voucherCode || '',
         status: 'PENDING',
+        paymentStatus: 'PENDING',
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,
@@ -95,6 +98,10 @@ export async function POST(request: NextRequest) {
         items: true,
       },
     })
+
+    console.log(`✅ Order created: ${order.id}`)
+    console.log(`✅ Payment Method Name: ${paymentMethodName}`)
+    console.log(`✅ Email: ${email}`)
 
     // Kurangi stok produk
     for (const item of items) {
@@ -128,9 +135,6 @@ export async function POST(request: NextRequest) {
         console.error('❌ Error creating stock history:', stockError)
       }
     }
-
-    console.log(`✅ Order created: ${order.id}`)
-    console.log(`✅ Payment Method Name: ${paymentMethodName}`)
 
     // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN
     try {
@@ -208,12 +212,14 @@ export async function GET(request: NextRequest) {
       id: order.id,
       customerName: order.customerName,
       customerWhatsapp: order.customerWhatsapp,
+      email: order.email,
       productName: order.items.length > 0 
         ? order.items[0]?.productName || order.items[0]?.product?.name || '-' 
         : '-',
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       finalPrice: order.total || 0,
       status: order.status,
+      paymentStatus: order.paymentStatus,
       note: order.note,
       createdAt: order.createdAt,
       paymentMethodName: order.paymentMethodName || '',

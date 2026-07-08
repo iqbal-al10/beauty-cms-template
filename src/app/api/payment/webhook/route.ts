@@ -14,11 +14,41 @@ export async function POST(request: NextRequest) {
       payment_type,
     } = body
 
-    // Parse order_id untuk mendapatkan orderId asli
-    const isBooking = order_id.startsWith('BOOKING')
-    const orderId = order_id.replace(/^(ORDER|BOOKING)-/, '').split('-')[0]
+    const isBooking = order_id.startsWith('B-')
+    const isOrder = order_id.startsWith('O-')
 
-    // Update status berdasarkan transaction_status
+    if (!isBooking && !isOrder) {
+      console.warn('⚠️ Unknown order type:', order_id)
+      return NextResponse.json({ status: 'OK' })
+    }
+
+    let orderId = null
+
+    if (isBooking) {
+      const booking = await prisma.booking.findFirst({
+        where: { midtransOrderId: order_id },
+        select: { id: true },
+      })
+      if (booking) {
+        orderId = booking.id
+        console.log('🔍 Found booking:', orderId)
+      }
+    } else if (isOrder) {
+      const order = await prisma.order.findFirst({
+        where: { midtransOrderId: order_id },
+        select: { id: true },
+      })
+      if (order) {
+        orderId = order.id
+        console.log('🔍 Found order:', orderId)
+      }
+    }
+
+    if (!orderId) {
+      console.warn('⚠️ No record found for order_id:', order_id)
+      return NextResponse.json({ status: 'OK' })
+    }
+
     let paymentStatus = 'PENDING'
     let orderStatus = 'PENDING'
 
@@ -36,16 +66,19 @@ export async function POST(request: NextRequest) {
       orderStatus = 'PENDING'
     }
 
-    // Update database
+    // 🔥 UPDATE DENGAN PAYMENT TYPE
+    const methodName = payment_type || 'Midtrans'
+
     if (isBooking) {
       await prisma.booking.update({
         where: { id: orderId },
         data: {
           paymentStatus: paymentStatus,
           status: orderStatus,
+          paymentMethodName: methodName,
         },
       })
-      console.log(`✅ Booking ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}`)
+      console.log(`✅ Booking ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}, method=${methodName}`)
     } else {
       await prisma.order.update({
         where: { id: orderId },
@@ -53,12 +86,12 @@ export async function POST(request: NextRequest) {
           paymentStatus: paymentStatus,
           status: orderStatus,
           paidAt: paymentStatus === 'PAID' ? new Date() : undefined,
+          paymentMethodName: methodName,
         },
       })
-      console.log(`✅ Order ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}`)
+      console.log(`✅ Order ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}, method=${methodName}`)
     }
 
-    // 🔥 Kirim push notification jika pembayaran berhasil
     if (paymentStatus === 'PAID') {
       try {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL

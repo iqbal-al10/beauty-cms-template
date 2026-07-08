@@ -47,7 +47,6 @@ interface ShippingCost {
   freeShippingThreshold: number
 }
 
-// 🔥 KEY UNTUK LOCALSTORAGE
 const CUSTOMER_STORAGE_KEY = 'beauty_customer'
 
 function CheckoutContent() {
@@ -68,6 +67,7 @@ function CheckoutContent() {
   const [singleProduct, setSingleProduct] = useState<CartItem | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [isShippingLoading, setIsShippingLoading] = useState(false)
+  const [isConfirmed, setIsConfirmed] = useState(false)
 
   const [form, setForm] = useState({
     customerName: '',
@@ -246,6 +246,16 @@ function CheckoutContent() {
     return cartItems.reduce((sum, item) => sum + item.quantity, 0)
   }
 
+  const calculateTotalSavings = () => {
+    return cartItems.reduce((sum, item) => {
+      const displayPrice = item.finalPrice || item.price
+      if (item.compareAtPrice && item.compareAtPrice > displayPrice) {
+        return sum + ((item.compareAtPrice - displayPrice) * item.quantity)
+      }
+      return sum
+    }, 0)
+  }
+
   const handleCityChange = async (city: string) => {
     setForm(prev => ({ ...prev, city }))
     await fetchShippingCost(city)
@@ -297,11 +307,24 @@ function CheckoutContent() {
     setVoucherError('')
   }
 
-  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     setErrorMessage('')
+
+    const midtransMethod = paymentMethods.find(p => p.type === 'MIDTRANS' && p.isActive)
+    
+    if (midtransMethod) {
+      if (!isConfirmed) {
+        toast.error('Silakan centang konfirmasi data pesanan terlebih dahulu')
+        return
+      }
+    } else {
+      if (!form.paymentMethod) {
+        toast.error('Pilih metode pembayaran')
+        return
+      }
+    }
 
     // Validasi form
     if (!form.customerName.trim()) {
@@ -329,7 +352,6 @@ function CheckoutContent() {
       return
     }
 
-    // Hitung total
     const subtotal = calculateSubtotal()
     const shipping = shippingCost?.cost || 0
     const appliedDiscount = voucherApplied ? voucherDiscount : 0
@@ -347,7 +369,20 @@ function CheckoutContent() {
 
     try {
       const customerEmail = form.email.trim()
-      const selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
+      
+      // 🔥 TENTUKAN PAYMENT METHOD
+      let selectedPayment = null
+      let paymentMethodName = ''
+      let paymentMethodId = ''
+
+      if (midtransMethod) {
+        paymentMethodName = 'Midtrans'
+        paymentMethodId = 'MIDTRANS'
+      } else {
+        selectedPayment = paymentMethods.find(p => p.id === form.paymentMethod)
+        paymentMethodName = selectedPayment?.name || ''
+        paymentMethodId = selectedPayment?.id || ''
+      }
 
       const orderData = {
         customerName: form.customerName,
@@ -361,10 +396,10 @@ function CheckoutContent() {
         subtotal,
         discountAmount: appliedDiscount,
         total,
-        paymentMethod: form.paymentMethod,
-        paymentMethodName: selectedPayment?.name || '',
-        paymentAccountNumber: selectedPayment?.accountNumber || '',
-        paymentAccountName: selectedPayment?.accountName || '',
+        paymentMethod: paymentMethodId,
+        paymentMethodName: paymentMethodName,
+        paymentAccountNumber: midtransMethod ? '' : selectedPayment?.accountNumber || '',
+        paymentAccountName: midtransMethod ? '' : selectedPayment?.accountName || '',
         note: form.note || '',
         voucherCode: voucherApplied ? voucherCode : '',
         items: cartItems.map(item => ({
@@ -376,7 +411,6 @@ function CheckoutContent() {
         })),
       }
 
-      // 1. Buat order
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -391,7 +425,7 @@ function CheckoutContent() {
 
       const newOrderId = data.id
 
-      // 🔥 2. SIMPAN DATA CUSTOMER KE LOCALSTORAGE (LENGKAP)
+      // 🔥 SIMPAN DATA CUSTOMER KE LOCALSTORAGE
       localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
         customerName: form.customerName,
         customerWhatsapp: form.customerWhatsapp,
@@ -407,7 +441,8 @@ function CheckoutContent() {
         window.dispatchEvent(new Event('cartUpdate'))
       }
 
-      // 3. 🔥 PROSES PEMBAYARAN VIA MIDTRANS
+      localStorage.setItem('last_order_id', newOrderId)
+
       const paymentRes = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -425,10 +460,6 @@ function CheckoutContent() {
 
       toast.dismiss(loadingToast)
 
-      console.log('🔍 window.snap:', window.snap)
-      console.log('🔍 Payment token:', paymentData.token)
-
-      // 🔥 4. CEK APAKAH SNAP TERSEDIA
       if (!window.snap || typeof window.snap.pay !== 'function') {
         console.error('❌ Snap is not available! Redirecting to Midtrans...')
         toast.loading('Mengarahkan ke halaman pembayaran Midtrans...')
@@ -436,7 +467,6 @@ function CheckoutContent() {
         return
       }
 
-      // 🔥 5. BUKA POPUP MIDTRANS
       window.snap.pay(paymentData.token, {
         onSuccess: function(result: any) {
           console.log('✅ Payment success:', result)
@@ -456,6 +486,8 @@ function CheckoutContent() {
         onClose: function() {
           console.log('❌ Payment closed by user')
           toast.error('❌ Pembayaran dibatalkan')
+          const orderId = paymentData.orderId || ''
+          window.location.href = `/payment/error?order_id=${orderId}&error=Pembayaran%20dibatalkan`
         },
       })
 
@@ -482,6 +514,8 @@ function CheckoutContent() {
   const totalItems = calculateTotalItems()
   const appliedDiscount = voucherApplied ? voucherDiscount : 0
   const total = subtotal + shipping - appliedDiscount
+  const totalSavings = calculateTotalSavings()
+  const midtransMethod = paymentMethods.find(p => p.type === 'MIDTRANS' && p.isActive)
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -635,14 +669,56 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* Payment Method */}
+            {/* METODE PEMBAYARAN */}
             <div id="payment-method-section">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Metode Pembayaran *</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {paymentMethods.length === 0 ? (
-                  <p className="text-gray-500 col-span-full">Belum ada metode pembayaran. Silakan hubungi admin.</p>
-                ) : (
-                  paymentMethods.map((method) => (
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                {midtransMethod ? '💳 Konfirmasi Pembayaran' : 'Metode Pembayaran *'}
+              </h2>
+
+              {midtransMethod ? (
+                <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CreditCard className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-pink-800">Bayar dengan Midtrans</p>
+                      <p className="text-sm text-pink-700 mt-0.5">
+                        Pembayaran akan diproses melalui Midtrans dengan sistem keamanan tinggi
+                      </p>
+                      
+                      <div className="mt-3 bg-white rounded-lg p-3 text-sm text-gray-600 space-y-1">
+                        <p className="font-medium text-gray-700">💳 Metode pembayaran yang tersedia:</p>
+                        <p>• QRIS (Scan & Bayar)</p>
+                        <p>• Bank Transfer (BCA, Mandiri, BRI, BNI)</p>
+                        <p>• E-Wallet (Gopay, OVO, Dana, ShopeePay)</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          🔒 Pembayaran Anda aman dengan enkripsi SSL
+                        </p>
+                      </div>
+                      
+                      <div className="mt-3 flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          id="confirmCheckout"
+                          checked={isConfirmed}
+                          onChange={(e) => setIsConfirmed(e.target.checked)}
+                          className="w-4 h-4 text-pink-500 rounded border-gray-300 mt-0.5"
+                        />
+                        <label htmlFor="confirmCheckout" className="text-sm text-gray-700">
+                          Saya sudah memeriksa data pesanan dengan benar dan menyetujui untuk melanjutkan pembayaran
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : paymentMethods.length === 0 ? (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
+                  <p className="text-yellow-700 text-sm">⚠️ Belum ada metode pembayaran. Silakan hubungi admin.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {paymentMethods.filter(p => p.type !== 'MIDTRANS').map((method) => (
                     <label
                       key={method.id}
                       className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
@@ -679,10 +755,11 @@ function CheckoutContent() {
                         )}
                       </div>
                     </label>
-                  ))
-                )}
-              </div>
-              {!form.paymentMethod && paymentMethods.length > 0 && (
+                  ))}
+                </div>
+              )}
+
+              {!midtransMethod && !form.paymentMethod && paymentMethods.length > 0 && (
                 <p className="text-xs text-red-500 mt-2">⚠️ Silakan pilih salah satu metode pembayaran di atas</p>
               )}
             </div>
@@ -701,16 +778,24 @@ function CheckoutContent() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={
+                submitting || 
+                !form.customerName || 
+                !form.customerWhatsapp || 
+                !form.address || 
+                !form.email || 
+                paymentMethods.length === 0 ||
+                (midtransMethod ? !isConfirmed : !form.paymentMethod)
+              }
               className="w-full py-3 rounded-lg text-white font-semibold text-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#c4367b' }}
             >
-              {submitting ? 'Memproses...' : 'Konfirmasi & Bayar'}
+              {submitting ? 'Memproses...' : midtransMethod ? '🔒 Konfirmasi & Bayar' : 'Konfirmasi & Bayar'}
             </button>
           </form>
         </div>
 
-        {/* Summary */}
+        {/* RINGKASAN PESANAN */}
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan Pesanan</h2>
@@ -720,6 +805,7 @@ function CheckoutContent() {
                 const displayPrice = item.finalPrice || item.price
                 const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
                 const itemTotal = displayPrice * item.quantity
+                const itemSavings = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
                 
                 return (
                   <div key={item.id} className="border-b border-gray-100 pb-3 last:border-0">
@@ -763,6 +849,12 @@ function CheckoutContent() {
                             </p>
                           )}
                         </div>
+
+                        {hasCompare && itemSavings > 0 && (
+                          <p className="text-xs text-green-600 mt-0.5">
+                            💰 Hemat Rp {itemSavings.toLocaleString()} per item
+                          </p>
+                        )}
                       </div>
                       <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
                         Rp {itemTotal.toLocaleString()}
@@ -778,6 +870,13 @@ function CheckoutContent() {
                 <span className="text-gray-500">Subtotal ({totalItems} produk)</span>
                 <span className="font-medium">Rp {subtotal.toLocaleString()}</span>
               </div>
+
+              {totalSavings > 0 && (
+                <div className="flex justify-between text-green-600 font-medium">
+                  <span>💰 Total Hemat</span>
+                  <span>Rp {totalSavings.toLocaleString()}</span>
+                </div>
+              )}
 
               {shippingCost && (
                 <div className="flex justify-between">

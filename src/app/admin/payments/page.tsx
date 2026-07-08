@@ -16,11 +16,12 @@ interface PaymentMethod {
   createdAt: string
 }
 
-const PAYMENT_TYPES = ['BANK', 'QRIS', 'EWALLET']
+const PAYMENT_TYPES = ['BANK', 'QRIS', 'EWALLET', 'MIDTRANS']
 const PAYMENT_TYPE_LABELS: Record<string, string> = {
   BANK: '🏦 Bank Transfer',
   QRIS: '📱 QRIS',
   EWALLET: '📱 E-Wallet',
+  MIDTRANS: '💳 Midtrans',
 }
 
 export default function PaymentsPage() {
@@ -172,6 +173,7 @@ export default function PaymentsPage() {
       case 'BANK': return 'bg-blue-100 text-blue-700'
       case 'QRIS': return 'bg-green-100 text-green-700'
       case 'EWALLET': return 'bg-purple-100 text-purple-700'
+      case 'MIDTRANS': return 'bg-pink-100 text-pink-700'
       default: return 'bg-gray-100 text-gray-700'
     }
   }

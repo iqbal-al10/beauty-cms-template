@@ -21,7 +21,9 @@ interface Service {
   description: string | null
   duration: number
   price: number
+  compareAtPrice: number | null
   isActive: boolean
+  slug: string
 }
 
 interface PaymentMethod {
@@ -52,7 +54,6 @@ interface Slot {
   isBooked: boolean
 }
 
-// 🔥 KEY UNTUK LOCALSTORAGE
 const CUSTOMER_STORAGE_KEY = 'beauty_customer'
 
 function BookingServiceContent() {
@@ -76,6 +77,7 @@ function BookingServiceContent() {
   const [isClosed, setIsClosed] = useState(false)
   const [closedMessage, setClosedMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [isConfirmed, setIsConfirmed] = useState(false)
   const [form, setForm] = useState({
     serviceId: serviceIdParam,
     bookingDate: '',
@@ -90,7 +92,6 @@ function BookingServiceContent() {
 
   const primaryColor = '#c4367b'
 
-  // 🔥 LOAD DATA CUSTOMER DARI LOCALSTORAGE
   useEffect(() => {
     const savedCustomer = localStorage.getItem(CUSTOMER_STORAGE_KEY)
     if (savedCustomer) {
@@ -253,17 +254,26 @@ function BookingServiceContent() {
     setVoucherError('')
   }
 
-  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (paymentMethods.length === 0) {
-      toast.error('Belum ada metode pembayaran yang tersedia. Silahkan hubungi admin.')
-      return
+    // 🔥 CEK MIDTRANS: Jika ada midtransMethod, checkbox harus dicentang
+    const midtransMethod = paymentMethods.find(p => p.type === 'MIDTRANS' && p.isActive)
+    
+    if (midtransMethod) {
+      if (!isConfirmed) {
+        toast.error('Silakan centang konfirmasi data booking terlebih dahulu')
+        return
+      }
+    } else {
+      if (!form.paymentMethod) {
+        toast.error('Pilih metode pembayaran')
+        return
+      }
     }
 
-    if (!form.paymentMethod) {
-      toast.error('Pilih metode pembayaran')
+    if (paymentMethods.length === 0) {
+      toast.error('Belum ada metode pembayaran yang tersedia. Silahkan hubungi admin.')
       return
     }
 
@@ -309,7 +319,7 @@ function BookingServiceContent() {
 
       const newBookingId = data.booking.id
 
-      // 🔥 2. SIMPAN DATA CUSTOMER KE LOCALSTORAGE
+      // 🔥 SIMPAN DATA CUSTOMER KE LOCALSTORAGE
       localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify({
         customerName: form.customerName,
         customerWhatsapp: form.whatsapp,
@@ -317,7 +327,12 @@ function BookingServiceContent() {
         address: form.address || '',
       }))
 
-      // 3. 🔥 PROSES PEMBAYARAN VIA MIDTRANS
+      // 🔥 SIMPAN SERVICE ID UNTUK REDIRECT KE BOOKING
+      if (selectedService?.id) {
+        localStorage.setItem('last_booking_service', selectedService.id)
+      }
+
+      // 🔥 PROSES PEMBAYARAN VIA MIDTRANS
       const paymentRes = await fetch('/api/payment/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -338,7 +353,7 @@ function BookingServiceContent() {
       console.log('🔍 window.snap:', window.snap)
       console.log('🔍 Payment token:', paymentData.token)
 
-      // 🔥 4. CEK APAKAH SNAP TERSEDIA
+      // 🔥 CEK APAKAH SNAP TERSEDIA
       if (!window.snap || typeof window.snap.pay !== 'function') {
         console.error('❌ Snap is not available! Redirecting to Midtrans...')
         toast.loading('Mengarahkan ke halaman pembayaran Midtrans...')
@@ -346,7 +361,7 @@ function BookingServiceContent() {
         return
       }
 
-      // 🔥 5. BUKA POPUP MIDTRANS
+      // 🔥 BUKA POPUP MIDTRANS
       window.snap.pay(paymentData.token, {
         onSuccess: function(result: any) {
           console.log('✅ Payment success:', result)
@@ -366,6 +381,9 @@ function BookingServiceContent() {
         onClose: function() {
           console.log('❌ Payment closed by user')
           toast.error('❌ Pembayaran dibatalkan')
+          // 🔥 REDIRECT KE HALAMAN ERROR
+          const orderId = paymentData.orderId || ''
+          window.location.href = `/payment/error?order_id=${orderId}&error=Pembayaran%20dibatalkan`
         },
       })
 
@@ -570,13 +588,43 @@ function BookingServiceContent() {
 
   const totalPrice = getTotalPrice()
   const operatingHoursList = getOperatingHoursList()
+  const midtransMethod = paymentMethods.find(p => p.type === 'MIDTRANS' && p.isActive)
+
+  // 🔥 TOMBOL KEMBALI STEP 2 - KE DETAIL SERVICE
+  const handleBackToServiceDetail = () => {
+    if (selectedService?.slug) {
+      router.push(`/booking/${selectedService.slug}`)
+    } else {
+      router.push('/booking')
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <Link href="/booking" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6">
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        Kembali ke Layanan
-      </Link>
+      {step === 2 ? (
+        // STEP 2 - Tombol Kembali ke Detail Layanan
+        <button
+          onClick={handleBackToServiceDetail}
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Kembali ke Detail Layanan
+        </button>
+      ) : step === 3 ? (
+        // STEP 3 - Tombol Kembali ke Jadwal
+        <button
+          onClick={() => setStep(2)}
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Kembali ke Jadwal
+        </button>
+      ) : (
+        <Link href="/booking" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-6">
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Kembali ke Layanan
+        </Link>
+      )}
 
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Booking Layanan</h1>
       <p className="text-gray-500 mb-8">Pilih layanan dan jadwal yang Anda inginkan</p>
@@ -739,13 +787,29 @@ function BookingServiceContent() {
               />
             </div>
 
-            {/* Harga */}
+            {/* HARGA - DENGAN COMPAREATPRICE */}
             {selectedService && (
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Harga Layanan</span>
-                  <span className="font-bold text-pink-500">Rp {selectedService.price.toLocaleString()}</span>
+                  <div className="text-right">
+                    <span className="font-bold text-pink-500">Rp {selectedService.price.toLocaleString()}</span>
+                    {selectedService.compareAtPrice && selectedService.compareAtPrice > selectedService.price && (
+                      <p className="text-xs text-gray-400 line-through">
+                        Rp {selectedService.compareAtPrice.toLocaleString()}
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                {/* TAMPILKAN HEMAT */}
+                {selectedService.compareAtPrice && selectedService.compareAtPrice > selectedService.price && (
+                  <div className="flex justify-between items-center text-sm text-green-600 mt-1">
+                    <span>💰 Hemat</span>
+                    <span>Rp {(selectedService.compareAtPrice - selectedService.price).toLocaleString()}</span>
+                  </div>
+                )}
+
                 {voucherApplied && voucherDiscount > 0 && (
                   <div className="flex justify-between items-center text-sm text-green-600 mt-1">
                     <span>Diskon Voucher</span>
@@ -797,16 +861,59 @@ function BookingServiceContent() {
               )}
             </div>
 
-            {/* Metode Pembayaran */}
+            {/* METODE PEMBAYARAN */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran *</label>
-              {paymentMethods.length === 0 ? (
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {midtransMethod ? '💳 Konfirmasi Pembayaran' : 'Metode Pembayaran *'}
+              </label>
+
+              {midtransMethod ? (
+                // ===== TAMPILAN MIDTRANS =====
+                <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <CreditCard className="w-5 h-5 text-pink-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-pink-800">Bayar dengan Midtrans</p>
+                      <p className="text-sm text-pink-700 mt-0.5">
+                        Pembayaran akan diproses melalui Midtrans dengan sistem keamanan tinggi
+                      </p>
+                      
+                      <div className="mt-3 bg-white rounded-lg p-3 text-sm text-gray-600 space-y-1">
+                        <p className="font-medium text-gray-700">💳 Metode pembayaran yang tersedia:</p>
+                        <p>• QRIS (Scan & Bayar)</p>
+                        <p>• Bank Transfer (BCA, Mandiri, BRI, BNI)</p>
+                        <p>• E-Wallet (Gopay, OVO, Dana, ShopeePay)</p>
+                        <p className="text-xs text-gray-400 mt-2">
+                          🔒 Pembayaran Anda aman dengan enkripsi SSL
+                        </p>
+                      </div>
+                      
+                      <div className="mt-3 flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          id="confirmBooking"
+                          checked={isConfirmed}
+                          onChange={(e) => setIsConfirmed(e.target.checked)}
+                          className="w-4 h-4 text-pink-500 rounded border-gray-300 mt-0.5"
+                        />
+                        <label htmlFor="confirmBooking" className="text-sm text-gray-700">
+                          Saya sudah memeriksa data booking dengan benar dan menyetujui untuk melanjutkan pembayaran
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : paymentMethods.length === 0 ? (
+                // ===== TIDAK ADA METODE PEMBAYARAN =====
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
                   <p className="text-yellow-700 text-sm">⚠️ Belum ada metode pembayaran. Silakan hubungi admin.</p>
                 </div>
               ) : (
+                // ===== TAMPILAN MANUAL (SEPERTI SEKARANG) =====
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {paymentMethods.map((method) => (
+                  {paymentMethods.filter(p => p.type !== 'MIDTRANS').map((method) => (
                     <label
                       key={method.id}
                       className={`flex items-start gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
@@ -863,19 +970,28 @@ function BookingServiceContent() {
             )}
 
             <div className="flex gap-4">
+              {/* STEP 3 - Tombol Kembali ke Jadwal */}
               <button
                 type="button"
                 onClick={() => setStep(2)}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors"
               >
-                ← Kembali
+                ← Kembali ke Jadwal
               </button>
+
+              {/* STEP 3 - Tombol Konfirmasi & Bayar */}
               <button
                 type="submit"
-                disabled={submitting || !form.customerName || !form.whatsapp || !form.paymentMethod || paymentMethods.length === 0}
+                disabled={
+                  submitting || 
+                  !form.customerName || 
+                  !form.whatsapp || 
+                  paymentMethods.length === 0 ||
+                  (midtransMethod ? !isConfirmed : !form.paymentMethod)
+                }
                 className="flex-1 bg-pink-500 hover:bg-pink-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50 transition-colors"
               >
-                {submitting ? 'Memproses...' : 'Konfirmasi & Bayar'}
+                {submitting ? 'Memproses...' : midtransMethod ? '🔒 Konfirmasi & Bayar' : 'Konfirmasi & Bayar'}
               </button>
             </div>
           </>

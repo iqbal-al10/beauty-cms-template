@@ -190,17 +190,26 @@ export async function POST(request: NextRequest) {
       console.log('📝 Order ID:', uniqueOrderId)
       console.log('📝 Redirect URL:', transaction.redirect_url)
 
-      // Simpan midtransOrderId di database
-      if (isBooking) {
-        await prisma.booking.update({
-          where: { id: orderId },
-          data: { midtransOrderId: uniqueOrderId },
-        })
-      } else {
-        await prisma.order.update({
-          where: { id: orderId },
-          data: { midtransOrderId: uniqueOrderId },
-        })
+      // 🔥 SIMPAN midtransOrderId DENGAN LOG DAN VALIDASI
+      console.log('💾 Saving midtransOrderId:', { orderId, uniqueOrderId, isBooking })
+
+      try {
+        if (isBooking) {
+          const updated = await prisma.booking.update({
+            where: { id: orderId },
+            data: { midtransOrderId: uniqueOrderId },
+          })
+          console.log('✅ Booking updated with midtransOrderId:', updated.midtransOrderId)
+        } else {
+          const updated = await prisma.order.update({
+            where: { id: orderId },
+            data: { midtransOrderId: uniqueOrderId },
+          })
+          console.log('✅ Order updated with midtransOrderId:', updated.midtransOrderId)
+        }
+      } catch (updateError) {
+        console.error('❌ Failed to update midtransOrderId:', updateError)
+        // Jangan gagalkan transaksi jika update gagal
       }
 
       return NextResponse.json({
