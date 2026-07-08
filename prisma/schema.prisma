@@ -242,6 +242,7 @@ model Booking {
   status       String   @default("PENDING") // PENDING, ON_PROGRESS, COMPLETED, REJECTED, RESCHEDULED
   paymentStatus   String?   @default("PENDING")
   midtransOrderId String?   @unique
+  paymentMethodName String?
 
   approvedBy   String?
   approvedAt   DateTime?
