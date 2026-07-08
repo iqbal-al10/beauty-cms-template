@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log('📥 Webhook received:', body)
+    console.log('📥 Webhook received:', JSON.stringify(body, null, 2))
 
     const {
       order_id,
@@ -14,14 +14,16 @@ export async function POST(request: NextRequest) {
       payment_type,
     } = body
 
-    const isBooking = order_id.startsWith('B-')
-    const isOrder = order_id.startsWith('O-')
+    // 🔥 CEK APAKAH INI BOOKING ATAU ORDER
+    const isBooking = order_id?.startsWith('B-') || false
+    const isOrder = order_id?.startsWith('O-') || false
 
     if (!isBooking && !isOrder) {
       console.warn('⚠️ Unknown order type:', order_id)
       return NextResponse.json({ status: 'OK' })
     }
 
+    // 🔥 CARI ORDER/BOKING DI DATABASE BERDASARKAN MIDTRANS_ORDER_ID
     let orderId = null
 
     if (isBooking) {
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'OK' })
     }
 
+    // 🔥 TENTUKAN STATUS BERDASARKAN TRANSACTION_STATUS
     let paymentStatus = 'PENDING'
     let orderStatus = 'PENDING'
 
@@ -66,9 +69,10 @@ export async function POST(request: NextRequest) {
       orderStatus = 'PENDING'
     }
 
-    // 🔥 UPDATE DENGAN PAYMENT TYPE
+    // 🔥 AMBIL NAMA METODE PEMBAYARAN
     const methodName = payment_type || 'Midtrans'
 
+    // 🔥 UPDATE DATABASE
     if (isBooking) {
       await prisma.booking.update({
         where: { id: orderId },
@@ -92,9 +96,10 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Order ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}, method=${methodName}`)
     }
 
+    // 🔥 KIRIM PUSH NOTIFICATION JIKA PEMBAYARAN BERHASIL
     if (paymentStatus === 'PAID') {
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
         await fetch(`${appUrl}/api/push/send-order`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest) {
         })
         console.log('✅ Push notification sent for order:', orderId)
       } catch (pushError) {
-        console.error('Push notification error:', pushError)
+        console.error('❌ Push notification error:', pushError)
       }
     }
 
@@ -115,7 +120,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Webhook error:', error)
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
+      { error: 'Webhook processing failed: ' + (error as Error).message },
       { status: 500 }
     )
   }
