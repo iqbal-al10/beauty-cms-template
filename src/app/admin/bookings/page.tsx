@@ -9,6 +9,7 @@ import {
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Select from 'react-select'
+import { generateSlug } from '@/lib/slug'
 
 interface Service {
   id: string
@@ -114,17 +115,6 @@ const PRESET_COLORS = [
   { value: 'bg-indigo-500', hex: '#6366F1', label: 'Indigo' },
   { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
-
-// ===== SLUG GENERATOR FUNCTION =====
-const generateSlug = (text: string) => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('services')
@@ -326,40 +316,7 @@ export default function BookingsPage() {
     fetchMediaFiles()
   }, [])
 
-  // ===== AUTO-GENERATE SEO FIELDS =====
-  useEffect(() => {
-    if (!settings?.siteName) return
-    
-    if (serviceForm.name && !isAutoGenerating) {
-      const generatedTitle = generateMetaTitle(serviceForm.name, settings.siteName)
-      if (!serviceForm.metaTitle || serviceForm.metaTitle === '' || serviceForm.metaTitle === generateMetaTitle(serviceForm.name, settings.siteName)) {
-        setServiceForm(prev => ({ ...prev, metaTitle: generatedTitle }))
-      }
-    }
-
-    if (serviceForm.description && !isAutoGenerating) {
-      const generatedDesc = generateMetaDescription(serviceForm.description, serviceForm.name, settings.siteName)
-      if (!serviceForm.metaDescription || serviceForm.metaDescription === '' || serviceForm.metaDescription === generateMetaDescription(serviceForm.description, serviceForm.name, settings.siteName)) {
-        setServiceForm(prev => ({ ...prev, metaDescription: generatedDesc }))
-      }
-    }
-
-    if (serviceForm.slug && !isAutoGenerating) {
-      const generatedUrl = generateCanonicalUrl(serviceForm.slug)
-      if (!serviceForm.canonicalUrl || serviceForm.canonicalUrl === '' || serviceForm.canonicalUrl === generateCanonicalUrl(serviceForm.slug)) {
-        setServiceForm(prev => ({ ...prev, canonicalUrl: generatedUrl }))
-      }
-    }
-
-    if (serviceForm.imageUrl && !isAutoGenerating) {
-      const generatedOgImage = generateOgImage(serviceForm.imageUrl, settings.defaultOgImage, settings.logoUrl)
-      if (!serviceForm.ogImageUrl || serviceForm.ogImageUrl === '' || serviceForm.ogImageUrl === generateOgImage(serviceForm.imageUrl, settings.defaultOgImage, settings.logoUrl)) {
-        setServiceForm(prev => ({ ...prev, ogImageUrl: generatedOgImage || '' }))
-      }
-    }
-  }, [serviceForm.name, serviceForm.description, serviceForm.slug, serviceForm.imageUrl, settings])
-
-  // ===== AUTO-GENERATE FUNCTIONS =====
+  // ===== AUTO-GENERATE SEO FUNCTIONS (dipanggil di onChange) =====
   const generateMetaTitle = (serviceName: string, siteName: string) => {
     if (!serviceName) return ''
     return `Jual ${serviceName} - ${siteName}`
@@ -373,24 +330,14 @@ export default function BookingsPage() {
     return `Temukan ${serviceName || 'layanan'} berkualitas di ${siteName}.`
   }
 
-  const generateCanonicalUrl = (slug: string) => {
-    if (!slug) return ''
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}/booking/${slug}`
-    }
-    return `/booking/${slug}`
-  }
-
   const generateOgImage = (imageUrl: string | null, defaultOgImage: string | null, logoUrl: string | null) => {
     return imageUrl || defaultOgImage || logoUrl || null
   }
 
-  // ===== FORMAT CURRENCY =====
   const formatCurrency = (amount: number) => {
     return `Rp ${amount.toLocaleString('id-ID')}`
   }
 
-  // ===== GET TAG COLOR =====
   const getTagDisplayColor = (color: string | null) => {
     if (!color) return '#6B7280'
     if (color.startsWith('#')) return color
@@ -399,7 +346,6 @@ export default function BookingsPage() {
     return '#6B7280'
   }
 
-  // ===== GET TAG OPTIONS =====
   const getTagOptions = (): TagOption[] => {
     return tags.map(tag => ({
       value: tag.id,
@@ -477,7 +423,7 @@ export default function BookingsPage() {
         promoIds: serviceForm.promoIds,
         metaTitle: serviceForm.metaTitle || generateMetaTitle(serviceForm.name, settings?.siteName || 'Beauty Studio'),
         metaDescription: serviceForm.metaDescription || generateMetaDescription(serviceForm.description, serviceForm.name, settings?.siteName || 'Beauty Studio'),
-        canonicalUrl: serviceForm.canonicalUrl || generateCanonicalUrl(serviceForm.slug),
+        canonicalUrl: serviceForm.canonicalUrl || '',
         ogImageUrl: serviceForm.ogImageUrl || generateOgImage(serviceForm.imageUrl, settings?.defaultOgImage || null, settings?.logoUrl || null),
       }
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
@@ -1012,108 +958,6 @@ export default function BookingsPage() {
     )
   }
 
-  // ===== SERVICE PREVIEW COMPONENT =====
-  const ServicePreview = () => {
-    const selectedCategory = categories.find(c => c.id === serviceForm.categoryId)
-    const selectedTags = tags.filter(t => serviceForm.tagIds.includes(t.id))
-    const primaryColor = settings?.colorPrimary || '#c4367b'
-    const price = parseFloat(serviceForm.price) || 0
-    const compareAtPrice = serviceForm.compareAtPrice ? parseFloat(serviceForm.compareAtPrice) : null
-
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sticky top-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            Live Preview
-          </h3>
-          <span className={`text-xs px-2 py-0.5 rounded-full ${
-            serviceForm.isActive 
-              ? 'bg-green-100 text-green-700' 
-              : 'bg-yellow-100 text-yellow-700'
-          }`}>
-            {serviceForm.isActive ? 'Active' : 'Inactive'}
-          </span>
-        </div>
-
-        <div className="border rounded-xl overflow-hidden border-gray-100">
-          <div className="bg-white p-3">
-            <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg mb-2 flex items-center justify-center relative">
-              {serviceForm.imageUrl ? (
-                <img 
-                  src={serviceForm.imageUrl} 
-                  alt={serviceForm.name || 'Service'}
-                  className="w-full h-full object-cover rounded-lg"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                    const parent = e.currentTarget.parentElement
-                    if (parent) {
-                      const fallback = document.createElement('div')
-                      fallback.className = 'w-full h-full flex items-center justify-center'
-                      fallback.innerHTML = '<span class="text-4xl">🧖</span>'
-                      parent.appendChild(fallback)
-                    }
-                  }}
-                />
-              ) : (
-                <span className="text-4xl">🧖</span>
-              )}
-              {compareAtPrice && compareAtPrice > price && (
-                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                  SALE
-                </span>
-              )}
-              {selectedTags.length > 0 && (
-                <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                  {selectedTags.slice(0, 2).map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white truncate max-w-[80px] shadow-sm"
-                      style={{ backgroundColor: getTagDisplayColor(tag.color) }}
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {serviceForm.isFeatured && (
-                <div className="absolute bottom-2 left-2">
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-400 text-yellow-900">
-                    ⭐ Featured
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <h3 className="font-semibold text-gray-800 text-sm line-clamp-1">
-              {serviceForm.name || 'Service Name'}
-            </h3>
-            <p className="text-xs text-gray-500">{selectedCategory?.name || 'Category'}</p>
-            {serviceForm.duration && (
-              <p className="text-xs text-gray-400 mt-0.5">⏱ {serviceForm.duration} menit</p>
-            )}
-
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-base font-bold" style={{ color: primaryColor }}>
-                Rp {price.toLocaleString()}
-              </p>
-              {compareAtPrice && compareAtPrice > price && (
-                <p className="text-xs text-gray-400 line-through">
-                  Rp {compareAtPrice.toLocaleString()}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400">
-          <span>🔄 Update real-time</span>
-          <span>/booking/{serviceForm.slug || 'service-slug'}</span>
-        </div>
-      </div>
-    )
-  }
-
   if (loadingServices || loadingCategories || loadingTags || loadingPromos) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -1358,14 +1202,7 @@ export default function BookingsPage() {
                               >
                                 <Trash2 className="w-5 h-5" />
                               </button>
-                              <Link 
-                                href={`/booking/${service.slug}`} 
-                                target="_blank" 
-                                className="p-1 rounded-lg hover:bg-purple-50 text-purple-600 hover:text-purple-800 transition-colors"
-                                title="Lihat di Frontend"
-                              >
-                                <Eye className="w-5 h-5" />
-                              </Link>
+                              {/* ===== ICON MATA FRONTEND DIHAPUS ===== */}
                             </div>
                           </td>
                         </tr>
@@ -1391,15 +1228,33 @@ export default function BookingsPage() {
               <h2 className="text-lg font-semibold mb-4">{editingCategory ? 'Edit Kategori Booking' : 'Tambah Kategori Booking'}</h2>
               <form onSubmit={handleCategorySubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700">Nama Kategori *</label><input type="text" required value={categoryForm.name} onChange={(e) => { const name = e.target.value; setCategoryForm({ ...categoryForm, name, slug: generateSlug(name) }) }} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Contoh: Facial Treatment" /></div>
-                  <div><label className="block text-sm font-medium text-gray-700">Slug *</label><input type="text" required value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="facial-treatment" /></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kategori *</label>
+                    <input type="text" required value={categoryForm.name} onChange={(e) => { const name = e.target.value; setCategoryForm({ ...categoryForm, name, slug: generateSlug(name) }) }} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Contoh: Facial Treatment" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+                    <input type="text" required value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="facial-treatment" />
+                  </div>
                 </div>
-                <div><label className="block text-sm font-medium text-gray-700">Deskripsi</label><textarea rows={2} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Deskripsi kategori..." /></div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <textarea rows={2} value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Deskripsi kategori..." />
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-gray-700">Sort Order</label><input type="number" value={categoryForm.sortOrder} onChange={(e) => setCategoryForm({ ...categoryForm, sortOrder: parseInt(e.target.value) || 0 })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" /></div>
-                  <div className="flex items-center gap-2 mt-6"><input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} className="w-4 h-4 text-pink-500 rounded border-gray-300" /><label className="text-sm text-gray-700">Aktif</label></div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                    <input type="number" value={categoryForm.sortOrder} onChange={(e) => setCategoryForm({ ...categoryForm, sortOrder: parseInt(e.target.value) || 0 })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-6">
+                    <input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} className="w-4 h-4 text-pink-500 rounded border-gray-300" />
+                    <label className="text-sm text-gray-700">Aktif</label>
+                  </div>
                 </div>
-                <div className="flex gap-2"><button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Save className="w-4 h-4" /> {editingCategory ? 'Update' : 'Simpan'}</button><button type="button" onClick={handleCategoryCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button></div>
+                <div className="flex gap-2">
+                  <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Save className="w-4 h-4" /> {editingCategory ? 'Update' : 'Simpan'}</button>
+                  <button type="button" onClick={handleCategoryCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button>
+                </div>
               </form>
             </div>
           )}
@@ -1441,9 +1296,36 @@ export default function BookingsPage() {
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
               <h2 className="text-lg font-semibold mb-4">{editingTag ? 'Edit Tag Booking' : 'Tambah Tag Booking'}</h2>
               <form onSubmit={handleTagSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-700">Nama Tag *</label><input type="text" required value={tagForm.name} onChange={(e) => { const name = e.target.value; setTagForm({ ...tagForm, name, slug: generateSlug(name) }) }} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Contoh: Premium" /></div><div><label className="block text-sm font-medium text-gray-700">Slug *</label><input type="text" required value={tagForm.slug} onChange={(e) => setTagForm({ ...tagForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="premium" /></div></div>
-                <div><label className="block text-sm font-medium text-gray-700">Warna</label><div className="flex flex-wrap gap-2 mb-2">{PRESET_COLORS.map((color) => (<button key={color.value} type="button" onClick={() => handleTagColorSelect(color.value, color.hex)} className={`w-8 h-8 rounded-full border-2 transition-all ${tagForm.color === color.value ? 'border-gray-800 scale-110' : 'border-gray-300 hover:scale-105'}`} style={{ backgroundColor: color.hex }} title={color.label} />))}</div><div className="flex items-center gap-2"><span className="text-sm text-gray-500">Custom:</span><input type="color" value={customTagColor} onChange={(e) => { const hex = e.target.value; setTagForm({ ...tagForm, color: hex }); setCustomTagColor(hex) }} className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1" /></div><div className="mt-2"><span className="text-sm text-gray-500">Preview:</span><span className="ml-2 px-3 py-1 text-xs text-white rounded-full" style={{ backgroundColor: getTagDisplayColor(tagForm.color) }}>{tagForm.name || 'Tag Preview'}</span></div></div>
-                <div className="flex gap-2"><button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Save className="w-4 h-4" /> {editingTag ? 'Update' : 'Simpan'}</button><button type="button" onClick={handleTagCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Tag *</label>
+                    <input type="text" required value={tagForm.name} onChange={(e) => { const name = e.target.value; setTagForm({ ...tagForm, name, slug: generateSlug(name) }) }} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="Contoh: Premium" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+                    <input type="text" required value={tagForm.slug} onChange={(e) => setTagForm({ ...tagForm, slug: e.target.value.toLowerCase().replace(/ /g, '-') })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="premium" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Warna</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {PRESET_COLORS.map((color) => (
+                      <button key={color.value} type="button" onClick={() => handleTagColorSelect(color.value, color.hex)} className={`w-8 h-8 rounded-full border-2 transition-all ${tagForm.color === color.value ? 'border-gray-800 scale-110' : 'border-gray-300 hover:scale-105'}`} style={{ backgroundColor: color.hex }} title={color.label} />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">Custom:</span>
+                    <input type="color" value={customTagColor} onChange={(e) => { const hex = e.target.value; setTagForm({ ...tagForm, color: hex }); setCustomTagColor(hex) }} className="w-10 h-10 rounded-lg border border-gray-300 cursor-pointer p-1" />
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-sm text-gray-500">Preview:</span>
+                    <span className="ml-2 px-3 py-1 text-xs text-white rounded-full" style={{ backgroundColor: getTagDisplayColor(tagForm.color) }}>{tagForm.name || 'Tag Preview'}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Save className="w-4 h-4" /> {editingTag ? 'Update' : 'Simpan'}</button>
+                  <button type="button" onClick={handleTagCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button>
+                </div>
               </form>
             </div>
           )}
@@ -1454,14 +1336,24 @@ export default function BookingsPage() {
                   const tagColor = getTagDisplayColor(tag.color)
                   return (
                     <div key={tag.id} className="p-4 hover:bg-gray-50 transition-colors flex items-center justify-between">
-                      <div className="flex items-center gap-3"><span className="w-4 h-4 rounded-full" style={{ backgroundColor: typeof tagColor === 'string' ? tagColor : '#6B7280' }} /><span className="font-semibold text-gray-800">{tag.name}</span><span className="text-sm text-gray-400">•</span><span className="text-sm text-gray-500">{tag.slug}</span></div>
-                      <div className="flex gap-2"><button onClick={() => handleEditTag(tag)} className="text-yellow-600 hover:text-yellow-800"><Edit className="w-5 h-5" /></button><button onClick={() => handleDeleteTag(tag.id, tag.name)} className="text-red-600 hover:text-red-800"><Trash2 className="w-5 h-5" /></button></div>
+                      <div className="flex items-center gap-3">
+                        <span className="w-4 h-4 rounded-full" style={{ backgroundColor: typeof tagColor === 'string' ? tagColor : '#6B7280' }} />
+                        <span className="font-semibold text-gray-800">{tag.name}</span>
+                        <span className="text-sm text-gray-400">•</span>
+                        <span className="text-sm text-gray-500">{tag.slug}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditTag(tag)} className="text-yellow-600 hover:text-yellow-800"><Edit className="w-5 h-5" /></button>
+                        <button onClick={() => handleDeleteTag(tag.id, tag.name)} className="text-red-600 hover:text-red-800"><Trash2 className="w-5 h-5" /></button>
+                      </div>
                     </div>
                   )
                 })
               )}
             </div>
-            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200"><p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{tags.length}</span> tag booking</p></div>
+            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+              <p className="text-sm text-gray-500">Total: <span className="font-medium text-gray-700">{tags.length}</span> tag booking</p>
+            </div>
           </div>
         </>
       )}
@@ -1475,55 +1367,25 @@ export default function BookingsPage() {
               <form onSubmit={handlePromoSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Kode Voucher *</label>
-                    <input
-                      type="text"
-                      required
-                      value={promoForm.code}
-                      onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toUpperCase() })}
-                      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="SUMMER20"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kode Voucher *</label>
+                    <input type="text" required value={promoForm.code} onChange={(e) => setPromoForm({ ...promoForm, code: e.target.value.toUpperCase() })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="SUMMER20" />
                     <p className="text-xs text-gray-400 mt-1">Kode akan otomatis uppercase</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Nominal Diskon (Rp) *</label>
-                    <input
-                      type="number"
-                      required
-                      min="0"
-                      step="1000"
-                      value={promoForm.discount}
-                      onChange={(e) => setPromoForm({ ...promoForm, discount: e.target.value })}
-                      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="50000"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nominal Diskon (Rp) *</label>
+                    <input type="number" required min="0" step="1000" value={promoForm.discount} onChange={(e) => setPromoForm({ ...promoForm, discount: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" placeholder="50000" />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Tanggal Mulai *</label>
-                    <input
-                      type="date"
-                      required
-                      value={promoForm.startDate}
-                      onChange={(e) => setPromoForm({ ...promoForm, startDate: e.target.value })}
-                      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai *</label>
+                    <input type="date" required value={promoForm.startDate} onChange={(e) => setPromoForm({ ...promoForm, startDate: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Tanggal Selesai *</label>
-                    <input
-                      type="date"
-                      required
-                      value={promoForm.endDate}
-                      onChange={(e) => setPromoForm({ ...promoForm, endDate: e.target.value })}
-                      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai *</label>
+                    <input type="date" required value={promoForm.endDate} onChange={(e) => setPromoForm({ ...promoForm, endDate: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400" />
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Layanan *</label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2">
@@ -1532,18 +1394,7 @@ export default function BookingsPage() {
                     ) : (
                       allServices.map((s) => (
                         <label key={s.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={selectedServiceIds.includes(s.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedServiceIds([...selectedServiceIds, s.id])
-                              } else {
-                                setSelectedServiceIds(selectedServiceIds.filter(id => id !== s.id))
-                              }
-                            }}
-                            className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                          />
+                          <input type="checkbox" checked={selectedServiceIds.includes(s.id)} onChange={(e) => { if (e.target.checked) { setSelectedServiceIds([...selectedServiceIds, s.id]) } else { setSelectedServiceIds(selectedServiceIds.filter(id => id !== s.id)) } }} className="w-4 h-4 text-pink-500 rounded border-gray-300" />
                           <span className="truncate">{s.name}</span>
                         </label>
                       ))
@@ -1551,29 +1402,17 @@ export default function BookingsPage() {
                   </div>
                   <p className="text-xs text-gray-400 mt-1">Pilih {selectedServiceIds.length} layanan</p>
                 </div>
-
                 <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={promoForm.isActive}
-                    onChange={(e) => setPromoForm({ ...promoForm, isActive: e.target.checked })}
-                    className="w-4 h-4 text-pink-500 rounded border-gray-300"
-                  />
+                  <input type="checkbox" checked={promoForm.isActive} onChange={(e) => setPromoForm({ ...promoForm, isActive: e.target.checked })} className="w-4 h-4 text-pink-500 rounded border-gray-300" />
                   <label className="text-sm text-gray-700">Aktif</label>
                 </div>
-
                 <div className="flex gap-2">
-                  <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                    <Save className="w-4 h-4" /> {editingPromo ? 'Update' : 'Simpan'}
-                  </button>
-                  <button type="button" onClick={handlePromoCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
-                    Batal
-                  </button>
+                  <button type="submit" className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-lg flex items-center gap-2"><Save className="w-4 h-4" /> {editingPromo ? 'Update' : 'Simpan'}</button>
+                  <button type="button" onClick={handlePromoCancel} className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">Batal</button>
                 </div>
               </form>
             </div>
           )}
-
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="divide-y divide-gray-200">
               {promos.length === 0 ? (
@@ -1587,12 +1426,8 @@ export default function BookingsPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-3 flex-wrap">
                             <h3 className="font-semibold text-gray-800">{promo.code}</h3>
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-pink-100 text-pink-700">
-                              Rp {promo.discount.toLocaleString()}
-                            </span>
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${status.color}`}>
-                              {status.label}
-                            </span>
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-pink-100 text-pink-700">Rp {promo.discount.toLocaleString()}</span>
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${status.color}`}>{status.label}</span>
                           </div>
                           <div className="flex items-center gap-4 mt-1 text-sm text-gray-500 flex-wrap">
                             <span>{promo.services?.length || 0} layanan</span>
@@ -1601,15 +1436,9 @@ export default function BookingsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => togglePromoActive(promo.id, promo.isActive, promo.code)} className={`px-2 py-1 text-xs rounded-full transition-colors ${promo.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>
-                            {promo.isActive ? '✅ Active' : '❌ Inactive'}
-                          </button>
-                          <button onClick={() => handleEditPromo(promo)} className="text-yellow-600 hover:text-yellow-800">
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button onClick={() => handleDeletePromo(promo.id, promo.code)} className="text-red-600 hover:text-red-800">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <button onClick={() => togglePromoActive(promo.id, promo.isActive, promo.code)} className={`px-2 py-1 text-xs rounded-full transition-colors ${promo.isActive ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}>{promo.isActive ? '✅ Active' : '❌ Inactive'}</button>
+                          <button onClick={() => handleEditPromo(promo)} className="text-yellow-600 hover:text-yellow-800"><Edit className="w-5 h-5" /></button>
+                          <button onClick={() => handleDeletePromo(promo.id, promo.code)} className="text-red-600 hover:text-red-800"><Trash2 className="w-5 h-5" /></button>
                         </div>
                       </div>
                     </div>

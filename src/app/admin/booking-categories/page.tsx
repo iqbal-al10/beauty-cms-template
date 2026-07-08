@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit, Trash2, Save, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { generateSlug } from '@/lib/slug'
 
 interface Category {
   id: string
@@ -12,17 +13,6 @@ interface Category {
   sortOrder: number
   isActive: boolean
   createdAt: string
-}
-
-// ===== SLUG GENERATOR FUNCTION =====
-const generateSlug = (text: string) => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }
 
 export default function BookingCategoriesPage() {
@@ -208,7 +198,7 @@ export default function BookingCategoriesPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nama Kategori *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Kategori *</label>
                 <input
                   type="text"
                   required
@@ -222,7 +212,7 @@ export default function BookingCategoriesPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Slug *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
                 <input
                   type="text"
                   required
@@ -235,7 +225,7 @@ export default function BookingCategoriesPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
               <textarea
                 rows={2}
                 value={form.description}
@@ -247,7 +237,7 @@ export default function BookingCategoriesPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Sort Order</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
                 <input
                   type="number"
                   value={form.sortOrder}

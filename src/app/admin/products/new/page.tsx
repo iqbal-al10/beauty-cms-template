@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Save, Eye, Image as ImageIcon, X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Select from 'react-select'
+import { generateSlug, generateCanonicalUrl } from '@/lib/slug'
 
 interface Category {
   id: string
@@ -66,17 +67,6 @@ const PRESET_COLORS = [
   { value: 'bg-rose-500', hex: '#F43F5E', label: 'Rose' },
 ]
 
-// ===== SLUG GENERATOR FUNCTION =====
-const generateSlug = (text: string) => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')    // Hapus karakter aneh (selain huruf, angka, spasi, -)
-    .replace(/\s+/g, '-')         // Ganti spasi dengan -
-    .replace(/-+/g, '-')          // Ganti multiple - dengan single -
-    .replace(/^-+|-+$/g, '')      // Hapus - di awal dan akhir
-}
-
 export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -120,7 +110,6 @@ export default function NewProductPage() {
   useEffect(() => {
     if (!settings?.siteName) return
     
-    // Auto-generate Meta Title from product name
     if (form.name && !isAutoGenerating) {
       const generatedTitle = generateMetaTitle(form.name, settings.siteName)
       if (!form.metaTitle || form.metaTitle === '' || form.metaTitle === generateMetaTitle(form.name, settings.siteName)) {
@@ -128,7 +117,6 @@ export default function NewProductPage() {
       }
     }
 
-    // Auto-generate Meta Description from description
     if (form.description && !isAutoGenerating) {
       const generatedDesc = generateMetaDescription(form.description, form.name, settings.siteName)
       if (!form.metaDescription || form.metaDescription === '' || form.metaDescription === generateMetaDescription(form.description, form.name, settings.siteName)) {
@@ -136,15 +124,13 @@ export default function NewProductPage() {
       }
     }
 
-    // Auto-generate Canonical URL from slug
     if (form.slug && !isAutoGenerating) {
-      const generatedUrl = generateCanonicalUrl(form.slug)
-      if (!form.canonicalUrl || form.canonicalUrl === '' || form.canonicalUrl === generateCanonicalUrl(form.slug)) {
+      const generatedUrl = generateCanonicalUrl(form.slug, 'products')
+      if (!form.canonicalUrl || form.canonicalUrl === '' || form.canonicalUrl === generateCanonicalUrl(form.slug, 'products')) {
         setForm(prev => ({ ...prev, canonicalUrl: generatedUrl }))
       }
     }
 
-    // Auto-generate OG Image from product image
     if (form.imageUrl && !isAutoGenerating) {
       const generatedOgImage = generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)
       if (!form.ogImageUrl || form.ogImageUrl === '' || form.ogImageUrl === generateOgImage(form.imageUrl, settings.defaultOgImage, settings.logoUrl)) {
@@ -153,7 +139,6 @@ export default function NewProductPage() {
     }
   }, [form.name, form.description, form.slug, form.imageUrl, settings])
 
-  // Auto-generate functions
   const generateMetaTitle = (productName: string, siteName: string) => {
     if (!productName) return ''
     return `Jual ${productName} - ${siteName}`
@@ -165,14 +150,6 @@ export default function NewProductPage() {
       return clean.length > 150 ? clean.slice(0, 150) + '...' : clean
     }
     return `Temukan ${productName || 'produk'} berkualitas di ${siteName}.`
-  }
-
-  const generateCanonicalUrl = (slug: string) => {
-    if (!slug) return ''
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}/products/${slug}`
-    }
-    return `/products/${slug}`
   }
 
   const generateOgImage = (imageUrl: string | null, defaultOgImage: string | null, logoUrl: string | null) => {
@@ -318,7 +295,7 @@ export default function NewProductPage() {
           promoIds: selectedPromoIds,
           metaTitle: form.metaTitle || generateMetaTitle(form.name, settings?.siteName || 'Beauty Studio'),
           metaDescription: form.metaDescription || generateMetaDescription(form.description, form.name, settings?.siteName || 'Beauty Studio'),
-          canonicalUrl: form.canonicalUrl || generateCanonicalUrl(form.slug),
+          canonicalUrl: form.canonicalUrl || generateCanonicalUrl(form.slug, 'products'),
           ogImageUrl: form.ogImageUrl || generateOgImage(form.imageUrl, settings?.defaultOgImage || null, settings?.logoUrl || null),
         }),
       })
@@ -537,8 +514,9 @@ export default function NewProductPage() {
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <div className="lg:w-1/2">
           <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nama Produk *</label>
+            {/* NAMA PRODUK */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Produk *</label>
               <input
                 type="text"
                 required
@@ -547,37 +525,40 @@ export default function NewProductPage() {
                   const name = e.target.value
                   setForm({ 
                     ...form, 
-                    name, 
-                    slug: generateSlug(name),
+                    name,
+                    // SLUG TIDAK AUTO-GENERATE DARI NAMA
                     metaTitle: name ? generateMetaTitle(name, settings?.siteName || 'Beauty Studio') : '',
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="Contoh: Moisturizer"
+                placeholder="Skincare Moisturizer"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Slug *</label>
+            {/* SLUG */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
               <input
                 type="text"
                 required
                 value={form.slug}
                 onChange={(e) => {
-                  const slug = e.target.value.toLowerCase().replace(/ /g, '-')
+                  // Hanya replace spasi dengan -, sisanya manual
+                  const slug = e.target.value.replace(/ /g, '-').toLowerCase()
                   setForm({ 
                     ...form, 
                     slug,
-                    canonicalUrl: slug ? generateCanonicalUrl(slug) : '',
+                    canonicalUrl: slug ? generateCanonicalUrl(slug, 'products') : '',
                   })
                 }}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="moisturizer"
+                placeholder="Ketik ulang nama produk"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
+            {/* DESKRIPSI */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
               <textarea
                 rows={2}
                 value={form.description}
@@ -596,8 +577,9 @@ export default function NewProductPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Gambar Produk</label>
+            {/* GAMBAR PRODUK */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gambar Produk</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -629,8 +611,9 @@ export default function NewProductPage() {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Featured Product</label>
+            {/* FEATURED */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Featured Product</label>
               <div className="flex items-center gap-2 mt-1">
                 <input
                   type="checkbox"
@@ -642,9 +625,10 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* HARGA */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Harga *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga *</label>
                 <input
                   type="number"
                   required
@@ -656,7 +640,7 @@ export default function NewProductPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Harga Coret</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Harga Coret</label>
                 <input
                   type="number"
                   step="0.01"
@@ -668,9 +652,10 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* STOK & STATUS */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Stok *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stok *</label>
                 <input
                   type="number"
                   required
@@ -681,7 +666,7 @@ export default function NewProductPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
@@ -693,9 +678,9 @@ export default function NewProductPage() {
               </div>
             </div>
 
-            {/* KATEGORI - REACT SELECT */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Kategori *</label>
+            {/* KATEGORI */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kategori *</label>
               <Select
                 options={getCategoryOptions()}
                 value={getSelectedCategoryOption()}
@@ -732,9 +717,9 @@ export default function NewProductPage() {
               />
             </div>
 
-            {/* TAGS - REACT SELECT */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tags</label>
+            {/* TAGS */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
               <Select
                 isMulti
                 options={getTagOptions()}
@@ -801,9 +786,9 @@ export default function NewProductPage() {
               </p>
             </div>
 
-            {/* PROMOS / VOUCHERS */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Voucher</label>
+            {/* VOUCHER */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Voucher</label>
               <div className="mt-1 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
                 {promos.length === 0 ? (
                   <p className="text-gray-500 text-sm col-span-full">Belum ada voucher. Buat voucher dulu di tab Vouchers.</p>
@@ -830,7 +815,7 @@ export default function NewProductPage() {
               <p className="text-xs text-gray-400 mt-1">Pilih {selectedPromoIds.length} voucher</p>
             </div>
 
-            {/* SEO DROPDOWN - COLLAPSIBLE */}
+            {/* SEO DROPDOWN */}
             <div className="border-t border-gray-200 pt-3">
               <button
                 type="button"
@@ -853,8 +838,8 @@ export default function NewProductPage() {
 
               {isSeoOpen && (
                 <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700">Meta Title</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Meta Title</label>
                     <input
                       type="text"
                       value={form.metaTitle}
@@ -867,8 +852,8 @@ export default function NewProductPage() {
                       placeholder="Auto-generated from product name"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700">Meta Description</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Meta Description</label>
                     <textarea
                       rows={2}
                       value={form.metaDescription}
@@ -881,8 +866,8 @@ export default function NewProductPage() {
                       placeholder="Auto-generated from description"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700">Canonical URL</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Canonical URL</label>
                     <input
                       type="text"
                       value={form.canonicalUrl}
@@ -895,8 +880,8 @@ export default function NewProductPage() {
                       placeholder="Auto-generated from slug"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700">OG Image URL</label>
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">OG Image URL</label>
                     <input
                       type="text"
                       value={form.ogImageUrl}
@@ -913,6 +898,7 @@ export default function NewProductPage() {
               )}
             </div>
 
+            {/* BUTTONS */}
             <div className="flex gap-4 pt-3">
               <button
                 type="submit"
