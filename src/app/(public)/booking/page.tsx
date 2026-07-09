@@ -72,6 +72,13 @@ export default function BookingPage() {
     fetchData()
   }, [])
 
+  // 🔥 RESET NAVIGATING STATE SAAT KOMPONEN UNMOUNT
+  useEffect(() => {
+    return () => {
+      setNavigatingId(null)
+    }
+  }, [])
+
   const fetchData = async () => {
     try {
       const [servicesRes, categoriesRes, settingsRes] = await Promise.all([
@@ -102,9 +109,13 @@ export default function BookingPage() {
     }
   }
 
+  // 🔥 HANDLE VIEW DETAILS DENGAN DELAY AGAR SPINNER TERLIHAT
   const handleViewDetails = (slug: string, id: string) => {
     setNavigatingId(id)
-    router.push(`/booking/${slug}`)
+    // Delay 500ms agar spinner terlihat
+    setTimeout(() => {
+      router.push(`/booking/${slug}`)
+    }, 500)
   }
 
   const filteredServices = services.filter(service => {
@@ -158,7 +169,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Category Filter - TANPA ICON */}
+      {/* Category Filter */}
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           <button
