@@ -1,38 +1,33 @@
 // src/lib/push/server.ts
-// Server-side utility untuk Push Notification
-
 import webpush from 'web-push'
-import { prisma } from '../prisma'
+import { prisma } from '@/lib/prisma'
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY
-const VAPID_SUBJECT = process.env.NEXT_PUBLIC_VAPID_SUBJECT
-
-// Setup VAPID
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
-} else {
-  console.warn('⚠️ VAPID keys not configured. Push notifications will not work.')
+// 🔥 SET VAPID DETAILS
+if (process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
+  webpush.setVapidDetails(
+    process.env.NEXT_PUBLIC_VAPID_SUBJECT || 'mailto:admin@beautystudio.com',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  )
 }
 
-export interface PushNotificationPayload {
+interface PushPayload {
   title: string
   body: string
   icon?: string
   badge?: string
   url?: string
-  orderId?: string
   bookingId?: string
+  orderId?: string
 }
 
 /**
- * Dapatkan subscription dari database
+ * Kirim push notification ke semua admin
  */
-export async function getAdminSubscription() {
+export async function sendPushToAllAdmins(payload: PushPayload): Promise<{ sent: number; failed: number }> {
   try {
-    // Cari subscription untuk admin
-    // Asumsi: userId = 'admin' atau ambil dari user pertama dengan role ADMIN/SUPER_ADMIN
-    const adminUser = await prisma.user.findFirst({
+    // Ambil semua user dengan role admin
+    const users = await prisma.user.findMany({
       where: {
         role: { in: ['SUPER_ADMIN', 'ADMIN'] },
         isActive: true,
@@ -40,121 +35,171 @@ export async function getAdminSubscription() {
       select: { id: true },
     })
 
-    if (!adminUser) {
-      console.warn('⚠️ No admin user found')
-      return null
+    const userIds = users.map((u) => u.id)
+
+    if (userIds.length === 0) {
+      console.log('Tidak ada admin yang ditemukan')
+      return { sent: 0, failed: 0 }
     }
 
-    const subscription = await prisma.pushSubscription.findUnique({
-      where: { userId: adminUser.id },
+    // Ambil subscription untuk user-user tersebut
+    const subscriptions = await prisma.pushSubscription.findMany({
+      where: {
+        userId: { in: userIds },
+      },
     })
 
-    if (!subscription) {
-      console.warn('⚠️ No push subscription found for admin')
-      return null
+    if (subscriptions.length === 0) {
+      console.log('Tidak ada admin yang subscribe')
+      return { sent: 0, failed: 0 }
     }
 
-    return {
-      userId: adminUser.id,
-      subscription: JSON.parse(subscription.subscription),
+    let sent = 0
+    let failed = 0
+
+    const notificationPayload = JSON.stringify({
+      title: payload.title,
+      body: payload.body,
+      icon: payload.icon || '/icon-192x192.png',
+      badge: payload.badge || '/icon-192x192.png',
+      data: {
+        url: payload.url || '/admin',
+        bookingId: payload.bookingId,
+        orderId: payload.orderId,
+      },
+      vibrate: [200, 100, 200],
+    })
+
+    for (const sub of subscriptions) {
+      try {
+        const subscription = JSON.parse(sub.subscription)
+        
+        await webpush.sendNotification(subscription, notificationPayload)
+        sent++
+        
+        console.log(`✅ Push sent to user ${sub.userId}`)
+      } catch (error: any) {
+        console.error(`❌ Error sending push to user ${sub.userId}:`, error)
+        failed++
+        
+        // Jika subscription expired, hapus dari database
+        if (error.message && (error.message.includes('expired') || error.message.includes('410'))) {
+          await prisma.pushSubscription.delete({
+            where: { id: sub.id },
+          })
+          console.log(`🗑️ Deleted expired subscription for user ${sub.userId}`)
+        }
+      }
     }
+
+    console.log(`✅ Push notification result: ${sent} sent, ${failed} failed`)
+    return { sent, failed }
   } catch (error) {
-    console.error('Error getting admin subscription:', error)
-    return null
+    console.error('❌ Error sending push notifications:', error)
+    return { sent: 0, failed: 0 }
   }
 }
 
 /**
- * Kirim push notification ke admin
+ * Kirim push notification ke user tertentu
  */
 export async function sendPushToAdmin(
-  payload: PushNotificationPayload
+  userId: string,
+  payload: PushPayload
 ): Promise<boolean> {
   try {
-    const adminSub = await getAdminSubscription()
+    // Cek apakah user memiliki subscription
+    const subscription = await prisma.pushSubscription.findUnique({
+      where: { userId },
+    })
 
-    if (!adminSub) {
-      console.warn('⚠️ No admin subscription available')
+    if (!subscription) {
+      console.log(`❌ User ${userId} tidak memiliki subscription`)
       return false
     }
 
-    const subscription = adminSub.subscription
+    const pushSub = JSON.parse(subscription.subscription)
 
-    const notificationPayload = {
-      title: payload.title || 'Notifikasi',
-      body: payload.body || '',
+    const notificationPayload = JSON.stringify({
+      title: payload.title,
+      body: payload.body,
       icon: payload.icon || '/icon-192x192.png',
       badge: payload.badge || '/icon-192x192.png',
-      url: payload.url || '/admin',
-      orderId: payload.orderId || null,
-      bookingId: payload.bookingId || null,
-    }
+      data: {
+        url: payload.url || '/admin',
+        bookingId: payload.bookingId,
+        orderId: payload.orderId,
+      },
+      vibrate: [200, 100, 200],
+    })
 
-    await webpush.sendNotification(
-      subscription,
-      JSON.stringify(notificationPayload)
-    )
-
-    console.log('✅ Push notification sent to admin')
+    await webpush.sendNotification(pushSub, notificationPayload)
+    
+    console.log(`✅ Push sent to user ${userId}`)
     return true
-  } catch (error) {
-    console.error('❌ Failed to send push notification:', error)
+  } catch (error: any) {
+    console.error(`❌ Error sending push to user ${userId}:`, error)
+    
+    // Jika subscription expired, hapus dari database
+    if (error.message && (error.message.includes('expired') || error.message.includes('410'))) {
+      await prisma.pushSubscription.delete({
+        where: { userId },
+      })
+      console.log(`🗑️ Deleted expired subscription for user ${userId}`)
+    }
+    
     return false
   }
 }
 
 /**
- * Kirim push notification ke semua admin yang subscribe
+ * Kirim push notification untuk booking baru
  */
-export async function sendPushToAllAdmins(
-  payload: PushNotificationPayload
-): Promise<{ success: boolean; sent: number; failed: number }> {
-  try {
-    // Cari semua admin
-    const adminUsers = await prisma.user.findMany({
-      where: {
-        role: { in: ['SUPER_ADMIN', 'ADMIN'] },
-        isActive: true,
-      },
-      select: { id: true },
-    })
+export async function sendBookingNotification(
+  bookingId: string,
+  customerName: string,
+  serviceName: string,
+  bookingDate: string,
+  bookingTime: string
+): Promise<{ sent: number; failed: number }> {
+  return sendPushToAllAdmins({
+    title: `📅 Booking Baru #${bookingId.slice(0, 8)}`,
+    body: `${customerName} - ${serviceName} pada ${bookingDate} ${bookingTime}`,
+    bookingId: bookingId,
+    url: `/admin/bookings/${bookingId}`,
+    icon: '/icon-192x192.png',
+  })
+}
 
-    let sent = 0
-    let failed = 0
+/**
+ * Kirim push notification untuk order baru
+ */
+export async function sendOrderNotification(
+  orderId: string,
+  orderNumber: string,
+  customerName: string,
+  total: number
+): Promise<{ sent: number; failed: number }> {
+  return sendPushToAllAdmins({
+    title: `📦 Order Baru ${orderNumber || '#' + orderId.slice(0, 8)}`,
+    body: `Dari ${customerName} - Total Rp ${(total || 0).toLocaleString()}`,
+    orderId: orderId,
+    url: `/admin/orders/${orderId}`,
+    icon: '/icon-192x192.png',
+  })
+}
 
-    for (const admin of adminUsers) {
-      try {
-        const subscription = await prisma.pushSubscription.findUnique({
-          where: { userId: admin.id },
-        })
-
-        if (!subscription) continue
-
-        const sub = JSON.parse(subscription.subscription)
-
-        await webpush.sendNotification(
-          sub,
-          JSON.stringify({
-            title: payload.title || 'Notifikasi',
-            body: payload.body || '',
-            icon: payload.icon || '/icon-192x192.png',
-            badge: payload.badge || '/icon-192x192.png',
-            url: payload.url || '/admin',
-            orderId: payload.orderId || null,
-            bookingId: payload.bookingId || null,
-          })
-        )
-
-        sent++
-      } catch (error) {
-        failed++
-        console.error(`Failed to send to admin ${admin.id}:`, error)
-      }
-    }
-
-    return { success: true, sent, failed }
-  } catch (error) {
-    console.error('Error sending to all admins:', error)
-    return { success: false, sent: 0, failed: 0 }
-  }
+/**
+ * Kirim push notification test
+ */
+export async function sendTestNotification(
+  userId: string,
+  message: string = 'Test notification'
+): Promise<boolean> {
+  return sendPushToAdmin(userId, {
+    title: '🔔 Test Notifikasi',
+    body: message,
+    url: '/admin',
+    icon: '/icon-192x192.png',
+  })
 }

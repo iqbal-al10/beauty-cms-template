@@ -1,6 +1,6 @@
 // src/app/api/push/test/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { sendPushToAdmin } from '@/lib/push/server'
+import { sendPushToAllAdmins } from '@/lib/push/server'  // ⬅️ PAKAI INI
 import { getServerSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -16,15 +16,19 @@ export async function POST(request: NextRequest) {
 
     const { message } = await request.json()
 
-    const result = await sendPushToAdmin({
+    // 🔥 PAKAI sendPushToAllAdmins
+    const result = await sendPushToAllAdmins({
       title: '🔔 Test Notifikasi',
       body: message || 'Ini adalah notifikasi test dari Beauty CMS',
       url: '/admin',
+      icon: '/icon-192x192.png',
     })
 
     return NextResponse.json({
-      success: result,
-      message: result ? 'Notifikasi terkirim' : 'Gagal mengirim notifikasi',
+      success: result.sent > 0,
+      sent: result.sent,
+      failed: result.failed,
+      message: result.sent > 0 ? 'Notifikasi terkirim' : 'Tidak ada admin yang subscribe',
     })
   } catch (error) {
     console.error('Error sending test notification:', error)
