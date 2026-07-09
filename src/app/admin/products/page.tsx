@@ -770,7 +770,7 @@ export default function ProductsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-4 py-3 text-left">
                       <input 
                         type="checkbox" 
                         checked={selectAll} 
@@ -809,7 +809,7 @@ export default function ProductsPage() {
                       const productTags = product.tags || []
                       return (
                         <tr key={product.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <input 
                               type="checkbox" 
                               checked={isChecked} 
@@ -865,10 +865,11 @@ export default function ProductsPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              product.stock > 10 ? 'bg-transparent text-green-700' : 
-                              product.stock > 0 ? 'bg-red-600 text-red-100' : 
+                          <td className="px-5 py-4 text-sm text-gray-500">
+                            <span className={`px-1 py-1 rounded-md text-xs ${
+                              product.stock > 20 ? 'bg-green-500 text-green-50' : 
+                              product.stock > 10 ? 'bg-yellow-500 text-yellow-50' : 
+                              product.stock > 0 ? 'bg-red-500 text-red-100' : 
                               'bg-red-100 text-red-700'
                             }`}>
                               {product.stock} unit
@@ -884,7 +885,7 @@ export default function ProductsPage() {
                               {product.isFeatured ? '⭐ Yes' : 'No'}
                             </button>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-4 py-4">
                             <button 
                               onClick={() => toggleProductStatus(product.id, product.status, product.name)} 
                               className={`px-2 py-1 text-xs rounded-full transition-colors ${

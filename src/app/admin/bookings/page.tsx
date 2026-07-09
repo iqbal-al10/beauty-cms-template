@@ -1099,7 +1099,7 @@ export default function BookingsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left"><input type="checkbox" checked={selectAll} onChange={() => { if (selectAll) { setSelectedIds([]) } else { setSelectedIds(filteredServices.map(s => s.id)) } setSelectAll(!selectAll) }} className="w-4 h-4 text-pink-500 rounded border-gray-300" /></th>
+                    <th className="px-4 py-3 text-left"><input type="checkbox" checked={selectAll} onChange={() => { if (selectAll) { setSelectedIds([]) } else { setSelectedIds(filteredServices.map(s => s.id)) } setSelectAll(!selectAll) }} className="w-4 h-4 text-pink-500 rounded border-gray-300" /></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Image</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
@@ -1119,7 +1119,7 @@ export default function BookingsPage() {
                       const isChecked = selectedIds.includes(service.id)
                       return (
                         <tr key={service.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4"><input type="checkbox" checked={isChecked} onChange={() => { if (isChecked) { setSelectedIds(selectedIds.filter(id => id !== service.id)) } else { setSelectedIds([...selectedIds, service.id]) } }} className="w-4 h-4 text-pink-500 rounded border-gray-300" /></td>
+                          <td className="px-4 py-4"><input type="checkbox" checked={isChecked} onChange={() => { if (isChecked) { setSelectedIds(selectedIds.filter(id => id !== service.id)) } else { setSelectedIds([...selectedIds, service.id]) } }} className="w-4 h-4 text-pink-500 rounded border-gray-300" /></td>
                           <td className="px-6 py-4">
                             {service.imageUrl ? (
                               <img src={service.imageUrl} alt={service.name} className="w-12 h-12 object-cover rounded-lg" />
