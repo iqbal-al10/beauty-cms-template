@@ -284,13 +284,23 @@ export default function SuccessContent() {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4">
-          <Link href="/" className="flex-1 min-w-[150px] px-6 py-3 rounded-lg border-2 text-center font-medium transition-all hover:bg-gray-50" style={{ borderColor: '#c4367b', color: '#c4367b' }}>
-            <Home className="w-4 h-4 inline mr-2" />
-            Kembali ke Home
-          </Link>
-          <Link href="/booking" className="flex-1 min-w-[150px] px-6 py-3 rounded-lg text-white text-center font-medium transition-all hover:opacity-90" style={{ backgroundColor: '#c4367b' }}>
+          <a
+            href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 min-w-[150px] px-6 py-3 rounded-lg text-white text-center font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2"
+            style={{ backgroundColor: '#25D366' }}
+          >
+            <MessageCircle className="w-5 h-5" />
+            Konfirmasi via WhatsApp
+          </a>
+          <Link
+            href={isBooking ? '/booking' : '/products'}
+            className="flex-1 min-w-[150px] px-6 py-3 rounded-lg border-2 text-center font-medium transition-all hover:bg-gray-50"
+            style={{ borderColor: '#c4367b', color: '#c4367b' }}
+          >
             <ShoppingBag className="w-4 h-4 inline mr-2" />
-            Lihat Layanan
+            {isBooking ? 'Lihat Layanan' : 'Belanja Lagi'}
           </Link>
         </div>
       </div>
