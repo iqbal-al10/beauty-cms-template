@@ -419,9 +419,9 @@ export async function GET(request: NextRequest) {
       onProgressBookings: formattedOnProgressBookings,
       onProgressOrders: formattedOnProgressOrders,
       historyOrders: formattedHistoryOrders,
-      headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
-        },
+        headers: {
+    'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+  },
       revenue: {
         total: totalRevenue,
         today: todayRevenue,

@@ -2053,7 +2053,7 @@ export default function DashboardPage() {
                     labelLine={false} 
                     label={renderPieLabel} 
                     outerRadius={80} 
-                    fill="#8884d8" 
+                    fill="#c4367b" 
                     dataKey="value"
                   >
                     {displayPieData.map((entry, index) => (
