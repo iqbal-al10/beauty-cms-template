@@ -46,8 +46,8 @@ interface SettingsData {
   colorPrimary: string
 }
 
-const SUPER_ADMIN_ONLY_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup']
-const ADMIN_MENUS = ['Payments']
+const SUPER_ADMIN_ONLY_MENUS = ['Settings', 'Users', 'Activity Log', 'Backup', 'Analytics', 'Payments']
+const ADMIN_MENUS: string[] = []
 
 const ROLE_COLORS: Record<string, { bg: string; text: string; iconBg: string }> = {
   SUPER_ADMIN: { bg: 'bg-red-100', text: 'text-red-700', iconBg: 'bg-red-100 text-red-600' },

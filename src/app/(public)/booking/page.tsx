@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Clock, Calendar, ArrowRight, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -56,12 +57,14 @@ const getTagColor = (color: string | null): string => {
 }
 
 export default function BookingPage() {
+  const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [categories, setCategories] = useState<BookingCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [searchTerm, setSearchTerm] = useState<string>('')
+  const [navigatingId, setNavigatingId] = useState<string | null>(null)
 
   const primaryColor = '#c4367b'
 
@@ -97,6 +100,11 @@ export default function BookingPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleViewDetails = (slug: string, id: string) => {
+    setNavigatingId(id)
+    router.push(`/booking/${slug}`)
   }
 
   const filteredServices = services.filter(service => {
@@ -199,9 +207,6 @@ export default function BookingPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredServices.map((service) => {
             const serviceTags = service.tags || []
-            const displayPrice = service.compareAtPrice && service.compareAtPrice > service.price 
-              ? service.compareAtPrice 
-              : service.price
             const hasCompare = service.compareAtPrice && service.compareAtPrice > service.price
             const discountAmount = hasCompare ? (service.compareAtPrice || 0) - service.price : 0
 
@@ -211,7 +216,6 @@ export default function BookingPage() {
                 className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-1"
                 style={{ borderColor: `${primaryColor}20` }}
               >
-                {/* Gambar Layanan */}
                 <Link href={`/booking/${service.slug}`}>
                   <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 relative overflow-hidden">
                     {service.imageUrl ? (
@@ -226,7 +230,6 @@ export default function BookingPage() {
                       </div>
                     )}
                     
-                    {/* Tags di card */}
                     {serviceTags.length > 0 && (
                       <div className="absolute top-3 left-3 flex flex-col gap-1">
                         {serviceTags.slice(0, 2).map((tag) => (
@@ -241,7 +244,6 @@ export default function BookingPage() {
                       </div>
                     )}
 
-                    {/* SALE Badge */}
                     {hasCompare && (
                       <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
                         SALE
@@ -255,15 +257,11 @@ export default function BookingPage() {
                     <h3 className="font-semibold text-gray-800 group-hover:text-[#c4367b] transition-colors line-clamp-1" style={{ fontSize: bodyFontSize }}>
                       {service.name}
                     </h3>
-                    {/* KATEGORI - TETAP MUNCUL */}
                     <p className="text-sm text-gray-500" style={{ fontSize: smallFontSize }}>
                       {service.category?.name || 'Tanpa Kategori'}
                     </p>
                   </Link>
 
-                  {/* ❌ DESKRIPSI DIHAPUS */}
-
-                  {/* Details */}
                   <div className="flex items-center gap-4 text-sm text-gray-500 mt-2" style={{ fontSize: smallFontSize }}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
@@ -271,7 +269,6 @@ export default function BookingPage() {
                     </span>
                   </div>
 
-                  {/* Harga + Hemat */}
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     <p className="text-lg font-bold" style={{ color: primaryColor, fontSize: bodyFontSize }}>
                       {formatCurrency(service.price)}
@@ -283,7 +280,6 @@ export default function BookingPage() {
                     )}
                   </div>
 
-                  {/* ✅ TAMBAHKAN "Hemat Rp" */}
                   {hasCompare && discountAmount > 0 && (
                     <div className="mt-1">
                       <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
@@ -292,14 +288,25 @@ export default function BookingPage() {
                     </div>
                   )}
 
-                  {/* Button */}
-                  <Link
-                    href={`/booking/${service.slug}`}
+                  {/* 🔥 TOMBOL VIEW DETAILS DENGAN SPINNER */}
+                  <button
+                    onClick={() => handleViewDetails(service.slug, service.id)}
+                    disabled={navigatingId === service.id}
                     className="mt-3 w-full py-2.5 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
                     style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                   >
-                    View Details <ArrowRight className="w-4 h-4" />
-                  </Link>
+                    {navigatingId === service.id ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading...
+                      </>
+                    ) : (
+                      'View Details'
+                    )}
+                  </button>
                 </div>
               </div>
             )
