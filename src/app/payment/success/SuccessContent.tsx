@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle, Home, ShoppingBag, MessageCircle, Calendar, Clock, User, Phone, Mail, MapPin, CreditCard, DollarSign } from 'lucide-react'
+import { CheckCircle, Home, ShoppingBag, MessageCircle, Calendar, Clock, User, Phone, Mail, MapPin, CreditCard, DollarSign, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Service {
@@ -23,6 +23,8 @@ interface Booking {
   bookingTime: string
   notes: string | null
   status: string
+  paymentStatus: string | null
+  paymentMethodName: string | null
   midtransOrderId: string | null
   service: Service | null
   totalPrice?: number
@@ -49,9 +51,10 @@ interface Order {
   discountAmount: number
   total: number
   paymentMethod: string
-  paymentMethodName: string
+  paymentMethodName: string | null
   paymentAccountNumber: string
   paymentAccountName: string
+  paymentStatus: string | null
   status: string
   note: string | null
   createdAt: string
@@ -67,22 +70,7 @@ export default function SuccessContent() {
   const [isBooking, setIsBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!orderId) {
-      router.push('/')
-      return
-    }
-
-    toast.success('✅ Pembayaran berhasil!', { duration: 5000 })
-    
-    // Hapus last_booking_service dari localStorage setelah sukses
-    if (orderId?.startsWith('B-')) {
-      localStorage.removeItem('last_booking_service')
-    }
-
-    fetchData()
-  }, [orderId, router])
-
+  // 🔥 FUNGSI FETCH DATA
   const fetchData = async () => {
     try {
       setLoading(true)
@@ -93,6 +81,7 @@ export default function SuccessContent() {
         ? `/api/public/booking-detail?orderId=${orderId}`
         : `/api/public/order-detail?orderId=${orderId}`
 
+      console.log('🔄 Fetching data from:', endpoint)
       const res = await fetch(endpoint)
       
       if (!res.ok) {
@@ -100,6 +89,7 @@ export default function SuccessContent() {
       }
 
       const result = await res.json()
+      console.log('📦 Data received:', result)
       setData(result)
       setError(null)
     } catch (err: any) {
@@ -109,6 +99,39 @@ export default function SuccessContent() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // 🔥 AMBIL DATA SAAT HALAMAN DIMUAT
+  useEffect(() => {
+    if (!orderId) {
+      router.push('/')
+      return
+    }
+
+    toast.success('✅ Pembayaran berhasil!', { duration: 5000 })
+    
+    if (orderId?.startsWith('B-')) {
+      localStorage.removeItem('last_booking_service')
+    }
+
+    // 🔥 AMBIL DATA PERTAMA KALI
+    fetchData()
+
+    // 🔥 REFRESH DATA SETIAP 5 DETIK UNTUK CEK STATUS
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refreshing data...')
+      fetchData()
+    }, 5000)
+
+    // 🔥 HENTIKAN INTERVAL SAAT KOMPONEN UNMOUNT
+    return () => clearInterval(interval)
+
+  }, [orderId, router])
+
+  // 🔥 HANDLE REFRESH MANUAL
+  const handleRefresh = () => {
+    toast.loading('Memuat ulang data...')
+    fetchData()
   }
 
   if (loading) {
@@ -125,9 +148,18 @@ export default function SuccessContent() {
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">❌ Data Tidak Ditemukan</h1>
           <p className="text-gray-600 mb-6">{error || 'Maaf, data pesanan tidak ditemukan.'}</p>
-          <Link href="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90" style={{ backgroundColor: '#c4367b' }}>
-            <Home className="w-4 h-4" /> Kembali ke Home
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90"
+              style={{ backgroundColor: '#c4367b' }}
+            >
+              <RefreshCw className="w-4 h-4" /> Refresh
+            </button>
+            <Link href="/" className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 font-medium transition-all hover:bg-gray-50" style={{ borderColor: '#c4367b', color: '#c4367b' }}>
+              <Home className="w-4 h-4" /> Kembali ke Home
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -139,8 +171,10 @@ export default function SuccessContent() {
     const service = booking.service
     const totalPrice = service?.price || 0
     const adminWhatsapp = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
+    const paymentStatus = booking.paymentStatus || 'PENDING'
+    const isPaid = paymentStatus === 'PAID'
 
-    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${booking.id}%0A👤 *Nama:* ${booking.customerName}%0A📱 *WA:* ${booking.whatsapp}%0A📧 *Email:* ${booking.email || '-'}%0A📍 *Alamat:* ${booking.address || '-'}%0A💵 *Total:* Rp ${totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${booking.bookingTime}%0A📎 *Berikut bukti pembayaran saya.*`
+    const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan booking:%0A%0A📋 *Booking ID:* ${booking.id}%0A👤 *Nama:* ${booking.customerName}%0A📱 *WA:* ${booking.whatsapp}%0A📧 *Email:* ${booking.email || '-'}%0A📍 *Alamat:* ${booking.address || '-'}%0A💵 *Total:* Rp ${totalPrice.toLocaleString()}%0A📅 *Tanggal:* ${new Date(booking.bookingDate).toLocaleDateString('id-ID')}%0A⏰ *Waktu:* ${booking.bookingTime}%0A💳 *Metode:* ${booking.paymentMethodName || 'Midtrans'}%0A📎 *Berikut bukti pembayaran saya.*`
 
     return (
       <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -150,6 +184,12 @@ export default function SuccessContent() {
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-2">✅ Booking Berhasil!</h1>
           <p className="text-gray-600">Pembayaran Anda telah berhasil. Booking Anda sedang diproses.</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" /> Refresh Status
+          </button>
         </div>
 
         {/* Detail Booking */}
@@ -183,7 +223,13 @@ export default function SuccessContent() {
             )}
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-500">Status</span>
-              <span className="font-medium text-yellow-600">PENDING</span>
+              <span className={`font-medium ${isPaid ? 'text-green-600' : 'text-yellow-600'}`}>
+                {isPaid ? '✅ Lunas' : '⏳ PENDING'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-gray-100 pb-2">
+              <span className="text-gray-500">Metode Pembayaran</span>
+              <span className="font-medium">{booking.paymentMethodName || 'Midtrans'}</span>
             </div>
             <div className="flex justify-between pt-2">
               <span className="text-gray-500 font-semibold">Total</span>
@@ -262,6 +308,8 @@ export default function SuccessContent() {
 
   // ===== RENDER ORDER SUCCESS =====
   const order = data as Order
+  const paymentStatus = order.paymentStatus || 'PENDING'
+  const isPaid = paymentStatus === 'PAID'
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -272,6 +320,12 @@ export default function SuccessContent() {
         <h1 className="text-2xl font-bold text-gray-800 mb-2">✅ Pesanan Berhasil!</h1>
         <p className="text-gray-600">Pesanan Anda telah dibayar dan sedang diproses.</p>
         <p className="text-sm text-gray-500 mt-2">Nomor Pesanan: <span className="font-bold text-pink-500">{order.orderNumber}</span></p>
+        <button
+          onClick={handleRefresh}
+          className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh Status
+        </button>
       </div>
 
       {/* Order Details */}
@@ -284,11 +338,13 @@ export default function SuccessContent() {
           </div>
           <div className="flex justify-between border-b border-gray-100 pb-2">
             <span className="text-gray-500">Status</span>
-            <span className="font-medium text-yellow-600">PENDING</span>
+            <span className={`font-medium ${isPaid ? 'text-green-600' : 'text-yellow-600'}`}>
+              {isPaid ? '✅ Lunas' : '⏳ PENDING'}
+            </span>
           </div>
           <div className="flex justify-between border-b border-gray-100 pb-2">
             <span className="text-gray-500">Metode Pembayaran</span>
-            <span className="font-medium">{order.paymentMethodName || order.paymentMethod || '-'}</span>
+            <span className="font-medium">{order.paymentMethodName || order.paymentMethod || 'Midtrans'}</span>
           </div>
           {order.paymentAccountNumber && (
             <div className="flex justify-between border-b border-gray-100 pb-2">
