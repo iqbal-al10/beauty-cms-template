@@ -11,9 +11,6 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
-// ✅ KODE BARU (DYNAMIC IMPORT)
 import dynamic from 'next/dynamic'
 
 // 🔥 LOAD CHART HANYA SAAT DIBUTUHKAN
@@ -21,7 +18,6 @@ const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), {
   ssr: false,
   loading: () => <div className="h-80 animate-pulse bg-gray-100 rounded-xl" />
 })
-
 const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false })
 const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
 const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
@@ -273,6 +269,12 @@ interface Expense {
 
 const COLORS = ['#c4367b', '#3b82f6', '#f472b6', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa']
 
+// 🔥 WARNA SESUAI GRAFIK
+const CHART_COLORS = {
+  product: '#c4367b',
+  booking: '#3b82f6',
+}
+
 const CATEGORIES = [
   'OPERATIONAL',
   'MARKETING',
@@ -495,6 +497,10 @@ export default function DashboardPage() {
     setExporting(true)
     try {
       toast.loading('Menyiapkan data untuk PDF...')
+      
+      // 🔥 IMPORT DINAMIS (BARU DIMUAT SAAT DIKLIK)
+      const jsPDF = (await import('jspdf')).default
+      const html2canvas = (await import('html2canvas')).default
       
       const res = await fetch('/api/admin/dashboard?period=all')
       const data = await res.json()
@@ -1316,7 +1322,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ===== NOTIFIKASI BOOKING & PESANAN ===== */}
+      {/* ===== NOTIFIKASI BOOKING & PESANAN - RAPI ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Bookings */}
         <div>
@@ -1335,47 +1341,68 @@ export default function DashboardPage() {
               ✅ Tidak ada booking pending
             </div>
           ) : (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {pendingBookings.map((booking) => (
                 <div key={booking.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-800">{booking.customerName}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800">{booking.customerName}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
+                          <Clock className="w-3 h-3" /> Pending
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500">{booking.whatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
-                      <Clock className="w-3 h-3" /> Pending
-                    </span>
                   </div>
 
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p><span className="text-gray-500">Layanan:</span> <span className="font-medium">{booking.service?.name || 'Unknown'}</span></p>
-                    <p><span className="text-gray-500">Tanggal:</span> <span className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
-                    <p><span className="text-gray-500">Waktu:</span> <span className="font-medium">{booking.bookingTime}</span></p>
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-gray-500">Harga:</p>
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Layanan</p>
+                      <p className="font-medium">{booking.service?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Tanggal</p>
+                      <p className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Waktu</p>
+                      <p className="font-medium">{booking.bookingTime}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Harga</p>
                       {booking.discountAmount > 0 ? (
-                        <>
+                        <div>
                           <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                          <p className="text-sm font-medium text-green-600">
+                          <p className="font-medium text-green-600">
                             Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
-                            {booking.voucherCode && booking.discountAmount > 0 && (
+                            {booking.voucherCode && (
                               <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Ticket className="w-3 h-3" />
                                 {booking.voucherCode}
                               </span>
                             )}
                           </p>
-                        </>
+                        </div>
                       ) : (
-                        <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                        <p className="font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    {booking.notes && <p className="text-sm text-gray-500">Catatan: {booking.notes}</p>}
-                    <p className="text-xs text-gray-400">ID: {booking.id}</p>
-                    <p className="text-xs text-gray-400">{formatDate(booking.createdAt)}</p>
+                    <div>
+                      <p className="text-xs text-gray-400">Catatan</p>
+                      <p className="font-medium text-gray-600">{booking.notes || '-'}</p>
+                    </div>
                   </div>
+
+                  {booking.address && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Alamat</p>
+                      <p className="font-medium text-gray-600">{booking.address}</p>
+                    </div>
+                  )}
 
                   <div className="mt-3 flex gap-2">
                     <button 
@@ -1419,44 +1446,72 @@ export default function DashboardPage() {
               ✅ Tidak ada pesanan pending
             </div>
           ) : (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {pendingOrders.map((order) => (
                 <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-800">{order.customerName}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800">{order.customerName}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
+                          <Clock className="w-3 h-3" /> Pending
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500">{order.customerWhatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
-                      <Clock className="w-3 h-3" /> Pending
-                    </span>
                   </div>
 
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p><span className="text-gray-500">Order:</span> <span className="font-medium">{order.orderNumber}</span></p>
-                    <p><span className="text-gray-500">Produk:</span> <span className="font-medium">{order.productName}</span></p>
-                    <p><span className="text-gray-500">Jumlah:</span> <span className="font-medium">{order.quantity} unit</span></p>
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-gray-500">Rincian Harga:</p>
-                      {order.discountAmount > 0 && (
-                        <>
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Order #</p>
+                      <p className="font-medium">{order.orderNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Produk</p>
+                      <p className="font-medium">{order.productName}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Jumlah</p>
+                      <p className="font-medium">{order.quantity} unit</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Rincian Harga</p>
+                      {order.discountAmount > 0 ? (
+                        <div>
                           <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
                           <div className="flex items-center gap-1">
                             <Ticket className="w-3 h-3 text-purple-500" />
                             <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
                           </div>
-                        </>
+                          {order.shippingCost > 0 && (
+                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                          )}
+                          <p className="font-bold" style={{ color: primaryColor }}>Rp {order.total.toLocaleString()}</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="font-medium">Rp {order.total.toLocaleString()}</p>
+                          {order.shippingCost > 0 && (
+                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                          )}
+                        </div>
                       )}
-                      {order.shippingCost > 0 && (
-                        <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                      )}
-                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                        Total Dibayar: Rp {order.total.toLocaleString()}
-                      </p>
                     </div>
-                    {order.note && <p className="text-sm text-gray-500">Catatan: {order.note}</p>}
-                    <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
+                    <div>
+                      <p className="text-xs text-gray-400">Catatan</p>
+                      <p className="font-medium text-gray-600">{order.note || '-'}</p>
+                    </div>
                   </div>
+
+                  {order.address && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Alamat</p>
+                      <p className="font-medium text-gray-600">{order.address}</p>
+                    </div>
+                  )}
 
                   <div className="mt-3 flex gap-2">
                     <button 
@@ -1484,7 +1539,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ===== ON PROGRESS ===== */}
+      {/* ===== ON PROGRESS - RAPI ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* On Progress Bookings */}
         <div>
@@ -1503,48 +1558,80 @@ export default function DashboardPage() {
               Tidak ada booking yang sedang diproses
             </div>
           ) : (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {stats.onProgressBookings.map((booking) => (
                 <div key={booking.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-800">{booking.customerName}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800">{booking.customerName}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> ON PROGRESS
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500">{booking.whatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> ON PROGRESS
-                    </span>
                   </div>
 
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p><span className="text-gray-500">ID Booking:</span> <span className="font-mono text-xs">{booking.id}</span></p>
-                    <p><span className="text-gray-500">Layanan:</span> <span className="font-medium">{booking.service?.name || 'Unknown'}</span></p>
-                    <p><span className="text-gray-500">Tanggal:</span> <span className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
-                    <p><span className="text-gray-500">Waktu:</span> <span className="font-medium">{booking.bookingTime}</span></p>
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-gray-500">Harga:</p>
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">ID Booking</p>
+                      <p className="font-mono text-xs font-medium">{booking.id.slice(0, 12)}...</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Layanan</p>
+                      <p className="font-medium">{booking.service?.name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Tanggal</p>
+                      <p className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Harga</p>
                       {booking.discountAmount > 0 ? (
-                        <>
+                        <div>
                           <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                          <p className="text-sm font-medium text-green-600">
+                          <p className="font-medium text-green-600">
                             Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
-                            {booking.voucherCode && booking.discountAmount > 0 && (
+                            {booking.voucherCode && (
                               <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                 <Ticket className="w-3 h-3" />
                                 {booking.voucherCode}
                               </span>
                             )}
                           </p>
-                        </>
+                        </div>
                       ) : (
-                        <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                        <p className="font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                       )}
                     </div>
-                    {booking.address && <p><span className="text-gray-500">Alamat:</span> <span className="font-medium">{booking.address}</span></p>}
-                    {booking.notes && <p><span className="text-gray-500">Catatan:</span> <span className="font-medium">{booking.notes}</span></p>}
-                    {booking.approvedAt && <p className="text-xs text-gray-400">Disetujui: {formatDate(booking.approvedAt)}</p>}
+                    <div>
+                      <p className="text-xs text-gray-400">Waktu</p>
+                      <p className="font-medium">{booking.bookingTime}</p>
+                    </div>
                   </div>
+
+                  {booking.address && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Alamat</p>
+                      <p className="font-medium text-gray-600">{booking.address}</p>
+                    </div>
+                  )}
+                  {booking.notes && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Catatan</p>
+                      <p className="font-medium text-gray-600">{booking.notes}</p>
+                    </div>
+                  )}
+                  {booking.approvedAt && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Disetujui</p>
+                      <p className="font-medium text-gray-600">{formatDate(booking.approvedAt)}</p>
+                    </div>
+                  )}
 
                   <div className="mt-3 flex gap-2">
                     <button 
@@ -1587,45 +1674,67 @@ export default function DashboardPage() {
               Tidak ada order yang sedang diproses
             </div>
           ) : (
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {stats.onProgressOrders.map((order) => (
                 <div key={order.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold text-gray-800">{order.customerName}</p>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800">{order.customerName}</p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> ON PROGRESS
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500">{order.customerWhatsapp}</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> ON PROGRESS
-                    </span>
                   </div>
 
-                  <div className="mt-2 space-y-1 text-sm">
-                    <p><span className="text-gray-500">Order:</span> <span className="font-medium">{order.orderNumber}</span></p>
-                    {order.items.map((item, idx) => (
-                      <p key={idx} className="text-sm text-gray-700">- {item.productName} x{item.quantity}</p>
-                    ))}
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-gray-500">Rincian Harga:</p>
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Order #</p>
+                      <p className="font-medium">{order.orderNumber}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Items</p>
+                      <div className="text-sm text-gray-700">
+                        {order.items.map((item, idx) => (
+                          <p key={idx}>- {item.productName} x{item.quantity}</p>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Total</p>
+                      <p className="font-bold" style={{ color: primaryColor }}>Rp {order.totalPaid.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Rincian Harga</p>
                       {order.discountAmount > 0 && (
-                        <>
+                        <div>
                           <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
                           <div className="flex items-center gap-1">
                             <Ticket className="w-3 h-3 text-purple-500" />
                             <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
                           </div>
-                        </>
+                          {order.shippingCost > 0 && (
+                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                          )}
+                        </div>
                       )}
-                      {order.shippingCost > 0 && (
-                        <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                      )}
-                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                        Total Dibayar: Rp {order.totalPaid.toLocaleString()}
-                      </p>
                     </div>
-                    {order.address && <p><span className="text-gray-500">Alamat:</span> <span className="font-medium">{order.address}</span></p>}
-                    {order.approvedAt && <p className="text-xs text-gray-400">Disetujui: {formatDate(order.approvedAt)}</p>}
+                    <div>
+                      <p className="text-xs text-gray-400">Alamat</p>
+                      <p className="font-medium text-gray-600">{order.address || '-'}</p>
+                    </div>
                   </div>
+                  {order.approvedAt && (
+                    <div className="mt-1 text-sm">
+                      <p className="text-xs text-gray-400">Disetujui</p>
+                      <p className="font-medium text-gray-600">{formatDate(order.approvedAt)}</p>
+                    </div>
+                  )}
 
                   <div className="mt-3 flex gap-2">
                     <button 
@@ -1825,13 +1934,13 @@ export default function DashboardPage() {
                 <Legend />
                 <Bar 
                   dataKey="bookingRevenue" 
-                  fill="#3b82f6" 
+                  fill={CHART_COLORS.booking} 
                   radius={[4, 4, 0, 0]} 
                   name="Pendapatan Booking" 
                 />
                 <Bar 
                   dataKey="productRevenue" 
-                  fill="#c4367b" 
+                  fill={CHART_COLORS.product} 
                   radius={[4, 4, 0, 0]} 
                   name="Pendapatan Product" 
                 />
@@ -1855,7 +1964,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
           <div className="text-center">
             <p className="text-xs text-gray-500">Pendapatan Product</p>
-            <p className="text-sm font-bold" style={{ color: '#c4367b' }}>
+            <p className="text-sm font-bold" style={{ color: CHART_COLORS.product }}>
               {formatCurrency(
                 chartData.reduce((sum, d) => sum + d.productRevenue, 0)
               )}
@@ -1863,7 +1972,7 @@ export default function DashboardPage() {
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-500">Pendapatan Booking</p>
-            <p className="text-sm font-bold" style={{ color: '#3b82f6' }}>
+            <p className="text-sm font-bold" style={{ color: CHART_COLORS.booking }}>
               {formatCurrency(
                 chartData.reduce((sum, d) => sum + d.bookingRevenue, 0)
               )}
@@ -1888,7 +1997,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Bookings & History Order */}
+      {/* Recent Bookings & History Order - RAPI */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Recent Bookings */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -1910,7 +2019,7 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{booking.customerName}</p>
-                      <p className="text-sm text-gray-500">ID: <span className="font-mono text-xs">{booking.id}</span></p>
+                      <p className="text-sm text-gray-500">ID: <span className="font-mono text-xs">{booking.id.slice(0, 12)}...</span></p>
                       <p className="text-sm text-gray-500">{booking.service?.name}</p>
                       <p className="text-sm text-gray-500">
                         📅 {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} 
@@ -1923,8 +2032,7 @@ export default function DashboardPage() {
                             <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                             <p className="text-sm font-medium text-green-600">
                               Rp {(booking.totalPaid || 0).toLocaleString()}
-                              {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
-                              {booking.voucherCode && booking.discountAmount > 0 && (
+                              {booking.voucherCode && (
                                 <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                                   <Ticket className="w-3 h-3" />
                                   {booking.voucherCode}
@@ -1938,7 +2046,8 @@ export default function DashboardPage() {
                       </div>
                       {booking.address && (
                         <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {booking.address}</p>
+                          <MapPin className="w-3 h-3" /> {booking.address}
+                        </p>
                       )}
                       <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
                         <span>📱 {booking.whatsapp}</span>
@@ -1999,10 +2108,10 @@ export default function DashboardPage() {
                               <Ticket className="w-3 h-3 text-purple-500" />
                               <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
                             </div>
+                            {order.shippingCost > 0 && (
+                              <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                            )}
                           </>
-                        )}
-                        {order.shippingCost > 0 && (
-                          <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
                         )}
                         <p className="text-sm font-bold" style={{ color: primaryColor }}>
                           Total Dibayar: Rp {order.totalPaid.toLocaleString()}
@@ -2034,7 +2143,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Products & Pie Chart */}
+      {/* Top Products & Pie Chart - WARNA SESUAI GRAFIK */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><CreditCard className="w-5 h-5 text-pink-500" /> Kontribusi Pendapatan</h2>
@@ -2046,24 +2155,31 @@ export default function DashboardPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie 
-                    data={displayPieData} 
-                    cx="50%" 
-                    cy="50%" 
-                    labelLine={false} 
-                    label={renderPieLabel} 
-                    outerRadius={80} 
-                    fill="#c4367b" 
+                  <Pie
+                    data={displayPieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderPieLabel}
+                    outerRadius={80}
+                    fill="#8884d8"
                     dataKey="value"
                   >
-                    {displayPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    {displayPieData.map((entry, index) => {
+                      let color = COLORS[index % COLORS.length]
+                      if (entry.name === 'Pendapatan Product') color = CHART_COLORS.product
+                      if (entry.name === 'Pendapatan Booking') color = CHART_COLORS.booking
+                      return <Cell key={`cell-${index}`} fill={color} />
+                    })}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px' }} 
-                    formatter={pieTooltipFormatter} 
-                    labelFormatter={(label) => label} 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                    formatter={pieTooltipFormatter}
+                    labelFormatter={(label) => label}
                   />
                 </PieChart>
               </ResponsiveContainer>
