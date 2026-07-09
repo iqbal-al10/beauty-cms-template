@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
+import { sendOrderNotification } from '@/lib/push/server'
 
 function generateOrderNumber() {
   const date = new Date()
@@ -136,19 +137,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN
+    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN - PANGGIL LANGSUNG FUNGSI
     try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      await fetch(`${appUrl}/api/push/send-order`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          total: order.total,
-        }),
-      })
+      await sendOrderNotification(
+        order.id,
+        order.orderNumber,
+        order.customerName,
+        order.total
+      )
       console.log('✅ Push notification sent for order:', order.id)
     } catch (pushError) {
       // Jangan gagalkan order jika notifikasi gagal
