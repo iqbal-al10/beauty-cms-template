@@ -154,7 +154,7 @@ function BookingServiceContent() {
 
   const fetchPaymentMethods = async () => {
     try {
-      const res = await fetch('/api/admin/payments')
+      const res = await fetch('/api/public/payments')
       if (res.ok) {
         const data = await res.json()
         setPaymentMethods(data.filter((p: PaymentMethod) => p.isActive))

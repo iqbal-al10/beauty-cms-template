@@ -181,7 +181,7 @@ function CheckoutContent() {
   const fetchData = async (savedCity: string = '') => {
     try {
       const [paymentsRes] = await Promise.all([
-        fetch('/api/admin/payments'),
+      fetch('/api/public/payments'),
       ])
 
       if (paymentsRes.ok) {
