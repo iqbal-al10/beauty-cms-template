@@ -70,6 +70,9 @@ export default function SuccessContent() {
   const [isBooking, setIsBooking] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // 🔥 DEKLARASIKAN DI SINI (untuk digunakan di booking DAN order)
+  const adminWhatsapp = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
+
   // 🔥 FUNGSI FETCH DATA
   const fetchData = async () => {
     try {
@@ -114,9 +117,7 @@ export default function SuccessContent() {
       localStorage.removeItem('last_booking_service')
     }
 
-    // 🔥 AMBIL DATA PERTAMA KALI
     fetchData()
-
   }, [orderId, router])
 
   // 🔥 HANDLE REFRESH MANUAL
@@ -161,7 +162,6 @@ export default function SuccessContent() {
     const booking = data as Booking
     const service = booking.service
     const totalPrice = service?.price || 0
-    const adminWhatsapp = process.env.NEXT_PUBLIC_ADMIN_WHATSAPP || ''
     const paymentStatus = booking.paymentStatus || 'PENDING'
     const isPaid = paymentStatus === 'PAID'
 
@@ -259,30 +259,7 @@ export default function SuccessContent() {
           </div>
         </div>
 
-        {/* WhatsApp Button */}
-        {adminWhatsapp && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
-            <h2 className="text-lg font-semibold text-green-800 mb-2 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              Kirim Bukti Pembayaran
-            </h2>
-            <p className="text-sm text-green-700 mb-4">
-              Setelah melakukan pembayaran, kirim bukti transfer melalui WhatsApp untuk mempercepat proses verifikasi.
-            </p>
-            <a
-              href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 hover:scale-105 active:scale-95"
-              style={{ backgroundColor: '#25D366' }}
-            >
-              <MessageCircle className="w-5 h-5" />
-              Kirim Bukti via WhatsApp
-            </a>
-          </div>
-        )}
-
-        {/* Actions */}
+        {/* 🔥 ACTIONS - HANYA KONFIRMASI VIA WHATSAPP + LIHAT LAYANAN */}
         <div className="flex flex-wrap gap-4">
           <a
             href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
@@ -295,12 +272,12 @@ export default function SuccessContent() {
             Konfirmasi via WhatsApp
           </a>
           <Link
-            href={isBooking ? '/booking' : '/products'}
+            href="/booking"
             className="flex-1 min-w-[150px] px-6 py-3 rounded-lg border-2 text-center font-medium transition-all hover:bg-gray-50"
             style={{ borderColor: '#c4367b', color: '#c4367b' }}
           >
             <ShoppingBag className="w-4 h-4 inline mr-2" />
-            {isBooking ? 'Lihat Layanan' : 'Belanja Lagi'}
+            Lihat Layanan
           </Link>
         </div>
       </div>
@@ -311,6 +288,9 @@ export default function SuccessContent() {
   const order = data as Order
   const paymentStatus = order.paymentStatus || 'PENDING'
   const isPaid = paymentStatus === 'PAID'
+
+  // 🔥 waMessage UNTUK ORDER
+  const waMessage = `Halo Admin,%0A%0ASaya sudah melakukan pembayaran untuk pesanan:%0A%0A📋 *Order Number:* ${order.orderNumber}%0A👤 *Nama:* ${order.customerName}%0A📱 *WA:* ${order.customerWhatsapp}%0A📧 *Email:* ${order.email || '-'}%0A📍 *Alamat:* ${order.address}%0A💵 *Total:* Rp ${order.total.toLocaleString()}%0A📅 *Tanggal:* ${new Date(order.createdAt).toLocaleDateString('id-ID')}%0A💳 *Metode:* ${order.paymentMethodName || order.paymentMethod || 'Midtrans'}%0A%0A📎 *Berikut bukti pembayaran saya.*`
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
@@ -415,28 +395,25 @@ export default function SuccessContent() {
         </div>
       </div>
 
-      {/* Actions */}
+      {/* 🔥 ACTIONS - HANYA KONFIRMASI VIA WHATSAPP + BELANJA LAGI */}
       <div className="flex flex-wrap gap-4">
-        {/* 🔥 KONFIRMASI VIA WHATSAPP (Menggantikan Kembali ke Home) */}
-        {adminWhatsapp && (
-          <a
-            href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 min-w-[150px] px-6 py-3 rounded-lg text-white text-center font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2"
-            style={{ backgroundColor: '#25D366' }}
-          >
-            <MessageCircle className="w-5 h-5" />
-            Kirim Konfirmasi via WhatsApp
-          </a>
-        )}
+        <a
+          href={`https://wa.me/${adminWhatsapp.replace(/[^0-9]/g, '')}?text=${waMessage}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 min-w-[150px] px-6 py-3 rounded-lg text-white text-center font-medium transition-all hover:opacity-90 flex items-center justify-center gap-2"
+          style={{ backgroundColor: '#25D366' }}
+        >
+          <MessageCircle className="w-5 h-5" />
+          Konfirmasi via WhatsApp
+        </a>
         <Link
-          href={isBooking ? '/booking' : '/products'}
+          href="/products"
           className="flex-1 min-w-[150px] px-6 py-3 rounded-lg border-2 text-center font-medium transition-all hover:bg-gray-50"
           style={{ borderColor: '#c4367b', color: '#c4367b' }}
         >
           <ShoppingBag className="w-4 h-4 inline mr-2" />
-          {isBooking ? 'Lihat Layanan' : 'Belanja Lagi'}
+          Belanja Lagi
         </Link>
       </div>
     </div>
