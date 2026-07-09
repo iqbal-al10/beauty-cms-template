@@ -243,6 +243,9 @@ model Booking {
   paymentStatus   String?   @default("PENDING")
   midtransOrderId String?   @unique
   paymentMethodName String?
+  voucherCode     String?
+  discountAmount  Float?   @default(0)
+  totalPaid       Float?
 
   approvedBy   String?
   approvedAt   DateTime?

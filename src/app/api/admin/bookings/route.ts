@@ -15,9 +15,17 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
 
     const where: any = {}
+    
+    // 🔥 KHUSUS UNTUK NOTIFIKASI PENDING (status=PENDING)
+    // Hanya tampilkan yang paymentStatus = 'PAID' ATAU status = 'ON_PROGRESS'
     if (status && status !== 'ALL') {
       where.status = status
+      // Jika status PENDING, hanya tampilkan yang sudah PAID
+      if (status === 'PENDING') {
+        where.paymentStatus = 'PAID'
+      }
     }
+    
     if (date) {
       where.bookingDate = {
         gte: new Date(date),
@@ -57,11 +65,11 @@ export async function GET(request: NextRequest) {
         price: booking.service.price,
         duration: booking.service.duration,
       } : null,
-      // 🔥 INFORMASI HARGA
       originalPrice: booking.service?.price || 0,
-      discountAmount: 0, // booking belum support diskon
-      voucherCode: null,
-      totalPaid: booking.service?.price || 0,
+      // 🔥 TAMBAHKAN FIELD VOUCHER
+      discountAmount: booking.discountAmount || 0,
+      voucherCode: booking.voucherCode || null,
+      totalPaid: booking.totalPaid || booking.service?.price || 0,
     }))
 
     return NextResponse.json(transformed || [])

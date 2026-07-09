@@ -296,8 +296,6 @@ export async function GET(request: NextRequest) {
     // ===== FORMAT DATA DENGAN VOUCHER & TOTAL SETELAH DISKON =====
     const formattedRecentBookings = recentBookings.map((b) => {
       const servicePrice = b.service?.price || 0
-      // Booking tidak punya field discountAmount, jadi total = service price
-      // TAPI kita bisa ambil dari data booking jika ada
       return {
         id: b.id,
         customerName: b.customerName,
@@ -311,11 +309,11 @@ export async function GET(request: NextRequest) {
         service: b.service,
         completedAt: b.completedAt,
         approvedBy: b.approvedUser,
-        // 🔥 TAMBAHKAN INFORMASI HARGA
         originalPrice: servicePrice,
-        discountAmount: 0, // booking tidak ada diskon
-        voucherCode: null,
-        totalPaid: servicePrice,
+        // 🔥 TAMBAHKAN FIELD VOUCHER
+        discountAmount: b.discountAmount || 0,
+        voucherCode: b.voucherCode || null,
+        totalPaid: b.totalPaid || servicePrice,
       }
     })
 
@@ -335,9 +333,10 @@ export async function GET(request: NextRequest) {
         approvedAt: b.approvedAt,
         approvedBy: b.approvedUser,
         originalPrice: servicePrice,
-        discountAmount: 0,
-        voucherCode: null,
-        totalPaid: servicePrice,
+        // 🔥 TAMBAHKAN FIELD VOUCHER
+        discountAmount: b.discountAmount || 0,
+        voucherCode: b.voucherCode || null,
+        totalPaid: b.totalPaid || servicePrice,
       }
     })
 

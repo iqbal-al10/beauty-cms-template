@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
     const filter: any = {}
     if (status) {
       filter.status = status
+      // 🔥 JIKA STATUS PENDING, HANYA TAMPILKAN YANG SUDAH PAID
+      if (status === 'PENDING') {
+        filter.paymentStatus = 'PAID'
+      }
     }
 
     const orders = await prisma.order.findMany({
@@ -55,7 +59,6 @@ export async function GET(request: NextRequest) {
       status: order.status,
       note: order.note,
       createdAt: order.createdAt,
-      // 🔥 INFORMASI HARGA & VOUCHER
       subtotal: order.subtotal || 0,
       discountAmount: order.discountAmount || 0,
       voucherCode: order.voucherCode || null,

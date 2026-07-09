@@ -242,6 +242,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 🔥 CREATE BOOKING DENGAN VOUCHER
     const booking = await prisma.booking.create({
       data: {
         serviceId,
@@ -253,6 +254,11 @@ export async function POST(request: NextRequest) {
         address: address || null,
         notes: notes || null,
         status: 'PENDING',
+        paymentStatus: 'PENDING',
+        // 🔥 TAMBAHKAN FIELD VOUCHER
+        voucherCode: appliedVoucherCode,
+        discountAmount: discountAmount,
+        totalPaid: totalPrice,
       },
     })
 
