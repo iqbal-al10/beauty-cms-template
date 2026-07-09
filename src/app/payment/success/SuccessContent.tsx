@@ -117,15 +117,6 @@ export default function SuccessContent() {
     // 🔥 AMBIL DATA PERTAMA KALI
     fetchData()
 
-    // 🔥 REFRESH DATA SETIAP 5 DETIK UNTUK CEK STATUS
-    const interval = setInterval(() => {
-      console.log('🔄 Auto-refreshing data...')
-      fetchData()
-    }, 5000)
-
-    // 🔥 HENTIKAN INTERVAL SAAT KOMPONEN UNMOUNT
-    return () => clearInterval(interval)
-
   }, [orderId, router])
 
   // 🔥 HANDLE REFRESH MANUAL

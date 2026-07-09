@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'OK' })
     }
 
-    // 🔥 CARI ORDER/BOKING DI DATABASE BERDASARKAN MIDTRANS_ORDER_ID
+    // 🔥 CARI ORDER/BOOKING DI DATABASE
     let orderId = null
 
     if (isBooking) {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'OK' })
     }
 
-    // 🔥 TENTUKAN STATUS BERDASARKAN TRANSACTION_STATUS
+    // 🔥 TENTUKAN STATUS
     let paymentStatus = 'PENDING'
     let orderStatus = 'PENDING'
 
@@ -69,8 +69,34 @@ export async function POST(request: NextRequest) {
       orderStatus = 'PENDING'
     }
 
-    // 🔥 AMBIL NAMA METODE PEMBAYARAN
-    const methodName = payment_type || 'Midtrans'
+    // 🔥 AMBIL NAMA METODE PEMBAYARAN YANG LEBIH SPESIFIK
+    let methodName = payment_type || 'Midtrans'
+
+    // Jika ada va_numbers, ambil nama bank (untuk BRIVA, BNI VA, BCA VA, dll)
+    if (body.va_numbers && body.va_numbers.length > 0) {
+      const bank = body.va_numbers[0].bank
+      if (bank) {
+        methodName = `${bank.toUpperCase()} VA`  // "BNI VA", "BCA VA", "BRI VA"
+      }
+    }
+
+    // Jika payment_type adalah 'bank_transfer' tapi tidak ada va_numbers
+    if (payment_type === 'bank_transfer' && !body.va_numbers) {
+      methodName = 'Bank Transfer'
+    }
+
+    // Jika ada payment_type lain
+    if (payment_type === 'credit_card') {
+      methodName = 'Kartu Kredit'
+    } else if (payment_type === 'gopay') {
+      methodName = 'GoPay'
+    } else if (payment_type === 'shopeepay') {
+      methodName = 'ShopeePay'
+    } else if (payment_type === 'qris') {
+      methodName = 'QRIS'
+    }
+
+    console.log('💳 Method Name:', methodName)
 
     // 🔥 UPDATE DATABASE
     if (isBooking) {
