@@ -954,7 +954,7 @@ export default function DashboardPage() {
 
       if (res.ok) {
         if (action === 'approve') {
-          toast.success('✅ Pesanan diproses! Stok berkurang.')
+          toast.success('✅ Pesanan diproses!')
         } else if (action === 'done') {
           toast.success('✅ Pesanan selesai!')
         } else {
