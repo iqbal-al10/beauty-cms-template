@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '7')
 
@@ -123,7 +129,7 @@ export async function GET(request: NextRequest) {
         devices: [],
         days: 7,
       },
-      { status: 200 }
+      { status: 500 }  // 🔥 UBAH KE 500
     )
   }
 }

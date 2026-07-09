@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Eye, Users, TrendingUp, Activity, RefreshCw, Globe, Smartphone, Monitor } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -31,6 +31,14 @@ interface AnalyticsData {
 
 const COLORS = ['#e88ea7', '#9b4d6e', '#f472b6', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa']
 
+// 🔥 SPINNER COMPONENT
+const Spinner = ({ className = "h-4 w-4" }: { className?: string }) => (
+  <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+)
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData>({
     totalVisitors: 0,
@@ -42,11 +50,16 @@ export default function AnalyticsPage() {
     days: 7,
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [days, setDays] = useState(7)
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
       const res = await fetch(`/api/admin/analytics?days=${days}`)
       if (!res.ok) throw new Error('Failed to fetch analytics')
       
@@ -56,13 +69,30 @@ export default function AnalyticsPage() {
       console.error('Failed to fetch analytics:', error)
       toast.error('Gagal memuat data analytics')
     } finally {
-      setLoading(false)
+      if (showLoading) {
+        setRefreshing(false)
+      } else {
+        setLoading(false)
+      }
     }
-  }
+  }, [days])
 
   useEffect(() => {
-    fetchAnalytics()
+    fetchAnalytics(false)
   }, [days])
+
+  // 🔥 AUTO REFRESH SETIAP 30 DETIK
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAnalytics(true)
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [fetchAnalytics])
+
+  const handleRefresh = () => {
+    fetchAnalytics(true)
+  }
 
   const totalPageViews = data.pageViews.reduce((sum, day) => sum + day.views, 0)
   const avgDailyVisitors = data.days > 0 ? Math.round(data.totalVisitors / data.days) : 0
@@ -110,12 +140,12 @@ export default function AnalyticsPage() {
             <option value={30}>Last 30 Days</option>
           </select>
           <button
-            onClick={fetchAnalytics}
-            disabled={loading}
+            onClick={handleRefresh}
+            disabled={refreshing}
             className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-50"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {refreshing ? <Spinner /> : <RefreshCw className="w-4 h-4" />}
+            {refreshing ? 'Memuat...' : 'Refresh'}
           </button>
         </div>
       </div>
