@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation' // 🔥 TAMBAHKAN
 import { useEffect, useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -73,7 +74,6 @@ interface BlogPost {
   category: { name: string } | null
 }
 
-// 🔥 TAMBAHKAN INTERFACE FAQ
 interface FAQ {
   id: string
   question: string
@@ -93,14 +93,12 @@ interface Settings {
   bodyFontSize: string
   smallFontSize: string
   fontFamily: string
-  // Hero Content
   heroBadge: string
   heroSubtitle: string
   heroShopButtonText: string
   heroShopButtonLink: string
   heroBookButtonText: string
   heroBookButtonLink: string
-  // Hero Slide 1
   heroSlide1Icon: string
   heroSlide1Label: string
   heroSlide1Title: string
@@ -109,7 +107,6 @@ interface Settings {
   heroSlide1Link: string
   heroSlide1BgStart: string
   heroSlide1BgEnd: string
-  // Hero Slide 2
   heroSlide2Icon: string
   heroSlide2Label: string
   heroSlide2Title: string
@@ -177,6 +174,7 @@ const DEFAULT_SETTINGS: Settings = {
 }
 
 export default function HomePage() {
+  const router = useRouter() // 🔥 TAMBAHKAN
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [featuredServices, setFeaturedServices] = useState<Service[]>([])
@@ -187,12 +185,12 @@ export default function HomePage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [navigatingId, setNavigatingId] = useState<string | null>(null) // 🔥 TAMBAHKAN
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
   const secondaryColor = settings?.colorSecondary || '#f5dbe8'
   const buttonColor = settings?.colorButton || '#c4367b'
 
-  // Build slides from settings
   const slides = [
     {
       id: 'slide1',
@@ -218,7 +216,6 @@ export default function HomePage() {
     },
   ]
 
-  // Auto-slide effect
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length)
@@ -245,7 +242,7 @@ export default function HomePage() {
           promosRes,
           testimonialsRes,
           blogsRes,
-          faqsRes // 🔥 TAMBAHKAN INI
+          faqsRes
         ] = await Promise.all([
           fetchWithTimeout('/api/public/settings', 3000).catch(() => null),
           fetchWithTimeout('/api/public/products?featured=true&limit=4', 5000).catch(() => null),
@@ -253,10 +250,9 @@ export default function HomePage() {
           fetchWithTimeout('/api/public/promos?active=true&limit=1', 5000).catch(() => null),
           fetchWithTimeout('/api/public/testimonials?limit=3', 5000).catch(() => null),
           fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/faq', 5000).catch(() => null), // 🔥 TAMBAHKAN
+          fetchWithTimeout('/api/public/faq', 5000).catch(() => null),
         ])
 
-        // Settings
         if (settingsRes && (settingsRes as Response).ok) {
           const data = await (settingsRes as Response).json()
           console.log('🔍 PUBLIC - Settings from API:', data)
@@ -290,7 +286,6 @@ export default function HomePage() {
           setLatestBlogs(data || [])
         }
 
-        // 🔥 SET FAQ DATA
         if (faqsRes && (faqsRes as Response).ok) {
           const data = await (faqsRes as Response).json()
           setFaqs(data || [])
@@ -304,6 +299,15 @@ export default function HomePage() {
 
     fetchData()
   }, [])
+
+  // 🔥 HANDLE VIEW DETAILS DENGAN SPINNER
+  const handleViewDetails = (slug: string, id: string, type: 'product' | 'service') => {
+    setNavigatingId(id)
+    const path = type === 'product' ? `/products/${slug}` : `/booking/${slug}`
+    setTimeout(() => {
+      router.push(path)
+    }, 500)
+  }
 
   const siteName = settings?.siteName || 'Beauty Studio'
   const heroBanner = settings?.heroBannerUrl || ''
@@ -360,7 +364,6 @@ export default function HomePage() {
     )
   }
 
-  // 🔥 Ambil 3 FAQ pertama untuk ditampilkan di home
   const homeFaqs = faqs.filter(f => f.isActive).slice(0, 3)
 
   return (
@@ -577,13 +580,25 @@ export default function HomePage() {
                         )}
                       </div>
 
-                      <Link
-                        href={`/products/${product.slug}`}
-                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
+                      {/* 🔥 TOMBOL VIEW DETAILS DENGAN SPINNER */}
+                      <button
+                        onClick={() => handleViewDetails(product.slug, product.id, 'product')}
+                        disabled={navigatingId === product.id}
+                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center flex items-center justify-center gap-2"
                         style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                       >
-                        View Details
-                      </Link>
+                        {navigatingId === product.id ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                          </>
+                        ) : (
+                          'View Details'
+                        )}
+                      </button>
                     </div>
                   </div>
                 )
@@ -678,13 +693,25 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/booking/${service.slug}`}
-                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center block"
+                      {/* 🔥 TOMBOL BOOK NOW DENGAN SPINNER */}
+                      <button
+                        onClick={() => handleViewDetails(service.slug, service.id, 'service')}
+                        disabled={navigatingId === service.id}
+                        className="mt-3 w-full py-2 rounded-full text-white text-sm font-medium transition-all hover:opacity-90 active:scale-95 text-center flex items-center justify-center gap-2"
                         style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
                       >
-                        Book Now
-                      </Link>
+                        {navigatingId === service.id ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Loading...
+                          </>
+                        ) : (
+                          'Book Now'
+                        )}
+                      </button>
                     </div>
                   </div>
                 )
