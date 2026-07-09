@@ -734,32 +734,36 @@ export default function DashboardPage() {
             📦 <span style="font-weight: bold;">On Progress Orders</span>
             ${data.onProgressOrders && data.onProgressOrders.length > 0 ? `<span style="background: #f59e0b; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.onProgressOrders.length}</span>` : ''}
           </h2>
-          ${data.onProgressOrders && data.onProgressOrders.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Order #</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Items</th>
-                  <th style="padding: 5px 6px; text-align: right; border: 1px solid #e2e8f0; font-weight: 600;">Total</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Approved At</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.onProgressOrders.map((o: any) => `
-                  <tr>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-weight: 600;">${o.orderNumber}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${o.customerName}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-size: 9px;">
-                      ${o.items.map((item: any) => `${item.productName} x${item.quantity}`).join(', ')}
-                    </td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">Rp ${o.total.toLocaleString()}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${o.approvedAt ? new Date(o.approvedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+            ${data.onProgressOrders && data.onProgressOrders.length > 0 ? `
+              <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <thead>
+                  <tr style="background: #f1f5f9;">
+                    <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Order #</th>
+                    <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
+                    <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Items</th>
+                    <th style="padding: 5px 6px; text-align: right; border: 1px solid #e2e8f0; font-weight: 600;">Total</th>
+                    <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Approved At</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada order on progress</p>'}
+                </thead>
+                <tbody>
+                  ${data.onProgressOrders.map((o: any) => `
+                    <tr>
+                      <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-weight: 600;">${o.orderNumber || '-'}</td>
+                      <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${o.customerName || '-'}</td>
+                      <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-size: 9px;">
+                        ${o.items ? o.items.map((item: any) => `${item.productName} x${item.quantity}`).join(', ') : '-'}
+                      </td>
+                      <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">
+                        Rp ${(o.total || o.totalPaid || 0).toLocaleString()}
+                      </td>
+                      <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">
+                        ${o.approvedAt ? new Date(o.approvedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada order on progress</p>'}
         </div>
 
         <div style="margin-bottom: 25px;">
@@ -786,7 +790,9 @@ export default function DashboardPage() {
                     <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-size: 9px;">
                       ${o.items.map((item: any) => `${item.productName} x${item.quantity}`).join(', ')}
                     </td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">Rp ${o.total.toLocaleString()}</td>
+                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">
+                      Rp ${(o.total || o.totalPaid || 0).toLocaleString()}
+                    </td>
                     <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${o.completedAt ? new Date(o.completedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                   </tr>
                 `).join('')}
