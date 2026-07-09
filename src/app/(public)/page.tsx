@@ -152,7 +152,7 @@ const DEFAULT_SETTINGS: Settings = {
   bodyFontSize: '16px',
   smallFontSize: '14px',
   fontFamily: 'Inter',
-  heroBadge: '⭐ Premium Beauty Services',
+  heroBadge: 'Premium Beauty Services',
   heroSubtitle: 'Discover premium beauty services and products for your perfect look',
   heroShopButtonText: 'Shop Now',
   heroShopButtonLink: '/products',
@@ -391,7 +391,7 @@ export default function HomePage() {
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
                 <span className="text-white text-sm font-medium" style={{ fontSize: smallFontSize }}>
-                  {settings.heroBadge || '⭐ Premium Beauty Services'}
+                  {settings.heroBadge || 'Premium Beauty Services'}
                 </span>
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: headingFontSize }}>

@@ -688,7 +688,7 @@ export default function SettingsPage() {
                 value={safeValue(settings.heroBadge)}
                 onChange={(e) => handleChange('heroBadge', e.target.value)}
                 className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                placeholder="⭐ Premium Beauty Services"
+                placeholder="Premium Beauty Services"
               />
             </div>
             <div>
@@ -1502,7 +1502,7 @@ export default function SettingsPage() {
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                         </svg>
                         <span className="text-white text-sm font-medium" style={{ fontSize: settings.smallFontSize || '14px' }}>
-                          {settings.heroBadge || '⭐ Premium Beauty Services'}
+                          {settings.heroBadge || 'Premium Beauty Services'}
                         </span>
                       </div>
                       <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg" style={{ fontSize: settings.headingFontSize || '32px' }}>
