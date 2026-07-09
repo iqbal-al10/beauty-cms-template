@@ -868,7 +868,7 @@ export default function ProductsPage() {
                           <td className="px-6 py-4 text-sm text-gray-500">
                             <span className={`px-2 py-1 rounded-full text-xs ${
                               product.stock > 10 ? 'bg-transparent text-green-700' : 
-                              product.stock > 0 ? 'bg-transparent text-yellow-700' : 
+                              product.stock > 0 ? 'bg-red-600 text-red-100' : 
                               'bg-red-100 text-red-700'
                             }`}>
                               {product.stock} unit
