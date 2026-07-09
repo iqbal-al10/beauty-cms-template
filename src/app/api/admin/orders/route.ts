@@ -44,19 +44,34 @@ export async function GET(request: NextRequest) {
       take: limit,
     })
 
-    // Transform untuk frontend
+    // 🔥 TRANSFORM DENGAN DATA LENGKAP
     const transformed = orders.map((order) => ({
       id: order.id,
+      orderNumber: order.orderNumber,
       customerName: order.customerName,
       customerWhatsapp: order.customerWhatsapp,
+      email: order.email,
+      address: order.address,
+      status: order.status,
+      note: order.note,
+      createdAt: order.createdAt,
+      // 🔥 INFORMASI HARGA & VOUCHER
+      subtotal: order.subtotal || 0,
+      discountAmount: order.discountAmount || 0,
+      voucherCode: order.voucherCode || null,
+      shippingCost: order.shippingCost || 0,
+      total: order.total || 0,
+      items: order.items.map((item) => ({
+        productName: item.productName || item.product?.name || 'Unknown',
+        quantity: item.quantity,
+        price: item.price,
+        total: item.total || (item.price * item.quantity),
+      })),
       productName: order.items.length > 0 
         ? order.items[0]?.productName || order.items[0]?.product?.name || '-' 
         : '-',
       quantity: order.items.reduce((sum, item) => sum + item.quantity, 0),
       finalPrice: order.total || 0,
-      status: order.status,
-      note: order.note,
-      createdAt: order.createdAt,
     }))
 
     return NextResponse.json(transformed)
@@ -80,6 +95,7 @@ export async function POST(request: NextRequest) {
     const {
       customerName,
       customerWhatsapp,
+      email,
       address,
       city,
       province,
@@ -89,6 +105,9 @@ export async function POST(request: NextRequest) {
       discountAmount,
       total,
       paymentMethod,
+      paymentMethodName,
+      paymentAccountNumber,
+      paymentAccountName,
       note,
       voucherCode,
       items,
@@ -121,18 +140,23 @@ export async function POST(request: NextRequest) {
         orderNumber,
         customerName,
         customerWhatsapp,
+        email: email || null,
         address,
         city: city || '',
         province: province || '',
         postalCode: postalCode || '',
         shippingCost: shippingCost || 0,
-        subtotal,
+        subtotal: subtotal || 0,
         discountAmount: discountAmount || 0,
-        total,
+        total: total || 0,
         paymentMethod: paymentMethod || '',
+        paymentMethodName: paymentMethodName || '',
+        paymentAccountNumber: paymentAccountNumber || '',
+        paymentAccountName: paymentAccountName || '',
         note: note || '',
         voucherCode: voucherCode || '',
         status: 'PENDING',
+        paymentStatus: 'PENDING',
         items: {
           create: items.map((item: any) => ({
             productId: item.productId,

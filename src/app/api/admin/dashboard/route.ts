@@ -18,10 +18,8 @@ export async function GET(request: NextRequest) {
     startOfWeek.setDate(now.getDate() - 7)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    // 🔥 FIX 1: Total Bookings = Total Services (bukan transaksi booking)
     const totalBookings = await prisma.service.count()
 
-    // 🔥 FIX 2: Total Reviews = Product Reviews + Service Reviews
     const [totalProductReviews, totalServiceReviews] = await Promise.all([
       prisma.review.count({ where: { isPublished: true } }),
       prisma.serviceReview.count({ where: { isPublished: true } })
@@ -58,7 +56,7 @@ export async function GET(request: NextRequest) {
       prisma.booking.findMany({
         where: { status: 'COMPLETED' },
         include: { 
-          service: { select: { name: true } },
+          service: { select: { name: true, price: true } },
           approvedUser: { select: { name: true } }
         },
         orderBy: { completedAt: 'desc' },
@@ -67,7 +65,7 @@ export async function GET(request: NextRequest) {
       prisma.booking.findMany({
         where: { status: 'ON_PROGRESS' },
         include: { 
-          service: { select: { name: true } },
+          service: { select: { name: true, price: true } },
           approvedUser: { select: { name: true } }
         },
         orderBy: { approvedAt: 'desc' },
@@ -95,6 +93,10 @@ export async function GET(request: NextRequest) {
         where: { status: 'COMPLETED' },
         select: {
           total: true,
+          subtotal: true,
+          discountAmount: true,
+          voucherCode: true,
+          shippingCost: true,
           createdAt: true,
         },
       }),
@@ -133,7 +135,7 @@ export async function GET(request: NextRequest) {
       }),
     ])
 
-    // ===== REVENUE FROM PRODUCTS =====
+    // ===== REVENUE FROM PRODUCTS (SETELAH DISKON) =====
     let totalProductRevenue = 0
     let todayProductRevenue = 0
     let weekProductRevenue = 0
@@ -141,6 +143,7 @@ export async function GET(request: NextRequest) {
     const productRevenueByDay: Record<string, number> = {}
 
     for (const order of completedOrders) {
+      // Gunakan total yang sudah termasuk diskon
       const amount = order.total || 0
       totalProductRevenue += amount
 
@@ -290,70 +293,114 @@ export async function GET(request: NextRequest) {
     const totalExpense = totalProductExpense + totalBookingExpense
     const totalProfit = totalRevenue - totalExpense
 
-    // FORMAT DATA UNTUK RESPONSE
-    const formattedRecentBookings = recentBookings.map((b) => ({
-      id: b.id,
-      customerName: b.customerName,
-      bookingDate: b.bookingDate,
-      bookingTime: b.bookingTime,
-      status: b.status,
-      address: b.address,
-      whatsapp: b.whatsapp,
-      email: b.email,
-      notes: b.notes,
-      service: b.service,
-      completedAt: b.completedAt,
-    }))
+    // ===== FORMAT DATA DENGAN VOUCHER & TOTAL SETELAH DISKON =====
+    const formattedRecentBookings = recentBookings.map((b) => {
+      const servicePrice = b.service?.price || 0
+      // Booking tidak punya field discountAmount, jadi total = service price
+      // TAPI kita bisa ambil dari data booking jika ada
+      return {
+        id: b.id,
+        customerName: b.customerName,
+        whatsapp: b.whatsapp,
+        email: b.email,
+        address: b.address,
+        bookingDate: b.bookingDate,
+        bookingTime: b.bookingTime,
+        status: b.status,
+        notes: b.notes,
+        service: b.service,
+        completedAt: b.completedAt,
+        approvedBy: b.approvedUser,
+        // 🔥 TAMBAHKAN INFORMASI HARGA
+        originalPrice: servicePrice,
+        discountAmount: 0, // booking tidak ada diskon
+        voucherCode: null,
+        totalPaid: servicePrice,
+      }
+    })
 
-    const formattedOnProgressBookings = onProgressBookings.map((b) => ({
-      id: b.id,
-      customerName: b.customerName,
-      bookingDate: b.bookingDate,
-      bookingTime: b.bookingTime,
-      status: b.status,
-      address: b.address,
-      whatsapp: b.whatsapp,
-      email: b.email,
-      notes: b.notes,
-      service: b.service,
-      approvedAt: b.approvedAt,
-    }))
+    const formattedOnProgressBookings = onProgressBookings.map((b) => {
+      const servicePrice = b.service?.price || 0
+      return {
+        id: b.id,
+        customerName: b.customerName,
+        whatsapp: b.whatsapp,
+        email: b.email,
+        address: b.address,
+        bookingDate: b.bookingDate,
+        bookingTime: b.bookingTime,
+        status: b.status,
+        notes: b.notes,
+        service: b.service,
+        approvedAt: b.approvedAt,
+        approvedBy: b.approvedUser,
+        originalPrice: servicePrice,
+        discountAmount: 0,
+        voucherCode: null,
+        totalPaid: servicePrice,
+      }
+    })
 
-    const formattedOnProgressOrders = onProgressOrders.map((o) => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      customerName: o.customerName,
-      customerWhatsapp: o.customerWhatsapp,
-      address: o.address,
-      email: o.email,
-      total: o.total,
-      status: o.status,
-      items: o.items.map((item) => ({
-        productName: item.productName,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      approvedAt: o.approvedAt,
-    }))
+    const formattedOnProgressOrders = onProgressOrders.map((o) => {
+      const subtotal = o.subtotal || 0
+      const discountAmount = o.discountAmount || 0
+      const shippingCost = o.shippingCost || 0
+      const total = o.total || (subtotal - discountAmount + shippingCost)
+      
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        customerName: o.customerName,
+        customerWhatsapp: o.customerWhatsapp,
+        address: o.address,
+        email: o.email,
+        status: o.status,
+        items: o.items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        approvedAt: o.approvedAt,
+        approvedBy: o.user,
+        // 🔥 TAMBAHKAN INFORMASI HARGA & VOUCHER
+        subtotal: subtotal,
+        discountAmount: discountAmount,
+        voucherCode: o.voucherCode || null,
+        shippingCost: shippingCost,
+        totalPaid: total,
+      }
+    })
 
-    const formattedHistoryOrders = historyOrders.map((o) => ({
-      id: o.id,
-      orderNumber: o.orderNumber,
-      customerName: o.customerName,
-      customerWhatsapp: o.customerWhatsapp,
-      address: o.address,
-      email: o.email,
-      total: o.total,
-      status: o.status,
-      items: o.items.map((item) => ({
-        productName: item.productName,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      createdAt: o.createdAt,
-      completedAt: o.completedAt,
-      approvedBy: o.user ? { name: o.user.name } : null,
-    }))
+    const formattedHistoryOrders = historyOrders.map((o) => {
+      const subtotal = o.subtotal || 0
+      const discountAmount = o.discountAmount || 0
+      const shippingCost = o.shippingCost || 0
+      const total = o.total || (subtotal - discountAmount + shippingCost)
+      
+      return {
+        id: o.id,
+        orderNumber: o.orderNumber,
+        customerName: o.customerName,
+        customerWhatsapp: o.customerWhatsapp,
+        address: o.address,
+        email: o.email,
+        status: o.status,
+        items: o.items.map((item) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        createdAt: o.createdAt,
+        completedAt: o.completedAt,
+        approvedBy: o.user ? { name: o.user.name } : null,
+        // 🔥 TAMBAHKAN INFORMASI HARGA & VOUCHER
+        subtotal: subtotal,
+        discountAmount: discountAmount,
+        voucherCode: o.voucherCode || null,
+        shippingCost: shippingCost,
+        totalPaid: total,
+      }
+    })
 
     return NextResponse.json({
       totalProducts,

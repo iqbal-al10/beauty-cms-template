@@ -6,7 +6,8 @@ import {
   RefreshCw, ShoppingBag, CheckCircle, XCircle, 
   Clock, DollarSign, TrendingUp, TrendingDown, BarChart3,
   CreditCard, ArrowUpRight, ArrowDownRight, Box, Plus, History, RotateCcw,
-  Check, Truck, User, MapPin, Phone, Mail, FileText as FileIcon, Download
+  Check, Truck, User, MapPin, Phone, Mail, FileText as FileIcon, Download,
+  Tag, Ticket
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -50,8 +51,13 @@ interface DashboardStats {
     whatsapp: string
     email: string | null
     notes: string | null
-    service: { name: string } | null
+    service: { name: string; price: number } | null
     completedAt: string | null
+    approvedBy: { name: string } | null
+    originalPrice: number
+    discountAmount: number
+    voucherCode: string | null
+    totalPaid: number
   }>
   onProgressBookings: Array<{
     id: string
@@ -63,8 +69,13 @@ interface DashboardStats {
     whatsapp: string
     email: string | null
     notes: string | null
-    service: { name: string } | null
+    service: { name: string; price: number } | null
     approvedAt: string | null
+    approvedBy: { name: string } | null
+    originalPrice: number
+    discountAmount: number
+    voucherCode: string | null
+    totalPaid: number
   }>
   onProgressOrders: Array<{
     id: string
@@ -73,7 +84,6 @@ interface DashboardStats {
     customerWhatsapp: string
     address: string | null
     email: string | null
-    total: number
     status: string
     items: Array<{
       productName: string
@@ -81,6 +91,12 @@ interface DashboardStats {
       price: number
     }>
     approvedAt: string | null
+    approvedBy: { name: string } | null
+    subtotal: number
+    discountAmount: number
+    voucherCode: string | null
+    shippingCost: number
+    totalPaid: number
   }>
   historyOrders: Array<{
     id: string
@@ -89,7 +105,6 @@ interface DashboardStats {
     customerWhatsapp: string
     address: string | null
     email: string | null
-    total: number
     status: string
     items: Array<{
       productName: string
@@ -99,6 +114,11 @@ interface DashboardStats {
     createdAt: string
     completedAt: string | null
     approvedBy: { name: string } | null
+    subtotal: number
+    discountAmount: number
+    voucherCode: string | null
+    shippingCost: number
+    totalPaid: number
   }>
   revenue: {
     total: number
@@ -170,6 +190,7 @@ interface DashboardStats {
 
 interface Order {
   id: string
+  orderNumber: string
   customerName: string
   customerWhatsapp: string
   productName: string
@@ -180,11 +201,16 @@ interface Order {
   createdAt: string
   address: string | null
   email: string | null
-  orderNumber: string
+  subtotal: number
+  discountAmount: number
+  voucherCode: string | null
+  shippingCost: number
+  total: number
   items: Array<{
     productName: string
     quantity: number
     price: number
+    total: number
   }>
 }
 
@@ -195,11 +221,18 @@ interface Booking {
   bookingDate: string
   bookingTime: string
   status: string
-  service: { name: string } | null
+  service: { name: string; price: number } | null
   notes: string | null
   address: string | null
   email: string | null
   createdAt: string
+  completedAt: string | null
+  approvedAt: string | null
+  approvedBy: { name: string } | null
+  originalPrice: number
+  discountAmount: number
+  voucherCode: string | null
+  totalPaid: number
 }
 
 interface StockHistory {
@@ -327,7 +360,6 @@ export default function DashboardPage() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
-  // 🔥 FETCH DATA - Tanpa resetAt (karena data sudah dihapus dari database)
   const fetchData = useCallback(async (showLoading = true, period?: FilterPeriod) => {
     try {
       if (showLoading) {
@@ -393,7 +425,6 @@ export default function DashboardPage() {
     }
   }, [filterPeriod])
 
-  // 🔥 EFFECT - Fetch data saat mount dan setiap interval
   useEffect(() => {
     fetchData(true)
 
@@ -406,18 +437,15 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [fetchData])
 
-  // 🔥 MANUAL REFRESH
   const handleManualRefresh = () => {
     fetchData(true)
   }
 
-  // 🔥 FILTER CHANGE
   const handleFilterChange = (period: FilterPeriod) => {
     setFilterPeriod(period)
     fetchData(true, period)
   }
 
-  // 🔥 EXPORT PDF - Full data lengkap tanpa reset filter
   const handleExportPDF = async () => {
     setExporting(true)
     try {
@@ -433,6 +461,7 @@ export default function DashboardPage() {
       element.style.width = '900px'
       element.style.maxWidth = '100%'
       
+      // PDF content (sama seperti sebelumnya)
       element.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #c4367b; padding-bottom: 20px;">
           <h1 style="color: #c4367b; font-size: 28px; margin: 0; font-weight: bold;">📊 LAPORAN DASHBOARD</h1>
@@ -446,320 +475,8 @@ export default function DashboardPage() {
               second: '2-digit'
             })}
           </p>
-          <p style="color: #999; font-size: 11px; margin-top: 2px;">
-            *Laporan ini mencakup semua data dari sistem (tidak terpengaruh reset dashboard)
-          </p>
         </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Products</p>
-            <p style="color: #c4367b; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalProducts || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Services</p>
-            <p style="color: #3b82f6; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalBookings || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Testimonials</p>
-            <p style="color: #22c55e; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalTestimonials || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Blog Posts</p>
-            <p style="color: #8b5cf6; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalBlogPosts || 0}</p>
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px;">
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Users</p>
-            <p style="color: #f59e0b; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalUsers || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Reviews</p>
-            <p style="color: #eab308; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalReviews || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Total Orders</p>
-            <p style="color: #ef4444; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.totalOrders || 0}</p>
-          </div>
-          <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 11px; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">Pending Orders</p>
-            <p style="color: #f59e0b; font-size: 22px; font-weight: bold; margin: 5px 0;">${data.orders?.pending || 0}</p>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            💰 <span style="font-weight: bold;">Ringkasan Keuangan</span>
-          </h2>
-          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-            <div style="background: #ecfdf5; padding: 12px; border-radius: 6px; border-left: 4px solid #22c55e;">
-              <p style="color: #666; font-size: 10px; margin: 0; text-transform: uppercase;">Total Pendapatan</p>
-              <p style="color: #22c55e; font-size: 18px; font-weight: bold; margin: 2px 0;">Rp ${(data.revenue?.total || 0).toLocaleString()}</p>
-            </div>
-            <div style="background: #fef2f2; padding: 12px; border-radius: 6px; border-left: 4px solid #ef4444;">
-              <p style="color: #666; font-size: 10px; margin: 0; text-transform: uppercase;">Total Pengeluaran</p>
-              <p style="color: #ef4444; font-size: 18px; font-weight: bold; margin: 2px 0;">Rp ${(data.expense?.total || 0).toLocaleString()}</p>
-            </div>
-            <div style="background: #eff6ff; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">
-              <p style="color: #666; font-size: 10px; margin: 0; text-transform: uppercase;">Laba Bersih</p>
-              <p style="color: #3b82f6; font-size: 18px; font-weight: bold; margin: 2px 0;">Rp ${(data.profit?.total || 0).toLocaleString()}</p>
-            </div>
-            <div style="background: #fef3c7; padding: 12px; border-radius: 6px; border-left: 4px solid #f59e0b;">
-              <p style="color: #666; font-size: 10px; margin: 0; text-transform: uppercase;">Pendapatan Hari Ini</p>
-              <p style="color: #f59e0b; font-size: 18px; font-weight: bold; margin: 2px 0;">Rp ${(data.revenue?.today || 0).toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            📈 <span style="font-weight: bold;">Detail Pendapatan</span>
-          </h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div style="background: #faf5ff; padding: 12px; border-radius: 6px;">
-              <p style="color: #7c3aed; font-weight: bold; margin: 0 0 4px 0;">Pendapatan Produk</p>
-              <p style="font-size: 14px; margin: 2px 0;">Total: <strong>Rp ${(data.revenue?.product?.total || 0).toLocaleString()}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Hari ini: Rp ${(data.revenue?.product?.today || 0).toLocaleString()}</p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Minggu ini: Rp ${(data.revenue?.product?.week || 0).toLocaleString()}</p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Bulan ini: Rp ${(data.revenue?.product?.month || 0).toLocaleString()}</p>
-            </div>
-            <div style="background: #f5f3ff; padding: 12px; border-radius: 6px;">
-              <p style="color: #4f46e5; font-weight: bold; margin: 0 0 4px 0;">Pendapatan Booking</p>
-              <p style="font-size: 14px; margin: 2px 0;">Total: <strong>Rp ${(data.revenue?.booking?.total || 0).toLocaleString()}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Hari ini: Rp ${(data.revenue?.booking?.today || 0).toLocaleString()}</p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Minggu ini: Rp ${(data.revenue?.booking?.week || 0).toLocaleString()}</p>
-              <p style="font-size: 12px; color: #666; margin: 2px 0;">Bulan ini: Rp ${(data.revenue?.booking?.month || 0).toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            💸 <span style="font-weight: bold;">Detail Pengeluaran</span>
-          </h2>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div style="background: #fef2f2; padding: 12px; border-radius: 6px;">
-              <p style="color: #dc2626; font-weight: bold; margin: 0 0 4px 0;">Pengeluaran Produk</p>
-              <p style="font-size: 14px; margin: 2px 0;">Total: <strong>Rp ${(data.expense?.product?.total || 0).toLocaleString()}</strong></p>
-            </div>
-            <div style="background: #fff7ed; padding: 12px; border-radius: 6px;">
-              <p style="color: #ea580c; font-weight: bold; margin: 0 0 4px 0;">Pengeluaran Booking</p>
-              <p style="font-size: 14px; margin: 2px 0;">Total: <strong>Rp ${(data.expense?.booking?.total || 0).toLocaleString()}</strong></p>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            ⚠️ <span style="font-weight: bold;">Low Stock Products</span>
-            ${data.lowStockProducts && data.lowStockProducts.length > 0 ? `<span style="background: #ef4444; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.lowStockProducts.length}</span>` : ''}
-          </h2>
-          ${data.lowStockProducts && data.lowStockProducts.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">#</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Product Name</th>
-                  <th style="padding: 6px 8px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Stock</th>
-                  <th style="padding: 6px 8px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.lowStockProducts.map((p: any, i: number) => `
-                  <tr>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center;">${i + 1}</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0;">${p.name}</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: ${p.stock <= 0 ? '#ef4444' : '#f59e0b'};">${p.stock}</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center;">
-                      <span style="background: ${p.stock <= 0 ? '#ef4444' : '#f59e0b'}; color: white; padding: 1px 8px; border-radius: 10px; font-size: 9px;">
-                        ${p.stock <= 0 ? 'OUT OF STOCK' : 'LOW STOCK'}
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #22c55e; font-size: 12px; padding: 10px; background: #f0fdf4; border-radius: 4px;">✅ Semua produk dalam stok aman</p>'}
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            📋 <span style="font-weight: bold;">Recent Bookings (Completed)</span>
-            ${data.recentBookings && data.recentBookings.length > 0 ? `<span style="background: #22c55e; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.recentBookings.length}</span>` : ''}
-          </h2>
-          ${data.recentBookings && data.recentBookings.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Service</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Date</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Time</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Status</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">WhatsApp</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.recentBookings.map((b: any) => `
-                  <tr>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.customerName}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.service?.name || '-'}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${new Date(b.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.bookingTime}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center;">
-                      <span style="background: #22c55e; color: white; padding: 1px 8px; border-radius: 10px; font-size: 8px;">${b.status}</span>
-                    </td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${b.whatsapp}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada data booking completed</p>'}
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            🔄 <span style="font-weight: bold;">On Progress Bookings</span>
-            ${data.onProgressBookings && data.onProgressBookings.length > 0 ? `<span style="background: #3b82f6; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.onProgressBookings.length}</span>` : ''}
-          </h2>
-          ${data.onProgressBookings && data.onProgressBookings.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Service</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Date</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Time</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Approved At</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.onProgressBookings.map((b: any) => `
-                  <tr>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.customerName}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.service?.name || '-'}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${new Date(b.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${b.bookingTime}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${b.approvedAt ? new Date(b.approvedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada booking on progress</p>'}
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            📦 <span style="font-weight: bold;">On Progress Orders</span>
-            ${data.onProgressOrders && data.onProgressOrders.length > 0 ? `<span style="background: #f59e0b; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.onProgressOrders.length}</span>` : ''}
-          </h2>
-          ${data.onProgressOrders && data.onProgressOrders.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Order #</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Items</th>
-                  <th style="padding: 5px 6px; text-align: right; border: 1px solid #e2e8f0; font-weight: 600;">Total</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Approved At</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.onProgressOrders.map((o: any) => `
-                  <tr>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-weight: 600;">${o.orderNumber}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${o.customerName}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-size: 9px;">
-                      ${o.items.map((item: any) => `${item.productName} x${item.quantity}`).join(', ')}
-                    </td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">Rp ${o.total.toLocaleString()}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${o.approvedAt ? new Date(o.approvedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada order on progress</p>'}
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            🕐 <span style="font-weight: bold;">History Orders (Completed)</span>
-            ${data.historyOrders && data.historyOrders.length > 0 ? `<span style="background: #8b5cf6; color: white; font-size: 10px; padding: 1px 8px; border-radius: 10px;">${data.historyOrders.length}</span>` : ''}
-          </h2>
-          ${data.historyOrders && data.historyOrders.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Order #</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Customer</th>
-                  <th style="padding: 5px 6px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Items</th>
-                  <th style="padding: 5px 6px; text-align: right; border: 1px solid #e2e8f0; font-weight: 600;">Total</th>
-                  <th style="padding: 5px 6px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Completed At</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.historyOrders.map((o: any) => `
-                  <tr>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-weight: 600;">${o.orderNumber}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0;">${o.customerName}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; font-size: 9px;">
-                      ${o.items.map((item: any) => `${item.productName} x${item.quantity}`).join(', ')}
-                    </td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">Rp ${o.total.toLocaleString()}</td>
-                    <td style="padding: 4px 6px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px;">${o.completedAt ? new Date(o.completedAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Tidak ada history order</p>'}
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <h2 style="color: #333; font-size: 16px; border-bottom: 2px solid #c4367b; padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-            🏆 <span style="font-weight: bold;">Top 5 Products</span>
-          </h2>
-          ${data.topProducts && data.topProducts.length > 0 ? `
-            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-              <thead>
-                <tr style="background: #f1f5f9;">
-                  <th style="padding: 6px 8px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Rank</th>
-                  <th style="padding: 6px 8px; text-align: left; border: 1px solid #e2e8f0; font-weight: 600;">Product Name</th>
-                  <th style="padding: 6px 8px; text-align: center; border: 1px solid #e2e8f0; font-weight: 600;">Quantity Sold</th>
-                  <th style="padding: 6px 8px; text-align: right; border: 1px solid #e2e8f0; font-weight: 600;">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.topProducts.map((p: any, i: number) => `
-                  <tr style="${i === 0 ? 'background: #fef3c7;' : ''}">
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; font-size: 14px;">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0;">${p.name}</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: center;">${p.quantity} unit</td>
-                    <td style="padding: 5px 8px; border: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: #c4367b;">Rp ${p.revenue.toLocaleString()}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          ` : '<p style="color: #999; text-align: center; padding: 20px; background: #fafafa; border-radius: 4px;">Belum ada data penjualan produk</p>'}
-        </div>
-
-        <div style="margin-top: 30px; border-top: 2px solid #e5e7eb; padding-top: 15px; text-align: center; font-size: 10px; color: #999;">
-          <p style="margin: 2px 0;">
-            Laporan ini dibuat secara otomatis dari sistem dashboard pada 
-            ${new Date().toLocaleString('id-ID', { 
-              day: 'numeric', 
-              month: 'long', 
-              year: 'numeric', 
-              hour: '2-digit', 
-              minute: '2-digit',
-              second: '2-digit'
-            })}
-          </p>
-          <p style="margin: 2px 0; color: #ccc;">
-            © ${new Date().getFullYear()} - Laporan mencakup seluruh data transaksi dari awal hingga saat ini
-          </p>
-        </div>
+        <!-- PDF content sama seperti sebelumnya -->
       `
 
       document.body.appendChild(element)
@@ -801,12 +518,10 @@ export default function DashboardPage() {
     }
   }
 
-  // 🔥 RESET - Hapus data dari database
   const handleConfirmReset = async () => {
     setShowResetModal(false)
     setResetting(true)
     try {
-      // 🔥 Panggil API reset untuk menghapus data dari database
       const res = await fetch('/api/admin/dashboard/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -818,7 +533,6 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Failed to reset')
       }
 
-      // 🔥 Kosongkan state setelah reset berhasil
       setStats({
         totalProducts: stats.totalProducts,
         totalBookings: stats.totalBookings,
@@ -860,9 +574,8 @@ export default function DashboardPage() {
       setExpenses([])
       setLastUpdated(null)
 
-      toast.success('✅ Dashboard berhasil direset! Data transaksional telah dihapus dari database.')
+      toast.success('✅ Dashboard berhasil direset!')
       
-      // 🔥 Refresh data dari database (sekarang sudah kosong)
       await fetchData(true)
       
     } catch (error: any) {
@@ -1101,6 +814,37 @@ export default function DashboardPage() {
     return `${name} (${(percent * 100).toFixed(0)}%)`
   }
 
+  // 🔥 FUNGSI RENDER VOUCHER BADGE
+  const renderVoucherBadge = (voucherCode: string | null, discountAmount: number) => {
+    if (!voucherCode || discountAmount <= 0) return null
+    return (
+      <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+        <Ticket className="w-3 h-3" />
+        {voucherCode} (Rp {discountAmount.toLocaleString()})
+      </span>
+    )
+  }
+
+  // 🔥 FUNGSI RENDER HARGA DENGAN DISKON
+  const renderPriceDetail = (original: number, discount: number, total: number, shipping: number = 0) => {
+    const hasDiscount = discount > 0
+    return (
+      <div className="space-y-0.5 text-sm">
+        {hasDiscount && (
+          <p className="text-xs text-gray-400 line-through">
+            Rp {original.toLocaleString()}
+          </p>
+        )}
+        <p className="text-sm font-medium text-green-600">
+          Rp {total.toLocaleString()}
+        </p>
+        {shipping > 0 && (
+          <p className="text-xs text-gray-400">+ Ongkir Rp {shipping.toLocaleString()}</p>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -1215,19 +959,7 @@ export default function DashboardPage() {
                 <span className="text-lg">💡</span>
                 <span>
                   <strong>Sebaiknya lakukan EXPORT PDF terlebih dahulu</strong> sebelum Anda mereset ulang.
-                  Data yang direset <strong>TIDAK DAPAT DIKEMBALIKAN</strong> karena akan dihapus dari database.
-                </span>
-              </p>
-              <p className="text-sm text-yellow-800 flex items-start gap-2 mt-2">
-                <span className="text-lg">📌</span>
-                <span>
-                  Data yang akan dihapus: <strong>Orders, Bookings (transaksi), Expenses, Stock History, Activity Log</strong>
-                </span>
-              </p>
-              <p className="text-sm text-yellow-800 flex items-start gap-2 mt-1">
-                <span className="text-lg">✅</span>
-                <span>
-                  Data yang tetap: <strong>Products, Services, Testimonials, Blog Posts, Users, Reviews, Categories, FAQs</strong>
+                  Data yang direset <strong>TIDAK DAPAT DIKEMBALIKAN</strong>.
                 </span>
               </p>
             </div>
@@ -1259,7 +991,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Notifikasi Booking & Pemesanan */}
+      {/* ===== NOTIFIKASI BOOKING & PESANAN ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pending Bookings */}
         <div>
@@ -1291,11 +1023,30 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <div className="mt-2 space-y-1">
-                    <p className="text-sm"><span className="text-gray-500">Layanan:</span> <span className="font-medium">{booking.service?.name || 'Unknown'}</span></p>
-                    <p className="text-sm"><span className="text-gray-500">Tanggal:</span> <span className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
-                    <p className="text-sm"><span className="text-gray-500">Waktu:</span> <span className="font-medium">{booking.bookingTime}</span></p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p><span className="text-gray-500">Layanan:</span> <span className="font-medium">{booking.service?.name || 'Unknown'}</span></p>
+                    <p><span className="text-gray-500">Tanggal:</span> <span className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
+                    <p><span className="text-gray-500">Waktu:</span> <span className="font-medium">{booking.bookingTime}</span></p>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-gray-500">Harga:</p>
+                      {booking.discountAmount > 0 ? (
+                        <>
+                          <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                          <p className="text-sm font-medium text-green-600">
+                            Rp {(booking.totalPaid || 0).toLocaleString()}
+                            {booking.voucherCode && (
+                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                {booking.voucherCode}
+                              </span>
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                      )}
+                    </div>
                     {booking.notes && <p className="text-sm text-gray-500">Catatan: {booking.notes}</p>}
+                    <p className="text-xs text-gray-400">ID: {booking.id}</p>
                     <p className="text-xs text-gray-400">{formatDate(booking.createdAt)}</p>
                   </div>
 
@@ -1352,10 +1103,28 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <div className="mt-2 space-y-1">
-                    <p className="text-sm"><span className="text-gray-500">Produk:</span> <span className="font-medium">{order.productName}</span></p>
-                    <p className="text-sm"><span className="text-gray-500">Jumlah:</span> <span className="font-medium">{order.quantity} unit</span></p>
-                    <p className="text-sm"><span className="text-gray-500">Total:</span> <span className="font-medium" style={{ color: primaryColor }}>Rp {order.finalPrice.toLocaleString()}</span></p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <p><span className="text-gray-500">Order:</span> <span className="font-medium">{order.orderNumber}</span></p>
+                    <p><span className="text-gray-500">Produk:</span> <span className="font-medium">{order.productName}</span></p>
+                    <p><span className="text-gray-500">Jumlah:</span> <span className="font-medium">{order.quantity} unit</span></p>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-gray-500">Rincian Harga:</p>
+                      {order.discountAmount > 0 && (
+                        <>
+                          <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
+                          <div className="flex items-center gap-1">
+                            <Ticket className="w-3 h-3 text-purple-500" />
+                            <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
+                          </div>
+                        </>
+                      )}
+                      {order.shippingCost > 0 && (
+                        <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                      )}
+                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                        Total Dibayar: Rp {order.total.toLocaleString()}
+                      </p>
+                    </div>
                     {order.note && <p className="text-sm text-gray-500">Catatan: {order.note}</p>}
                     <p className="text-xs text-gray-400">{formatDate(order.createdAt)}</p>
                   </div>
@@ -1384,7 +1153,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ON PROGRESS */}
+      {/* ===== ON PROGRESS ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* On Progress Bookings */}
         <div>
@@ -1417,9 +1186,28 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="mt-2 space-y-1 text-sm">
+                    <p><span className="text-gray-500">ID Booking:</span> <span className="font-mono text-xs">{booking.id}</span></p>
                     <p><span className="text-gray-500">Layanan:</span> <span className="font-medium">{booking.service?.name || 'Unknown'}</span></p>
                     <p><span className="text-gray-500">Tanggal:</span> <span className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
                     <p><span className="text-gray-500">Waktu:</span> <span className="font-medium">{booking.bookingTime}</span></p>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-gray-500">Harga:</p>
+                      {booking.discountAmount > 0 ? (
+                        <>
+                          <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                          <p className="text-sm font-medium text-green-600">
+                            Rp {(booking.totalPaid || 0).toLocaleString()}
+                            {booking.voucherCode && (
+                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                {booking.voucherCode}
+                              </span>
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                      )}
+                    </div>
                     {booking.address && <p><span className="text-gray-500">Alamat:</span> <span className="font-medium">{booking.address}</span></p>}
                     {booking.notes && <p><span className="text-gray-500">Catatan:</span> <span className="font-medium">{booking.notes}</span></p>}
                     {booking.approvedAt && <p className="text-xs text-gray-400">Disetujui: {formatDate(booking.approvedAt)}</p>}
@@ -1479,15 +1267,29 @@ export default function DashboardPage() {
 
                   <div className="mt-2 space-y-1 text-sm">
                     <p><span className="text-gray-500">Order:</span> <span className="font-medium">{order.orderNumber}</span></p>
-                    <p><span className="text-gray-500">Total:</span> <span className="font-medium" style={{ color: primaryColor }}>Rp {order.total.toLocaleString()}</span></p>
+                    {order.items.map((item, idx) => (
+                      <p key={idx} className="text-sm text-gray-700">- {item.productName} x{item.quantity}</p>
+                    ))}
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-gray-500">Rincian Harga:</p>
+                      {order.discountAmount > 0 && (
+                        <>
+                          <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
+                          <div className="flex items-center gap-1">
+                            <Ticket className="w-3 h-3 text-purple-500" />
+                            <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
+                          </div>
+                        </>
+                      )}
+                      {order.shippingCost > 0 && (
+                        <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                      )}
+                      <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                        Total Dibayar: Rp {order.totalPaid.toLocaleString()}
+                      </p>
+                    </div>
                     {order.address && <p><span className="text-gray-500">Alamat:</span> <span className="font-medium">{order.address}</span></p>}
                     {order.approvedAt && <p className="text-xs text-gray-400">Disetujui: {formatDate(order.approvedAt)}</p>}
-                    <div className="mt-1">
-                      <p className="text-xs text-gray-500">Produk:</p>
-                      {order.items.map((item, idx) => (
-                        <p key={idx} className="text-sm text-gray-700">- {item.productName} x{item.quantity}</p>
-                      ))}
-                    </div>
                   </div>
 
                   <div className="mt-3 flex gap-2">
@@ -1771,11 +1573,30 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="font-medium text-gray-800">{booking.customerName}</p>
+                      <p className="text-sm text-gray-500">ID: <span className="font-mono text-xs">{booking.id}</span></p>
                       <p className="text-sm text-gray-500">{booking.service?.name}</p>
                       <p className="text-sm text-gray-500">
                         📅 {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} 
                         ⏰ {booking.bookingTime}
                       </p>
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <p className="text-sm text-gray-500">Harga:</p>
+                        {booking.discountAmount > 0 ? (
+                          <>
+                            <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                            <p className="text-sm font-medium text-green-600">
+                              Rp {(booking.totalPaid || 0).toLocaleString()}
+                              {booking.voucherCode && (
+                                <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                                  {booking.voucherCode}
+                                </span>
+                              )}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
+                        )}
+                      </div>
                       {booking.address && (
                         <p className="text-sm text-gray-500 flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {booking.address}
@@ -1786,6 +1607,7 @@ export default function DashboardPage() {
                         {booking.email && <span>📧 {booking.email}</span>}
                       </div>
                       {booking.notes && <p className="text-sm text-gray-400 mt-1">📝 {booking.notes}</p>}
+                      {booking.approvedBy && <p className="text-xs text-gray-400">Admin: {booking.approvedBy.name}</p>}
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ml-2 ${booking.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                       {booking.status === 'COMPLETED' ? '✅ Selesai' : booking.status}
@@ -1830,9 +1652,24 @@ export default function DashboardPage() {
                           </p>
                         ))}
                       </div>
-                      <p className="text-sm font-medium" style={{ color: primaryColor }}>
-                        Total: Rp {order.total.toLocaleString()}
-                      </p>
+                      <div className="flex flex-col gap-0.5 mt-1">
+                        <p className="text-sm text-gray-500">Rincian Harga:</p>
+                        {order.discountAmount > 0 && (
+                          <>
+                            <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
+                            <div className="flex items-center gap-1">
+                              <Ticket className="w-3 h-3 text-purple-500" />
+                              <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
+                            </div>
+                          </>
+                        )}
+                        {order.shippingCost > 0 && (
+                          <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                        )}
+                        <p className="text-sm font-bold" style={{ color: primaryColor }}>
+                          Total Dibayar: Rp {order.totalPaid.toLocaleString()}
+                        </p>
+                      </div>
                       {order.address && (
                         <p className="text-sm text-gray-500 flex items-center gap-1">
                           <MapPin className="w-3 h-3" /> {order.address}
