@@ -352,6 +352,14 @@ export default function DashboardPage() {
 
   const isTabActive = useRef(true)
 
+  // 🔥 SPINNER COMPONENT
+  const Spinner = ({ className = "h-4 w-4" }: { className?: string }) => (
+    <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+  )
+
   useEffect(() => {
     const handleVisibilityChange = () => {
       isTabActive.current = !document.hidden
@@ -492,7 +500,6 @@ export default function DashboardPage() {
       element.style.width = '900px'
       element.style.maxWidth = '100%'
       
-      // 🔥 KEMBALIKAN PDF LENGKAP SEPERTI SEMULA
       element.innerHTML = `
         <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #c4367b; padding-bottom: 20px;">
           <h1 style="color: #c4367b; font-size: 28px; margin: 0; font-weight: bold;">📊 LAPORAN DASHBOARD</h1>
@@ -1223,14 +1230,6 @@ export default function DashboardPage() {
 
   const totalExpense = stats.expense?.total || 0
 
-  // ===== SPINNER COMPONENT =====
-  const Spinner = ({ className = "h-4 w-4" }: { className?: string }) => (
-    <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-  )
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -1354,8 +1353,10 @@ export default function DashboardPage() {
                           <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                           <p className="text-sm font-medium text-green-600">
                             Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {booking.voucherCode && (
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                            {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
+                            {booking.voucherCode && booking.discountAmount > 0 && (
+                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Ticket className="w-3 h-3" />
                                 {booking.voucherCode}
                               </span>
                             )}
@@ -1521,8 +1522,10 @@ export default function DashboardPage() {
                           <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                           <p className="text-sm font-medium text-green-600">
                             Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {booking.voucherCode && (
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                            {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
+                            {booking.voucherCode && booking.discountAmount > 0 && (
+                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                <Ticket className="w-3 h-3" />
                                 {booking.voucherCode}
                               </span>
                             )}
@@ -1914,8 +1917,10 @@ export default function DashboardPage() {
                             <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
                             <p className="text-sm font-medium text-green-600">
                               Rp {(booking.totalPaid || 0).toLocaleString()}
-                              {booking.voucherCode && (
-                                <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">
+                              {/* 🔥 VOUCHER BADGE - SEPERTI PRODUK */}
+                              {booking.voucherCode && booking.discountAmount > 0 && (
+                                <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                  <Ticket className="w-3 h-3" />
                                   {booking.voucherCode}
                                 </span>
                               )}

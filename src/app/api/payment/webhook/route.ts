@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
       payment_type,
     } = body
 
-    // 🔥 CEK APAKAH INI BOOKING ATAU ORDER
     const isBooking = order_id?.startsWith('B-') || false
     const isOrder = order_id?.startsWith('O-') || false
 
@@ -23,7 +22,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'OK' })
     }
 
-    // 🔥 CARI ORDER/BOOKING DI DATABASE
     let orderId = null
 
     if (isBooking) {
@@ -51,14 +49,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'OK' })
     }
 
-    // 🔥 TENTUKAN STATUS
+    // 🔥 TENTUKAN STATUS BERDASARKAN TRANSACTION_STATUS
     let paymentStatus = 'PENDING'
     let orderStatus = 'PENDING'
 
     if (transaction_status === 'settlement' || 
         (transaction_status === 'capture' && fraud_status === 'accept')) {
       paymentStatus = 'PAID'
-      orderStatus = 'ON_PROGRESS'
+      // 🔥 UBAH: Status menjadi PENDING (bukan ON_PROGRESS)
+      // Admin akan mengubah ke ON_PROGRESS via tombol "Proses" di dashboard
+      orderStatus = 'PENDING'
     } else if (transaction_status === 'deny' || 
                transaction_status === 'expire' || 
                transaction_status === 'cancel') {
@@ -72,20 +72,17 @@ export async function POST(request: NextRequest) {
     // 🔥 AMBIL NAMA METODE PEMBAYARAN YANG LEBIH SPESIFIK
     let methodName = payment_type || 'Midtrans'
 
-    // Jika ada va_numbers, ambil nama bank (untuk BRIVA, BNI VA, BCA VA, dll)
     if (body.va_numbers && body.va_numbers.length > 0) {
       const bank = body.va_numbers[0].bank
       if (bank) {
-        methodName = `${bank.toUpperCase()} VA`  // "BNI VA", "BCA VA", "BRI VA"
+        methodName = `${bank.toUpperCase()} VA`
       }
     }
 
-    // Jika payment_type adalah 'bank_transfer' tapi tidak ada va_numbers
     if (payment_type === 'bank_transfer' && !body.va_numbers) {
       methodName = 'Bank Transfer'
     }
 
-    // Jika ada payment_type lain
     if (payment_type === 'credit_card') {
       methodName = 'Kartu Kredit'
     } else if (payment_type === 'gopay') {
@@ -104,7 +101,7 @@ export async function POST(request: NextRequest) {
         where: { id: orderId },
         data: {
           paymentStatus: paymentStatus,
-          status: orderStatus,
+          status: orderStatus, // Akan menjadi 'PENDING' jika PAID
           paymentMethodName: methodName,
         },
       })
@@ -114,7 +111,7 @@ export async function POST(request: NextRequest) {
         where: { id: orderId },
         data: {
           paymentStatus: paymentStatus,
-          status: orderStatus,
+          status: orderStatus, // Akan menjadi 'PENDING' jika PAID
           paidAt: paymentStatus === 'PAID' ? new Date() : undefined,
           paymentMethodName: methodName,
         },

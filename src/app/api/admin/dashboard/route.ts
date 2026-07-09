@@ -101,8 +101,12 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.booking.findMany({
-        where: { status: 'COMPLETED' },
+        where: { 
+          status: 'COMPLETED',
+          paymentStatus: 'PAID',
+        },
         select: {
+          totalPaid: true,
           bookingDate: true,
           service: {
             select: { price: true },
@@ -143,7 +147,6 @@ export async function GET(request: NextRequest) {
     const productRevenueByDay: Record<string, number> = {}
 
     for (const order of completedOrders) {
-      // Gunakan total yang sudah termasuk diskon
       const amount = order.total || 0
       totalProductRevenue += amount
 
@@ -157,7 +160,7 @@ export async function GET(request: NextRequest) {
       if (date >= startOfMonth) monthProductRevenue += amount
     }
 
-    // ===== REVENUE FROM BOOKINGS =====
+    // ===== REVENUE FROM BOOKINGS (Gunakan totalPaid) =====
     let totalBookingRevenue = 0
     let todayBookingRevenue = 0
     let weekBookingRevenue = 0
@@ -165,7 +168,8 @@ export async function GET(request: NextRequest) {
     const bookingRevenueByDay: Record<string, number> = {}
 
     for (const booking of approvedBookings) {
-      const amount = booking.service?.price || 0
+      // 🔥 GUNAKAN totalPaid (harga setelah diskon), FALLBACK ke service.price
+      const amount = booking.totalPaid || booking.service?.price || 0
       totalBookingRevenue += amount
 
       const date = new Date(booking.bookingDate)
@@ -211,8 +215,12 @@ export async function GET(request: NextRequest) {
       }))
 
     const today = now.toISOString().split('T')[0]
-    
-    if (period === 'day') {
+
+    // 🔥 JIKA PERIOD = 'all', TAMPILKAN SEMUA DATA (TANPA FILTER)
+    if (period === 'all') {
+      // Tidak perlu filter, tampilkan semua data
+      revenueData = revenueData.sort((a, b) => a.date.localeCompare(b.date))
+    } else if (period === 'day') {
       revenueData = revenueData.filter(d => d.date === today)
     } else if (period === 'week') {
       const weekAgo = new Date(now)
@@ -245,7 +253,9 @@ export async function GET(request: NextRequest) {
         bookingExpense: bookingExpenseByDay[date] || 0,
       }))
 
-    if (period === 'day') {
+    if (period === 'all') {
+      expenseData = expenseData.sort((a, b) => a.date.localeCompare(b.date))
+    } else if (period === 'day') {
       expenseData = expenseData.filter(d => d.date === today)
     } else if (period === 'week') {
       const weekAgo = new Date(now)
@@ -310,7 +320,6 @@ export async function GET(request: NextRequest) {
         completedAt: b.completedAt,
         approvedBy: b.approvedUser,
         originalPrice: servicePrice,
-        // 🔥 TAMBAHKAN FIELD VOUCHER
         discountAmount: b.discountAmount || 0,
         voucherCode: b.voucherCode || null,
         totalPaid: b.totalPaid || servicePrice,
@@ -333,7 +342,6 @@ export async function GET(request: NextRequest) {
         approvedAt: b.approvedAt,
         approvedBy: b.approvedUser,
         originalPrice: servicePrice,
-        // 🔥 TAMBAHKAN FIELD VOUCHER
         discountAmount: b.discountAmount || 0,
         voucherCode: b.voucherCode || null,
         totalPaid: b.totalPaid || servicePrice,
@@ -361,7 +369,6 @@ export async function GET(request: NextRequest) {
         })),
         approvedAt: o.approvedAt,
         approvedBy: o.user,
-        // 🔥 TAMBAHKAN INFORMASI HARGA & VOUCHER
         subtotal: subtotal,
         discountAmount: discountAmount,
         voucherCode: o.voucherCode || null,
@@ -392,7 +399,6 @@ export async function GET(request: NextRequest) {
         createdAt: o.createdAt,
         completedAt: o.completedAt,
         approvedBy: o.user ? { name: o.user.name } : null,
-        // 🔥 TAMBAHKAN INFORMASI HARGA & VOUCHER
         subtotal: subtotal,
         discountAmount: discountAmount,
         voucherCode: o.voucherCode || null,

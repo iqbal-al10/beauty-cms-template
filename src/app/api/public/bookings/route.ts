@@ -140,13 +140,18 @@ export async function GET(request: NextRequest) {
     const intervalMinutes = Math.max(30, service.duration || 60)
     const allSlots = generateTimeSlots(daySchedule.open, daySchedule.close, intervalMinutes)
 
-    // Ambil semua booking dengan status aktif
+    // Ambil semua booking dengan status aktif (hanya yang sudah PAID atau COMPLETED/ON_PROGRESS)
     const existingBookings = await prisma.booking.findMany({
       where: {
         bookingDate: new Date(date),
-        status: { 
-          in: ['PENDING', 'APPROVED', 'RESCHEDULED', 'COMPLETED', 'ON_PROGRESS']
-        },
+        AND: [
+          {
+            OR: [
+              { paymentStatus: 'PAID' },
+              { status: { in: ['COMPLETED', 'ON_PROGRESS'] } },
+            ],
+          },
+        ],
       },
       select: { bookingTime: true },
     })
