@@ -1,6 +1,6 @@
 // src/app/api/push/send-order/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { sendPushToAdmin, sendPushToAllAdmins } from '@/lib/push/server'
+import { sendPushToAllAdmins } from '@/lib/push/server'
 import { getServerSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -35,14 +35,19 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({
-      success: result.success,
+      success: true,        // ✅ Hardcoded — fungsi hanya return {sent, failed}
       sent: result.sent,
       failed: result.failed,
     })
   } catch (error) {
     console.error('Error sending order notification:', error)
     return NextResponse.json(
-      { error: 'Failed to send notification' },
+      { 
+        error: 'Failed to send notification',
+        success: false,
+        sent: 0,
+        failed: 0,
+      },
       { status: 500 }
     )
   }

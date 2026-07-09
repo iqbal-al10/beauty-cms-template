@@ -22,6 +22,11 @@ self.addEventListener('push', (event) => {
       title: 'Notifikasi',
       body: 'Ada notifikasi baru',
       icon: '/icon-192x192.png',
+      data: {
+        url: '/admin',
+        orderId: null,
+        bookingId: null,
+      },
     }
   }
 
@@ -29,11 +34,12 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Ada notifikasi baru',
     icon: data.icon || '/icon-192x192.png',
     badge: data.badge || '/icon-192x192.png',
-    vibrate: [200, 100, 200],
+    vibrate: data.vibrate || [200, 100, 200],
     data: {
-      url: data.url || '/admin',
-      orderId: data.orderId || null,
-      bookingId: data.bookingId || null,
+      // 🔥 PERBAIKAN: Akses nested data.data, bukan data langsung
+      url: data.data?.url || '/admin',
+      orderId: data.data?.orderId || null,
+      bookingId: data.data?.bookingId || null,
     },
     requireInteraction: true,
     actions: [
@@ -62,6 +68,8 @@ self.addEventListener('notificationclick', (event) => {
   const bookingId = event.notification.data?.bookingId
 
   let targetUrl = url
+  
+  // 🔥 PERBAIKAN: Prioritaskan orderId dan bookingId dari data notifikasi
   if (orderId) {
     targetUrl = `/admin/orders/${orderId}`
   } else if (bookingId) {

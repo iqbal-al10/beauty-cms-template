@@ -34,15 +34,23 @@ export async function POST(request: NextRequest) {
       icon: '/icon-192x192.png',
     })
 
+    // 🔥 PERBAIKAN: sendPushToAllAdmins mengembalikan { sent, failed }
+    // Tidak ada properti 'success', jadi kita hardcode true
+    // Jika error, sudah di-catch di bawah
     return NextResponse.json({
-      success: result.success,
-      sent: result.sent,
-      failed: result.failed,
+      success: true,        // ✅ Hardcoded karena fungsi hanya return {sent, failed}
+      sent: result.sent,     // ✅ Jumlah notifikasi terkirim
+      failed: result.failed, // ✅ Jumlah notifikasi gagal
     })
   } catch (error) {
     console.error('Error sending booking notification:', error)
     return NextResponse.json(
-      { error: 'Failed to send notification' },
+      { 
+        error: 'Failed to send notification',
+        success: false,  // ✅ Tambahkan juga di response error
+        sent: 0,
+        failed: 0,
+      },
       { status: 500 }
     )
   }
