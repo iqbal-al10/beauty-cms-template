@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Menu, X, ShoppingCart, LayoutDashboard, LogOut, User } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -42,6 +42,7 @@ export default function Header({ settings }: HeaderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
   const navbarBg = settings?.navbarBackground || '#ffffff'
@@ -53,6 +54,19 @@ export default function Header({ settings }: HeaderProps) {
   const bodyFontSize = settings?.bodyFontSize || '16px'
   const smallFontSize = settings?.smallFontSize || '14px'
   const fontFamily = settings?.fontFamily || 'Inter'
+
+  // 🔥 Tutup dropdown saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isDropdownOpen])
 
   // 🔥 Cek status login
   useEffect(() => {
@@ -126,7 +140,7 @@ export default function Header({ settings }: HeaderProps) {
     { href: '/booking', label: 'Booking' },
     { href: '/blog', label: 'Blog' },
     { href: '/testimonials', label: 'Testimonials' },
-    { href: '/faq', label: 'FAQ' }, // 🔥 TAMBAHKAN INI
+    { href: '/faq', label: 'FAQ' },
     { href: '/about', label: 'About' },
     { href: '/contact', label: 'Contact' },
   ]
@@ -158,7 +172,7 @@ export default function Header({ settings }: HeaderProps) {
             )}
           </Link>
 
-          {/* Desktop Navigation - TANPA Dashboard di sini */}
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <Link
@@ -201,9 +215,9 @@ export default function Header({ settings }: HeaderProps) {
               </Link>
             )}
 
-            {/* 🔥 User Avatar + Dropdown (jika login) */}
+            {/* 🔥 User Avatar + Dropdown */}
             {!loading && user && (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-full hover:bg-gray-100 transition-colors border-2"
@@ -235,7 +249,6 @@ export default function Header({ settings }: HeaderProps) {
                       </span>
                     </div>
 
-                    {/* 🔥 Dashboard ONLY di dropdown (bukan di header nav) */}
                     {canAccessDashboard && (
                       <Link
                         href="/admin"
@@ -300,7 +313,6 @@ export default function Header({ settings }: HeaderProps) {
                 </Link>
               ))}
 
-              {/* 🔥 Mobile: Dashboard di sini (bukan di nav utama) */}
               {!loading && user && canAccessDashboard && (
                 <Link
                   href="/admin"
@@ -316,7 +328,6 @@ export default function Header({ settings }: HeaderProps) {
                 </Link>
               )}
 
-              {/* Mobile User Info & Logout */}
               {!loading && user && (
                 <div className="pt-3 mt-3 border-t" style={{ borderColor: `${navbarText}20` }}>
                   <div className="flex items-center gap-3 px-2 py-2">
