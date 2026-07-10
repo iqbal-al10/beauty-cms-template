@@ -104,6 +104,18 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Payment Method Name: ${paymentMethodName}`)
     console.log(`✅ Email: ${email}`)
 
+    // 🔥 Dapatkan userId untuk stock history
+    let stockHistoryUserId = session?.userId || null
+
+    // Jika tidak ada session (customer tanpa login), cari admin pertama
+    if (!stockHistoryUserId) {
+      const adminUser = await prisma.user.findFirst({
+        where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] }, isActive: true },
+        select: { id: true },
+      })
+      stockHistoryUserId = adminUser?.id || null
+    }
+
     // Kurangi stok produk
     for (const item of items) {
       const product = await prisma.product.findUnique({
@@ -120,20 +132,23 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      try {
-        await prisma.stockHistory.create({
-          data: {
-            productId: item.productId,
-            oldStock: product?.stock || 0,
-            newStock: (product?.stock || 0) - item.quantity,
-            change: -item.quantity,
-            reason: 'ORDER',
-            note: `Order #${orderNumber}`,
-            userId: session?.userId || 'system',
-          },
-        })
-      } catch (stockError) {
-        console.error('❌ Error creating stock history:', stockError)
+      // 🔥 Hanya buat StockHistory jika userId valid
+      if (stockHistoryUserId) {
+        try {
+          await prisma.stockHistory.create({
+            data: {
+              productId: item.productId,
+              oldStock: product?.stock || 0,
+              newStock: (product?.stock || 0) - item.quantity,
+              change: -item.quantity,
+              reason: 'ORDER',
+              note: `Order #${orderNumber}`,
+              userId: stockHistoryUserId,
+            },
+          })
+        } catch (stockError) {
+          console.error('❌ Error creating stock history:', stockError)
+        }
       }
     }
 
@@ -147,7 +162,6 @@ export async function POST(request: NextRequest) {
       )
       console.log('✅ Push notification sent for order:', order.id)
     } catch (pushError) {
-      // Jangan gagalkan order jika notifikasi gagal
       console.error('❌ Error sending push notification:', pushError)
     }
 
