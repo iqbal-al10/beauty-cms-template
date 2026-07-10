@@ -239,10 +239,11 @@ model Booking {
   bookingTime  String
   serviceId    String?
   notes        String?
-  status       String   @default("PENDING") // PENDING, ON_PROGRESS, COMPLETED, REJECTED, RESCHEDULED
+  status       String   @default("PENDING")
   paymentStatus   String?   @default("PENDING")
   midtransOrderId String?   @unique
   paymentMethodName String?
+  paymentAccountNumber String?
   voucherCode     String?
   discountAmount  Float?   @default(0)
   totalPaid       Float?

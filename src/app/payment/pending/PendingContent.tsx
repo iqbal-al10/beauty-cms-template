@@ -3,31 +3,27 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Clock, Home, RefreshCw, Calendar, User, Phone, Mail, MapPin, CreditCard, DollarSign } from 'lucide-react'
+import { Clock, Home, RefreshCw, Copy, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Booking {
+interface BookingData {
   id: string
   customerName: string
-  whatsapp: string
-  email: string | null
-  address: string | null
-  bookingDate: string
-  bookingTime: string
-  status: string
-  service: { name: string; price: number; duration: number } | null
+  service: { name: string; price: number } | null
+  totalPaid: number
+  paymentMethodName: string | null
+  paymentAccountNumber: string | null
+  midtransOrderId: string | null
 }
 
-interface Order {
+interface OrderData {
   id: string
   orderNumber: string
   customerName: string
-  customerWhatsapp: string
-  email: string | null
-  address: string
   total: number
-  paymentMethodName: string
-  status: string
+  paymentMethodName: string | null
+  paymentAccountNumber: string | null
+  midtransOrderId: string | null
   items: { productName: string; quantity: number }[]
 }
 
@@ -40,6 +36,7 @@ export default function PendingContent() {
   const [data, setData] = useState<any>(null)
   const [isBooking, setIsBooking] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!orderId) {
@@ -86,20 +83,13 @@ export default function PendingContent() {
   const handleCheckStatus = async () => {
     setIsChecking(true)
     try {
-      console.log('🔍 Checking status for orderId:', orderId)
-      
       const res = await fetch(`/api/payment/status?orderId=${orderId}`)
       
-      console.log('📊 API response status:', res.status)
-      
       if (!res.ok) {
-        const text = await res.text()
-        console.error('❌ API response body:', text)
         throw new Error('Gagal mengecek status')
       }
       
       const result = await res.json()
-      console.log('📊 Status check result:', JSON.stringify(result, null, 2))
       
       if (result.status === 'settlement' || result.paymentStatus === 'PAID') {
         toast.success('✅ Pembayaran berhasil!')
@@ -112,7 +102,6 @@ export default function PendingContent() {
         setCountdown(30)
       }
     } catch (error) {
-      console.error('Error checking status:', error)
       toast.error('Gagal mengecek status')
     } finally {
       setIsChecking(false)
@@ -125,6 +114,13 @@ export default function PendingContent() {
     }
   }, [countdown, loading])
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    toast.success('Disalin!')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
@@ -132,6 +128,10 @@ export default function PendingContent() {
       </div>
     )
   }
+
+  const total = data?.total || data?.totalPaid || data?.price || 0
+  const methodName = data?.paymentMethodName || 'Midtrans'
+  const accountNumber = data?.paymentAccountNumber || ''
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
@@ -141,16 +141,48 @@ export default function PendingContent() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-800 mb-2">⏳ Menunggu Pembayaran</h1>
-        <p className="text-gray-600 mb-2">Kami menunggu konfirmasi pembayaran Anda.</p>
-        <p className="text-sm text-gray-500 mb-6">
-          Silakan selesaikan pembayaran Anda melalui metode yang telah dipilih.
-          <br />Halaman ini akan otomatis terupdate setelah pembayaran berhasil.
-        </p>
+        <p className="text-gray-600 mb-2">Silakan selesaikan pembayaran Anda.</p>
 
         {orderId && (
-          <div className="bg-white rounded-lg p-4 mb-6 inline-block shadow-sm">
+          <div className="bg-white rounded-lg p-4 mb-4 inline-block shadow-sm">
             <p className="text-xs text-gray-500">ID Transaksi</p>
             <p className="font-mono font-bold text-gray-800 text-sm">{orderId}</p>
+          </div>
+        )}
+
+        {/* 🔥 DETAIL PEMBAYARAN */}
+        {accountNumber && (
+          <div className="bg-white rounded-xl p-5 mb-6 text-left shadow-sm border border-gray-100">
+            <h3 className="font-semibold text-gray-800 mb-3 text-center">💳 Detail Pembayaran</h3>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-500">Metode</span>
+                <span className="text-sm font-semibold text-gray-800">{methodName}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-500">
+                  {methodName.includes('VA') ? 'Nomor VA' : 
+                   methodName.includes('QRIS') ? 'QR Code' : 
+                   methodName.includes('Bill') ? 'Bill Key' : 'Kode Pembayaran'}
+                </span>
+                <span className="text-sm font-mono font-bold text-gray-800">{accountNumber}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <span className="text-sm text-gray-500">Total</span>
+                <span className="text-sm font-bold text-pink-500">Rp {total.toLocaleString()}</span>
+              </div>
+
+              {/* 🔥 TOMBOL SALIN */}
+              <button
+                onClick={() => handleCopy(accountNumber)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-medium transition-all hover:opacity-90"
+                style={{ backgroundColor: '#c4367b' }}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? 'Disalin!' : 'Salin Nomor Pembayaran'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -158,7 +190,7 @@ export default function PendingContent() {
         {data && (
           <div className="bg-white rounded-lg p-4 mb-6 text-left space-y-1 text-sm">
             <p><span className="text-gray-500">Pelanggan:</span> {data.customerName || data.customer_name}</p>
-            <p><span className="text-gray-500">Total:</span> <span className="font-bold text-pink-500">Rp {(data.total || data.price || 0).toLocaleString()}</span></p>
+            <p><span className="text-gray-500">Total:</span> <span className="font-bold text-pink-500">Rp {total.toLocaleString()}</span></p>
             {isBooking && data.service && (
               <p><span className="text-gray-500">Layanan:</span> {data.service.name}</p>
             )}

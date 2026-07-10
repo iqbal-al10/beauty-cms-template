@@ -2,12 +2,43 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import midtransClient from 'midtrans-client'
 
-// Konfigurasi Midtrans
 const snap = new midtransClient.Snap({
   isProduction: process.env.MIDTRANS_IS_PRODUCTION === 'true',
   serverKey: process.env.MIDTRANS_SERVER_KEY!,
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY!,
 })
+
+// 🔥 Helper: ekstrak info pembayaran dari Midtrans response
+function extractPaymentInfo(transaction: any): { methodName: string; accountNumber: string } {
+  let methodName = 'Midtrans'
+  let accountNumber = ''
+
+  if (transaction.va_numbers && transaction.va_numbers.length > 0) {
+    const va = transaction.va_numbers[0]
+    methodName = `${va.bank?.toUpperCase() || ''} Virtual Account`
+    accountNumber = va.va_number || ''
+  } else if (transaction.permata_va_number) {
+    methodName = 'Permata Virtual Account'
+    accountNumber = transaction.permata_va_number
+  } else if (transaction.bill_key) {
+    methodName = 'Mandiri Bill Payment'
+    accountNumber = transaction.bill_key
+  } else if (transaction.payment_code) {
+    methodName = 'Indomaret / Alfamart'
+    accountNumber = transaction.payment_code
+  } else if (transaction.qr_string) {
+    methodName = 'QRIS'
+    accountNumber = transaction.qr_string
+  } else if (transaction.actions && transaction.actions.length > 0) {
+    const paymentAction = transaction.actions.find((a: any) => a.name === 'generate-qr-code')
+    if (paymentAction) {
+      methodName = 'QRIS'
+      accountNumber = paymentAction.url || 'Scan QR untuk membayar'
+    }
+  }
+
+  return { methodName, accountNumber }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,13 +60,10 @@ export async function POST(request: NextRequest) {
     let grossAmount = 0
 
     if (isBooking) {
-      // Ambil data booking
       order = await prisma.booking.findUnique({
         where: { id: orderId },
         include: { service: true },
       })
-
-      console.log('📦 Booking data:', order)
 
       if (!order) {
         return NextResponse.json(
@@ -44,7 +72,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      grossAmount = Math.round(order.service?.price || 0)
+      grossAmount = Math.round(order.totalPaid || order.service?.price || 0)
 
       if (grossAmount <= 0) {
         return NextResponse.json(
@@ -70,13 +98,10 @@ export async function POST(request: NextRequest) {
         },
       ]
     } else {
-      // Ambil data order produk
       order = await prisma.order.findUnique({
         where: { id: orderId },
         include: { items: true },
       })
-
-      console.log('📦 Order data:', order)
 
       if (!order) {
         return NextResponse.json(
@@ -102,7 +127,6 @@ export async function POST(request: NextRequest) {
         email: customerEmail,
       }
 
-      // Buat item details dari produk
       itemDetails = order.items.map((item: any) => ({
         id: item.productId,
         name: item.productName || 'Produk',
@@ -110,7 +134,6 @@ export async function POST(request: NextRequest) {
         quantity: item.quantity || 1,
       }))
 
-      // Tambahkan shipping sebagai item terpisah
       if (order.shippingCost && order.shippingCost > 0) {
         itemDetails.push({
           id: 'shipping',
@@ -120,7 +143,6 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Jika itemDetails kosong, tambahkan dummy item
       if (itemDetails.length === 0) {
         itemDetails = [
           {
@@ -132,14 +154,10 @@ export async function POST(request: NextRequest) {
         ]
       }
 
-      // Rekalkulasi gross_amount dari item_details
       const calculatedTotal = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0)
       grossAmount = Math.round(calculatedTotal)
-      
-      console.log('📊 Recalculated total from items:', { calculatedTotal, grossAmount })
     }
 
-    // 🔥 VALIDASI FINAL
     if (grossAmount <= 0) {
       return NextResponse.json(
         { error: 'Total pembayaran harus lebih dari 0' },
@@ -147,7 +165,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 🔥 BUAT ORDER_ID YANG LEBIH PENDEK
     const shortId = orderId.slice(-8)
     const timestamp = Date.now().toString().slice(-6)
     const uniqueOrderId = `${isBooking ? 'B' : 'O'}-${shortId}-${timestamp}`
@@ -166,50 +183,41 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    console.log('📤 Midtrans Parameter:', JSON.stringify(parameter, null, 2))
-
-    // 🔥 VALIDASI: Pastikan gross_amount sama dengan sum item_details
     const sumItems = itemDetails.reduce((sum, item) => sum + (item.price * item.quantity), 0)
     if (Math.abs(sumItems - grossAmount) > 1) {
-      console.warn('⚠️ Sum items does not match gross_amount:', { sumItems, grossAmount })
       if (itemDetails.length > 0) {
         const diff = grossAmount - sumItems
         itemDetails[itemDetails.length - 1].price += diff
         parameter.item_details = itemDetails
-        console.log('📤 Adjusted items:', JSON.stringify(itemDetails, null, 2))
       }
     }
 
-    // Buat transaksi di Midtrans
     try {
       const transaction = await snap.createTransaction(parameter)
       const transactionToken = transaction.token
 
-      console.log('✅ Midtrans transaction created:')
-      console.log('📝 Token:', transactionToken.substring(0, 20) + '...')
-      console.log('📝 Order ID:', uniqueOrderId)
-      console.log('📝 Redirect URL:', transaction.redirect_url)
+      // 🔥 Ekstrak info pembayaran
+      const paymentInfo = extractPaymentInfo(transaction)
 
-      // 🔥 SIMPAN midtransOrderId DENGAN LOG DAN VALIDASI
-      console.log('💾 Saving midtransOrderId:', { orderId, uniqueOrderId, isBooking })
-
-      try {
-        if (isBooking) {
-          const updated = await prisma.booking.update({
-            where: { id: orderId },
-            data: { midtransOrderId: uniqueOrderId },
-          })
-          console.log('✅ Booking updated with midtransOrderId:', updated.midtransOrderId)
-        } else {
-          const updated = await prisma.order.update({
-            where: { id: orderId },
-            data: { midtransOrderId: uniqueOrderId },
-          })
-          console.log('✅ Order updated with midtransOrderId:', updated.midtransOrderId)
-        }
-      } catch (updateError) {
-        console.error('❌ Failed to update midtransOrderId:', updateError)
-        // Jangan gagalkan transaksi jika update gagal
+      // 🔥 Simpan midtransOrderId & detail pembayaran
+      if (isBooking) {
+        await prisma.booking.update({
+          where: { id: orderId },
+          data: {
+            midtransOrderId: uniqueOrderId,
+            paymentMethodName: paymentInfo.methodName,
+            paymentAccountNumber: paymentInfo.accountNumber || null,
+          },
+        })
+      } else {
+        await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            midtransOrderId: uniqueOrderId,
+            paymentMethodName: paymentInfo.methodName,
+            paymentAccountNumber: paymentInfo.accountNumber || null,
+          },
+        })
       }
 
       return NextResponse.json({
@@ -222,7 +230,6 @@ export async function POST(request: NextRequest) {
       
       let errorMessage = 'Gagal memproses pembayaran'
       if (midtransError.response) {
-        console.error('Midtrans Response:', JSON.stringify(midtransError.response, null, 2))
         errorMessage = midtransError.response?.error_messages?.join(', ') || midtransError.message
       } else if (midtransError.message) {
         errorMessage = midtransError.message
