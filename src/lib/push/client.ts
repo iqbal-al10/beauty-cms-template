@@ -5,11 +5,13 @@
  * Cek apakah browser mendukung Push Notification
  */
 export function isPushSupported(): boolean {
-  return (
+  const supported = (
     'serviceWorker' in navigator &&
     'PushManager' in window &&
     'Notification' in window
   )
+  console.log('🔍 Push supported:', supported)
+  return supported
 }
 
 /**
@@ -17,15 +19,27 @@ export function isPushSupported(): boolean {
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!isPushSupported()) {
-    console.warn('Push notification tidak didukung')
+    console.warn('❌ Push notification tidak didukung')
     return null
   }
 
   try {
+    // 🔥 PERBAIKAN: Cek apakah SW sudah terdaftar
+    const existingReg = await navigator.serviceWorker.getRegistration('/sw.js')
+    if (existingReg) {
+      console.log('✅ Service Worker already registered')
+      return existingReg
+    }
+
+    // 🔥 PERBAIKAN: Register dengan scope explicit
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/',
     })
-    console.log('✅ Service Worker registered')
+
+    // 🔥 PERBAIKAN: Tunggu SW siap
+    await navigator.serviceWorker.ready
+
+    console.log('✅ Service Worker registered and ready')
     return registration
   } catch (error) {
     console.error('❌ Service Worker registration failed:', error)
@@ -39,9 +53,11 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 export async function getSubscription(): Promise<PushSubscription | null> {
   try {
     const registration = await navigator.serviceWorker.ready
-    return await registration.pushManager.getSubscription()
+    const subscription = await registration.pushManager.getSubscription()
+    console.log('🔍 Existing subscription:', subscription ? 'YES' : 'NO')
+    return subscription
   } catch (error) {
-    console.error('Error getting subscription:', error)
+    console.error('❌ Error getting subscription:', error)
     return null
   }
 }
@@ -53,21 +69,34 @@ export async function subscribeToPush(
   vapidPublicKey: string
 ): Promise<PushSubscription | null> {
   try {
+    // 🔥 PERBAIKAN: Tunggu SW benar-benar siap
     const registration = await navigator.serviceWorker.ready
+
+    if (!registration) {
+      console.error('❌ Service Worker not ready')
+      return null
+    }
+
+    console.log('🔑 VAPID key length:', vapidPublicKey?.length || 0)
 
     // Convert VAPID public key ke Uint8Array
     const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey)
 
-    // 🔥 PERBAIKAN: Cast ke BufferSource
+    console.log('🔑 Converted key length:', applicationServerKey.length)
+
+    // 🔥 PERBAIKAN: Subscribe dengan error handling detail
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: applicationServerKey as BufferSource,
+      applicationServerKey: applicationServerKey,
     })
 
     console.log('✅ Subscribed to push notifications')
+    console.log('📌 Endpoint:', subscription.endpoint.substring(0, 50) + '...')
     return subscription
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Failed to subscribe:', error)
+    console.error('❌ Error name:', error.name)
+    console.error('❌ Error message:', error.message)
     return null
   }
 }
@@ -83,6 +112,7 @@ export async function unsubscribeFromPush(): Promise<boolean> {
       console.log('✅ Unsubscribed from push notifications')
       return result
     }
+    console.log('⚠️ No subscription to unsubscribe')
     return false
   } catch (error) {
     console.error('❌ Failed to unsubscribe:', error)
@@ -97,6 +127,7 @@ export async function saveSubscription(
   subscription: PushSubscription
 ): Promise<boolean> {
   try {
+    console.log('💾 Saving subscription to server...')
     const response = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,6 +135,8 @@ export async function saveSubscription(
     })
 
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('❌ Server error:', response.status, errorData)
       throw new Error('Failed to save subscription')
     }
 
@@ -138,21 +171,27 @@ export async function deleteSubscription(): Promise<boolean> {
 
 /**
  * Helper: base64 URL ke Uint8Array
- * 🔥 PERBAIKAN: Gunakan Buffer untuk kompatibilitas
  */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  // Tambahkan padding jika diperlukan
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-  
-  // Decode base64 ke string
-  const rawData = atob(base64)
-  
-  // Konversi ke Uint8Array
-  const outputArray = new Uint8Array(rawData.length)
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i)
+  // 🔥 PERBAIKAN: Trim dan validasi input
+  if (!base64String) {
+    console.error('❌ Empty VAPID key')
+    return new Uint8Array(0)
   }
-  
-  return outputArray
+
+  const trimmed = base64String.trim()
+  const padding = '='.repeat((4 - (trimmed.length % 4)) % 4)
+  const base64 = (trimmed + padding).replace(/-/g, '+').replace(/_/g, '/')
+
+  try {
+    const rawData = atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  } catch (error) {
+    console.error('❌ Failed to decode VAPID key:', error)
+    return new Uint8Array(0)
+  }
 }
