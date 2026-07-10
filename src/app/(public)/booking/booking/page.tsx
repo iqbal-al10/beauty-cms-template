@@ -66,6 +66,7 @@ function BookingServiceContent() {
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [loading, setLoading] = useState(true)
   const [slots, setSlots] = useState<Slot[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [bookingData, setBookingData] = useState<any>(null)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
@@ -167,6 +168,9 @@ function BookingServiceContent() {
   const fetchSlots = async (date: string, serviceId: string) => {
     if (!date || !serviceId) return
 
+    setLoadingSlots(true)
+    setSlots([])
+
     try {
       const res = await fetch(`/api/public/bookings?date=${date}&serviceId=${serviceId}`)
       const data = await res.json()
@@ -191,6 +195,8 @@ function BookingServiceContent() {
       setClosedMessage(data.message || '')
     } catch (error) {
       console.error('Error fetching slots:', error)
+    } finally {
+      setLoadingSlots(false)
     }
   }
 
@@ -401,6 +407,15 @@ function BookingServiceContent() {
   }
 
   const renderSlots = () => {
+    if (loadingSlots) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: primaryColor }}></div>
+          <span className="ml-3 text-sm text-gray-500">Memuat jadwal...</span>
+        </div>
+      )
+    }
+
     if (slots.length === 0) {
       if (isClosed) {
         return (
@@ -480,8 +495,28 @@ function BookingServiceContent() {
 
   if (loading && !submitted) {
     return (
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
+      <div className="container mx-auto px-4 py-12 max-w-3xl animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-40 mb-6" />
+        <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
+        <div className="h-4 bg-gray-200 rounded w-64 mb-8" />
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
+          <div className="h-10 bg-gray-200 rounded w-full" />
+          <div className="h-12 bg-gray-200 rounded w-full" />
+        </div>
       </div>
     )
   }
@@ -704,6 +739,12 @@ function BookingServiceContent() {
                 onChange={(e) => handleDateChange(e.target.value)}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
+              {loadingSlots && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2" style={{ borderColor: primaryColor }}></div>
+                  <span className="text-sm text-gray-500">Memuat slot...</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -1012,8 +1053,28 @@ function BookingServiceContent() {
 export default function BookingServicePage() {
   return (
     <Suspense fallback={
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#c4367b' }} />
+      <div className="container mx-auto px-4 py-12 max-w-3xl animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-40 mb-6" />
+        <div className="h-8 bg-gray-200 rounded w-48 mb-2" />
+        <div className="h-4 bg-gray-200 rounded w-64 mb-8" />
+        <div className="flex items-center gap-4 mb-8">
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+          <div className="flex-1 text-center">
+            <div className="w-8 h-8 rounded-full bg-gray-200 mx-auto mb-1" />
+            <div className="h-3 bg-gray-200 rounded w-12 mx-auto" />
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
+          <div className="h-10 bg-gray-200 rounded w-full" />
+          <div className="h-12 bg-gray-200 rounded w-full" />
+        </div>
       </div>
     }>
       <BookingServiceContent />

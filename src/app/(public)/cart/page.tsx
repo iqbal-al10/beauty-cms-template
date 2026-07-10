@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -18,7 +19,7 @@ interface CartItem {
   stock: number
 }
 
-export default function CartPage() {
+function CartContent() {
   const router = useRouter()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,35 +33,12 @@ export default function CartPage() {
       const saved = localStorage.getItem('beauty_cart')
       if (saved) {
         const items = JSON.parse(saved)
-        
-        // 🔍 DEBUG: Lihat data asli dari localStorage
-        console.log('🔍 CART - RAW DATA from localStorage:', items)
-        
-        // 🔥 PERBAIKAN: Pastikan compareAtPrice selalu ada dengan fallback
         const enrichedItems = items.map((item: any) => ({
           ...item,
           compareAtPrice: item.compareAtPrice ?? null,
           finalPrice: item.finalPrice ?? item.price,
         }))
-        
-        // 🔍 DEBUG: Lihat data setelah di-enrich
-        console.log('📦 CART - ENRICHED ITEMS:', enrichedItems)
-        console.log('🔍 CART - CompareAtPrice details:', enrichedItems.map((item: any) => ({
-          name: item.name,
-          compareAtPrice: item.compareAtPrice,
-          type: typeof item.compareAtPrice,
-          price: item.price,
-          hasCompare: item.compareAtPrice && item.compareAtPrice > (item.finalPrice || item.price),
-        })))
-        
-        // 🔥 PASTIKAN STATE TERUPDATE
         setCartItems(enrichedItems)
-        
-        // 🔍 DEBUG: Cek state setelah set (pakai setTimeout karena setState async)
-        setTimeout(() => {
-          console.log('📦 CART - STATE AFTER SET:', cartItems)
-        }, 100)
-        
       } else {
         setCartItems([])
       }
@@ -74,7 +52,6 @@ export default function CartPage() {
 
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return
-
     const updatedItems = cartItems.map((item) => {
       if (item.id === id) {
         if (newQuantity > item.stock) {
@@ -85,7 +62,6 @@ export default function CartPage() {
       }
       return item
     })
-
     setCartItems(updatedItems)
     localStorage.setItem('beauty_cart', JSON.stringify(updatedItems))
     window.dispatchEvent(new Event('cartUpdate'))
@@ -93,7 +69,6 @@ export default function CartPage() {
 
   const removeItem = (id: string, name: string) => {
     if (!confirm(`Hapus "${name}" dari keranjang?`)) return
-
     const updatedItems = cartItems.filter((item) => item.id !== id)
     setCartItems(updatedItems)
     localStorage.setItem('beauty_cart', JSON.stringify(updatedItems))
@@ -120,27 +95,51 @@ export default function CartPage() {
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cartItems.reduce((sum, item) => sum + (item.finalPrice || item.price) * item.quantity, 0)
   const total = subtotal
-  
-  // 🔥 HITUNG TOTAL HEMAT
+
   const totalSavings = cartItems.reduce((sum, item) => {
     const displayPrice = item.finalPrice || item.price
     const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
-    if (hasCompare) {
-      return sum + ((item.compareAtPrice || 0) - displayPrice) * item.quantity
-    }
+    if (hasCompare) return sum + ((item.compareAtPrice || 0) - displayPrice) * item.quantity
     return sum
   }, 0)
 
-  // 🔍 DEBUG: Cek cartItems setiap kali berubah
-  useEffect(() => {
-    console.log('📦 CART - cartItems STATE UPDATED:', cartItems)
-    console.log('💰 CART - Total Savings:', totalSavings)
-  }, [cartItems])
-
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      <div className="container mx-auto px-4 py-8 animate-pulse">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="h-4 bg-gray-200 rounded w-32" />
+          <div className="h-8 bg-gray-200 rounded w-48" />
+        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-100">
+                <div className="h-5 bg-gray-200 rounded w-24" />
+              </div>
+              <div className="divide-y divide-gray-100">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 flex items-center gap-4">
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                    </div>
+                    <div className="h-8 bg-gray-200 rounded w-20" />
+                    <div className="h-5 w-5 bg-gray-200 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="lg:w-80">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+              <div className="h-6 bg-gray-200 rounded w-24" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-10 bg-gray-200 rounded-full w-full mt-4" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -160,163 +159,100 @@ export default function CartPage() {
           <ShoppingBag className="w-16 h-16 mx-auto text-gray-300 mb-4" />
           <h2 className="text-xl font-semibold text-gray-600">Keranjang Kosong</h2>
           <p className="text-gray-400 mt-2">Belum ada produk di keranjang Anda</p>
-          <Link
-            href="/products"
-            className="inline-block mt-6 px-6 py-3 rounded-full text-white font-medium transition-all hover:opacity-90"
-            style={{ backgroundColor: '#c4367b' }}
-          >
-            Mulai Belanja
-          </Link>
+          <Link href="/products" className="inline-block mt-6 px-6 py-3 rounded-full text-white font-medium transition-all hover:opacity-90" style={{ backgroundColor: '#c4367b' }}>Mulai Belanja</Link>
         </div>
       ) : (
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Cart Items */}
           <div className="flex-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-100 flex justify-between items-center">
                 <span className="font-semibold text-gray-700">{totalItems} Produk</span>
-                <button
-                  onClick={clearCart}
-                  className="text-sm text-red-500 hover:text-red-700 flex items-center gap-1"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Kosongkan
-                </button>
+                <button onClick={clearCart} className="text-sm text-red-500 hover:text-red-700 flex items-center gap-1"><Trash2 className="w-4 h-4" />Kosongkan</button>
               </div>
-
               <div className="divide-y divide-gray-100">
                 {cartItems.map((item) => {
                   const displayPrice = item.finalPrice || item.price
                   const hasCompare = item.compareAtPrice && item.compareAtPrice > displayPrice
                   const saving = hasCompare ? (item.compareAtPrice || 0) - displayPrice : 0
-                  
-                  // 🔍 DEBUG: Log per item saat render di Cart
-                  console.log(`🔍 CART - RENDERING ITEM: ${item.name}`, {
-                    displayPrice,
-                    compareAtPrice: item.compareAtPrice,
-                    hasCompare,
-                    saving,
-                    price: item.price,
-                    item: item, // Log full item
-                  })
-                  
                   return (
                     <div key={item.id} className="p-4 flex items-center gap-4">
-                      {/* Image */}
                       <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.name}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <span className="text-3xl">🧴</span>
-                        )}
+                        {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover rounded-lg" /> : <span className="text-3xl">🧴</span>}
                       </div>
-
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
-                        <Link
-                          href={`/products/${item.slug}`}
-                          className="font-medium text-gray-800 hover:text-pink-500 transition-colors line-clamp-1"
-                        >
-                          {item.name}
-                        </Link>
+                        <Link href={`/products/${item.slug}`} className="font-medium text-gray-800 hover:text-pink-500 transition-colors line-clamp-1">{item.name}</Link>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <p className="text-sm font-bold text-pink-500">
-                            Rp {displayPrice.toLocaleString()}
-                          </p>
-                          {hasCompare && (
-                            <p className="text-xs text-gray-400 line-through">
-                              Rp {item.compareAtPrice?.toLocaleString()}
-                            </p>
-                          )}
+                          <p className="text-sm font-bold text-pink-500">Rp {displayPrice.toLocaleString()}</p>
+                          {hasCompare && <p className="text-xs text-gray-400 line-through">Rp {item.compareAtPrice?.toLocaleString()}</p>}
                         </div>
-                        {/* 🔥 TAMPILKAN HEMAT PER ITEM DI CART */}
-                        {hasCompare && saving > 0 && (
-                          <p className="text-xs text-green-600 font-medium mt-0.5">
-                            💰 Hemat Rp {saving.toLocaleString()}
-                          </p>
-                        )}
+                        {hasCompare && saving > 0 && <p className="text-xs text-green-600 font-medium mt-0.5">💰 Hemat Rp {saving.toLocaleString()}</p>}
                       </div>
-
-                      {/* Quantity */}
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"><Minus className="w-4 h-4" /></button>
                         <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          disabled={item.quantity >= item.stock}
-                          className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock} className="p-1 rounded-full hover:bg-gray-100 disabled:opacity-50"><Plus className="w-4 h-4" /></button>
                       </div>
-
-                      {/* Remove */}
-                      <button
-                        onClick={() => removeItem(item.id, item.name)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      <button onClick={() => removeItem(item.id, item.name)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
                     </div>
                   )
                 })}
               </div>
             </div>
           </div>
-
-          {/* Summary - TAMBAHKAN TOTAL HEMAT */}
           <div className="lg:w-80 flex-shrink-0">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Ringkasan</h2>
-
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-medium">Rp {subtotal.toLocaleString()}</span>
-                </div>
-                
-                {/* 🔥 TAMBAHKAN TOTAL HEMAT DI RINGKASAN */}
-                {totalSavings > 0 && (
-                  <div className="flex justify-between text-green-600 font-medium">
-                    <span>💰 Total Hemat</span>
-                    <span>- Rp {totalSavings.toLocaleString()}</span>
-                  </div>
-                )}
-                
-                <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold text-lg">
-                  <span>Total</span>
-                  <span style={{ color: '#c4367b' }}>Rp {total.toLocaleString()}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-medium">Rp {subtotal.toLocaleString()}</span></div>
+                {totalSavings > 0 && <div className="flex justify-between text-green-600 font-medium"><span>💰 Total Hemat</span><span>- Rp {totalSavings.toLocaleString()}</span></div>}
+                <div className="border-t border-gray-200 pt-2 flex justify-between font-semibold text-lg"><span>Total</span><span style={{ color: '#c4367b' }}>Rp {total.toLocaleString()}</span></div>
               </div>
-
-              <button
-                onClick={handleCheckout}
-                className="w-full mt-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 active:scale-95"
-                style={{ backgroundColor: '#c4367b' }}
-              >
-                Checkout
-              </button>
-
-              <Link
-                href="/products"
-                className="w-full mt-2 py-2 text-center text-sm text-gray-500 hover:text-gray-700 block"
-              >
-                ← Lanjutkan Belanja
-              </Link>
+              <button onClick={handleCheckout} className="w-full mt-6 py-3 rounded-full text-white font-semibold transition-all hover:opacity-90 active:scale-95" style={{ backgroundColor: '#c4367b' }}>Checkout</button>
+              <Link href="/products" className="w-full mt-2 py-2 text-center text-sm text-gray-500 hover:text-gray-700 block">← Lanjutkan Belanja</Link>
             </div>
           </div>
         </div>
       )}
     </div>
+  )
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 animate-pulse">
+        <div className="flex items-center gap-4 mb-8">
+          <div className="h-4 bg-gray-200 rounded w-32" />
+          <div className="h-8 bg-gray-200 rounded w-48" />
+        </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 border-b border-gray-100"><div className="h-5 bg-gray-200 rounded w-24" /></div>
+              <div className="divide-y divide-gray-100">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 flex items-center gap-4">
+                    <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 space-y-2"><div className="h-4 bg-gray-200 rounded w-3/4" /><div className="h-4 bg-gray-200 rounded w-1/3" /></div>
+                    <div className="h-8 bg-gray-200 rounded w-20" />
+                    <div className="h-5 w-5 bg-gray-200 rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="lg:w-80">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-3">
+              <div className="h-6 bg-gray-200 rounded w-24" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-10 bg-gray-200 rounded-full w-full mt-4" />
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <CartContent />
+    </Suspense>
   )
 }

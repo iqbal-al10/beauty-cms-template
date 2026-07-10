@@ -73,7 +73,6 @@ export default function PublicFAQPage() {
     setOpenIndex(openIndex === index ? null : index)
   }
 
-  // Filter FAQ berdasarkan search query
   const filteredFaqs = faqs
     .filter(faq => faq.isActive)
     .filter(faq => {
@@ -88,15 +87,25 @@ export default function PublicFAQPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
+      <div className="container mx-auto px-4 py-8 animate-pulse" style={{ fontFamily }}>
+        <div className="h-4 bg-gray-200 rounded w-16 mb-6" />
+        <div className="rounded-2xl p-10 mb-8 bg-gray-200 h-48" />
+        <div className="max-w-2xl mx-auto mb-6">
+          <div className="h-12 bg-gray-200 rounded-lg w-full" />
+        </div>
+        <div className="max-w-3xl mx-auto space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+              <div className="h-5 bg-gray-200 rounded w-3/4" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
-      {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2" style={{ fontSize: smallFontSize }}>
         <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
@@ -106,7 +115,6 @@ export default function PublicFAQPage() {
         <span className="text-gray-800">FAQ</span>
       </nav>
 
-      {/* Hero */}
       <div 
         className="rounded-2xl p-10 text-center mb-8"
         style={{
@@ -126,7 +134,6 @@ export default function PublicFAQPage() {
         </p>
       </div>
 
-      {/* 🔥 SEARCH BOX - LEBAR DIPERKECIL */}
       <div className="max-w-2xl mx-auto mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
@@ -136,9 +143,7 @@ export default function PublicFAQPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search question here..."
             className="w-full pl-10 pr-4 py-2.5 border-2 border-pink-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-colors"
-            style={{ 
-              fontSize: bodyFontSize,
-            }}
+            style={{ fontSize: bodyFontSize }}
           />
           {searchQuery && (
             <button
@@ -151,7 +156,6 @@ export default function PublicFAQPage() {
           )}
         </div>
         
-        {/* Hasil pencarian */}
         {searchQuery && (
           <p className="text-sm text-gray-500 mt-2" style={{ fontSize: smallFontSize }}>
             Menampilkan <span className="font-medium" style={{ color: primaryColor }}>{totalResults}</span> hasil
@@ -159,14 +163,6 @@ export default function PublicFAQPage() {
         )}
       </div>
 
-      {/* Hasil pencarian */}
-      {searchQuery && (
-        <p className="text-sm text-gray-500 mb-4" style={{ fontSize: smallFontSize }}>
-          Menampilkan <span className="font-medium" style={{ color: primaryColor }}>{totalResults}</span> hasil
-        </p>
-      )}
-
-      {/* FAQ List */}
       <div className="max-w-3xl mx-auto">
         {filteredFaqs.length === 0 ? (
           <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-100">
@@ -228,7 +224,6 @@ export default function PublicFAQPage() {
           </div>
         )}
 
-        {/* Still have questions? */}
         {filteredFaqs.length > 0 && (
           <div className="mt-8 text-center">
             <p className="text-gray-500" style={{ fontSize: bodyFontSize }}>
@@ -245,7 +240,6 @@ export default function PublicFAQPage() {
         )}
       </div>
 
-      {/* CTA */}
       <div 
         className="rounded-2xl p-10 text-center mt-12"
         style={{

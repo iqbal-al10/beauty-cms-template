@@ -31,7 +31,6 @@ interface Settings {
   operatingHours: any
 }
 
-// 🔥 KEY UNTUK LOCALSTORAGE
 const CONTACT_STORAGE_KEY = 'beauty_contact_data'
 
 export default function ContactPage() {
@@ -52,7 +51,6 @@ export default function ContactPage() {
   const smallFontSize = '14px'
   const fontFamily = 'Inter'
 
-  // 🔥 LOAD DATA DARI LOCALSTORAGE
   useEffect(() => {
     const savedData = localStorage.getItem(CONTACT_STORAGE_KEY)
     if (savedData) {
@@ -88,11 +86,9 @@ export default function ContactPage() {
     }
   }
 
-  // 🔥 HANDLE SUBMIT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Validasi
     if (!form.name.trim()) {
       toast.error('Nama wajib diisi')
       return
@@ -110,14 +106,12 @@ export default function ContactPage() {
       return
     }
 
-    // Validasi format email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(form.email.trim())) {
       toast.error('Format email tidak valid')
       return
     }
 
-    // Validasi format WhatsApp
     const whatsappClean = form.whatsapp.replace(/[^0-9]/g, '')
     if (whatsappClean.length < 10) {
       toast.error('Nomor WhatsApp tidak valid (minimal 10 digit)')
@@ -144,21 +138,17 @@ export default function ContactPage() {
         throw new Error(data.error || 'Failed to send message')
       }
 
-      // 🔥 SIMPAN DATA KE LOCALSTORAGE
       localStorage.setItem(CONTACT_STORAGE_KEY, JSON.stringify({
         name: form.name.trim(),
         email: form.email.trim(),
         whatsapp: whatsappClean,
       }))
 
-      // 🔥 TAMPILKAN PEMBERITAHUAN SUKSES
       const successMsg = settings?.contactSuccessMessage || '✅ Pesan Anda telah terkirim! Kami akan segera merespon.'
       toast.success(successMsg)
       
-      // 🔥 SET SUBMITTED = TRUE UNTUK MENAMPILKAN PEMBERITAHUAN
       setSubmitted(true)
       
-      // Kosongkan form (kecuali data yang sudah tersimpan di localStorage)
       setForm({ name: '', email: '', whatsapp: '', message: '' })
 
     } catch (error: any) {
@@ -169,10 +159,8 @@ export default function ContactPage() {
     }
   }
 
-  // 🔥 RESET SUBMITTED STATE
   const handleSendAnother = () => {
     setSubmitted(false)
-    // Reload data dari localStorage
     const savedData = localStorage.getItem(CONTACT_STORAGE_KEY)
     if (savedData) {
       try {
@@ -191,8 +179,33 @@ export default function ContactPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
+      <div className="container mx-auto px-4 py-8 animate-pulse" style={{ fontFamily }}>
+        <div className="h-4 bg-gray-200 rounded w-24 mb-6" />
+        <div className="rounded-2xl p-10 mb-12 bg-gray-200 h-40" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="h-5 bg-gray-200 rounded w-32 mb-4" />
+              <div className="space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-full" />
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-4 bg-gray-200 rounded w-1/2" />
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-2">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="h-5 bg-gray-200 rounded w-40 mb-4" />
+              <div className="space-y-4">
+                <div className="h-10 bg-gray-200 rounded w-full" />
+                <div className="h-10 bg-gray-200 rounded w-full" />
+                <div className="h-10 bg-gray-200 rounded w-full" />
+                <div className="h-32 bg-gray-200 rounded w-full" />
+                <div className="h-12 bg-gray-200 rounded w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -210,7 +223,6 @@ export default function ContactPage() {
 
   return (
     <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
-      {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2" style={{ fontSize: smallFontSize }}>
         <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
@@ -220,7 +232,6 @@ export default function ContactPage() {
         <span className="text-gray-800">Contact</span>
       </nav>
 
-      {/* Hero */}
       <div 
         className="rounded-2xl p-10 text-center mb-12"
         style={{
@@ -235,7 +246,6 @@ export default function ContactPage() {
         </p>
       </div>
 
-      {/* 🔥 PEMBERITAHUAN SUKSES */}
       {submitted && (
         <div className="mb-8 bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -255,10 +265,8 @@ export default function ContactPage() {
         </div>
       )}
 
-      {/* 🔥 FORM - SEMBUNYIKAN JIKA SUBMITTED */}
       {!submitted && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Contact Info */}
           <div className="lg:col-span-1 space-y-4">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>Get in Touch</h3>
@@ -303,7 +311,6 @@ export default function ContactPage() {
             </div>
           </div>
 
-          {/* Contact Form */}
           <div className="lg:col-span-2">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h3 className="font-semibold text-gray-800 mb-4" style={{ fontSize: bodyFontSize }}>{contactFormTitle}</h3>
@@ -376,7 +383,6 @@ export default function ContactPage() {
         </div>
       )}
 
-      {/* Google Maps */}
       {googleMapsEmbedUrl && (
         <div className="mt-8 rounded-2xl overflow-hidden shadow-sm border border-gray-100">
           <iframe
@@ -392,7 +398,6 @@ export default function ContactPage() {
         </div>
       )}
 
-      {/* CTA */}
       <div 
         className="rounded-2xl p-10 text-center mt-12"
         style={{

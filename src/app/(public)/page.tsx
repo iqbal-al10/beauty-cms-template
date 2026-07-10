@@ -173,7 +173,6 @@ const DEFAULT_SETTINGS: Settings = {
   heroSlide2BgEnd: '#ec4899',
 }
 
-// 🔥 SKELETON CARD COMPONENT
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
@@ -368,8 +367,22 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
+      <div className="animate-pulse">
+        <div className="min-h-[70vh] bg-gray-200" />
+        <div className="container mx-auto px-4 py-16">
+          <div className="h-8 bg-gray-200 rounded w-56 mb-12" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+          </div>
+        </div>
+        <div className="bg-gray-100 py-16">
+          <div className="container mx-auto px-4">
+            <div className="h-8 bg-gray-200 rounded w-56 mb-12" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

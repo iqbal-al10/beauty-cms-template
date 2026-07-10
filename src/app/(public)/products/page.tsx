@@ -1,10 +1,10 @@
 'use client'
 
 import { Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ShoppingCart, Search, Filter } from 'lucide-react'
+import { ShoppingCart, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Product {
@@ -67,21 +67,16 @@ const getTagColor = (color: string | null): string => {
 
 function ProductsContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const categorySlug = searchParams.get('category') || ''
-  const searchQuery = searchParams.get('search') || ''
-  const page = parseInt(searchParams.get('page') || '1', 10)
-
   const [products, setProducts] = useState<Product[]>([])
+  const [allProducts, setAllProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [totalProducts, setTotalProducts] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [navigatingId, setNavigatingId] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [searchTerm, setSearchTerm] = useState<string>('')
 
   const primaryColor = '#c4367b'
-  const limit = 9
 
   useEffect(() => {
     async function fetchSettings() {
@@ -102,21 +97,18 @@ function ProductsContent() {
     async function fetchData() {
       setLoading(true)
       try {
-        const params = new URLSearchParams()
-        if (categorySlug) params.set('category', categorySlug)
-        if (searchQuery) params.set('search', searchQuery)
-        params.set('page', String(page))
-        params.set('limit', String(limit))
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/public/products?limit=100'),
+          fetch('/api/public/categories?limit=20'),
+        ])
 
-        const productsRes = await fetch(`/api/public/products?${params}`)
         if (productsRes.ok) {
           const data = await productsRes.json()
-          setProducts(data.data || [])
-          setTotalProducts(data.total || 0)
-          setTotalPages(data.totalPages || 1)
+          const all = data.data || []
+          setAllProducts(all)
+          setProducts(all)
         }
 
-        const categoriesRes = await fetch('/api/public/categories?limit=20')
         if (categoriesRes.ok) {
           const data = await categoriesRes.json()
           setCategories(data || [])
@@ -128,17 +120,7 @@ function ProductsContent() {
       }
     }
     fetchData()
-  }, [categorySlug, searchQuery, page])
-
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const search = formData.get('search') as string
-    const params = new URLSearchParams()
-    if (search) params.set('search', search)
-    if (categorySlug) params.set('category', categorySlug)
-    router.push(`/products?${params.toString()}`)
-  }
+  }, [])
 
   const handleViewDetails = (slug: string, id: string) => {
     setNavigatingId(id)
@@ -181,6 +163,12 @@ function ProductsContent() {
     }
   }
 
+  const filteredProducts = allProducts.filter(product => {
+    const matchesCategory = !selectedCategory || categories.find(c => c.id === selectedCategory)?.name === product.category?.name
+    const matchesSearch = !searchTerm || product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return matchesCategory && matchesSearch
+  })
+
   const enableCart = settings?.enableCart !== undefined ? settings.enableCart : true
   const headingFontSize = settings?.headingFontSize || '32px'
   const bodyFontSize = settings?.bodyFontSize || '16px'
@@ -189,8 +177,30 @@ function ProductsContent() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: primaryColor }} />
+      <div className="container mx-auto px-4 py-8 animate-pulse" style={{ fontFamily }}>
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="h-5 bg-gray-200 rounded w-64 mt-2" />
+        </div>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-9 bg-gray-200 rounded-full w-20" />
+          ))}
+        </div>
+        <div className="h-4 bg-gray-200 rounded w-48 mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-5 bg-gray-200 rounded w-1/3" />
+                <div className="h-9 bg-gray-200 rounded-full w-full mt-3" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
@@ -206,78 +216,72 @@ function ProductsContent() {
 
       {/* Search */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <form onSubmit={handleSearch} className="flex-1">
-          {categorySlug && (
-            <input type="hidden" name="category" value={categorySlug} />
-          )}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              name="search"
-              placeholder="Search products..."
-              defaultValue={searchQuery}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-              style={{ 
-                '--tw-ring-color': primaryColor,
-                fontSize: bodyFontSize,
-              } as React.CSSProperties}
-            />
-          </div>
-        </form>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
+            style={{ fontSize: bodyFontSize }}
+          />
+        </div>
       </div>
 
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <a
-          href="/products"
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-            !categorySlug
-              ? 'text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-          style={!categorySlug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
-        >
-          All
-        </a>
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            href={`/products?category=${category.slug}`}
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => setSelectedCategory('')}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              categorySlug === category.slug
+              !selectedCategory
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={categorySlug === category.slug ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
+            style={!selectedCategory ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
           >
-            {category.name}
-          </Link>
-        ))}
-      </div>
+            All
+          </button>
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => setSelectedCategory(category.id)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedCategory === category.id
+                  ? 'text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              style={selectedCategory === category.id ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <p className="text-sm text-gray-500 mb-4" style={{ fontSize: smallFontSize }}>
-        Showing {products.length} of {totalProducts} products
+        Menampilkan {filteredProducts.length} produk
       </p>
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-100">
           <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
           </svg>
           <h3 className="text-lg font-semibold text-gray-600" style={{ fontSize: headingFontSize }}>No products found</h3>
           <p className="text-gray-400 text-sm" style={{ fontSize: bodyFontSize }}>Try adjusting your search or filter</p>
-          <Link
-            href="/products"
+          <button
+            onClick={() => { setSelectedCategory(''); setSearchTerm('') }}
             className="inline-block mt-4 px-6 py-2 rounded-lg text-white text-sm font-medium transition-colors hover:opacity-90"
             style={{ backgroundColor: primaryColor, fontSize: smallFontSize }}
           >
             Clear filters
-          </Link>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => {
+          {filteredProducts.map((product) => {
             const displayPrice = product.finalPrice || product.price
             const hasCompare = product.compareAtPrice && product.compareAtPrice > displayPrice
             const discountAmount = hasCompare ? (product.compareAtPrice || 0) - displayPrice : 0
@@ -353,7 +357,6 @@ function ProductsContent() {
                   )}
 
                   <div className="flex items-center justify-between mt-3 gap-2">
-                    {/* 🔥 TOMBOL VIEW DETAILS DENGAN SPINNER */}
                     <button
                       onClick={() => handleViewDetails(product.slug, product.id)}
                       disabled={navigatingId === product.id}
@@ -390,29 +393,6 @@ function ProductsContent() {
           })}
         </div>
       )}
-
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-8">
-          {Array.from({ length: totalPages }).map((_, i) => {
-            const pageNum = i + 1
-            const isActive = pageNum === page
-            return (
-              <Link
-                key={i}
-                href={`/products?page=${pageNum}`}
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={isActive ? { backgroundColor: primaryColor, fontSize: smallFontSize } : { fontSize: smallFontSize }}
-              >
-                {pageNum}
-              </Link>
-            )
-          })}
-        </div>
-      )}
     </div>
   )
 }
@@ -420,8 +400,29 @@ function ProductsContent() {
 export default function ProductsPage() {
   return (
     <Suspense fallback={
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#c4367b' }} />
+      <div className="container mx-auto px-4 py-8 animate-pulse">
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="h-5 bg-gray-200 rounded w-64 mt-2" />
+        </div>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-9 bg-gray-200 rounded-full w-20" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="aspect-square bg-gray-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-5 bg-gray-200 rounded w-1/3" />
+                <div className="h-9 bg-gray-200 rounded-full w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     }>
       <ProductsContent />

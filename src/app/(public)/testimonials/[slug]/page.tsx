@@ -12,7 +12,6 @@ interface TestimonialDetailPageProps {
 export default async function TestimonialDetailPage({ params }: TestimonialDetailPageProps) {
   const { slug } = await params
 
-  // Slug dibuat dari customerName
   const name = slug.replace(/-/g, ' ')
 
   const testimonial = await prisma.testimonial.findFirst({
@@ -42,7 +41,6 @@ export default async function TestimonialDetailPage({ params }: TestimonialDetai
   const smallFontSize = settings?.smallFontSize || '14px'
   const fontFamily = settings?.fontFamily || 'Inter'
 
-  // Get related testimonials (excluding current)
   const relatedTestimonials = await prisma.testimonial.findMany({
     where: {
       id: { not: testimonial.id },
@@ -75,7 +73,6 @@ export default async function TestimonialDetailPage({ params }: TestimonialDetai
 
   return (
     <div className="container mx-auto px-4 py-8" style={{ fontFamily: fontFamily }}>
-      {/* Breadcrumb */}
       <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2" style={{ fontSize: smallFontSize }}>
         <Link href="/" className="hover:text-[#c4367b] flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" />
@@ -87,7 +84,6 @@ export default async function TestimonialDetailPage({ params }: TestimonialDetai
         <span className="text-gray-800">{testimonial.customerName}</span>
       </nav>
 
-      {/* Main Content */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <div className="flex items-center gap-4 mb-6">
           {testimonial.customerPhotoUrl ? (
@@ -177,7 +173,6 @@ export default async function TestimonialDetailPage({ params }: TestimonialDetai
         </div>
       </div>
 
-      {/* ===== RELATED TESTIMONIALS ===== */}
       {relatedTestimonials.length > 0 && (
         <div className="mt-16">
           <h2 className="font-bold text-gray-800 mb-6" style={{ fontSize: headingFontSize }}>
