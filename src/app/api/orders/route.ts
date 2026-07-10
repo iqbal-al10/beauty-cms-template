@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
-import { sendOrderNotification } from '@/lib/push/server'
 
 function generateOrderNumber() {
   const date = new Date()
@@ -150,19 +149,6 @@ export async function POST(request: NextRequest) {
           console.error('❌ Error creating stock history:', stockError)
         }
       }
-    }
-
-    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN - PANGGIL LANGSUNG FUNGSI
-    try {
-      await sendOrderNotification(
-        order.id,
-        order.orderNumber,
-        order.customerName,
-        order.total
-      )
-      console.log('✅ Push notification sent for order:', order.id)
-    } catch (pushError) {
-      console.error('❌ Error sending push notification:', pushError)
     }
 
     // Return order dengan semua data

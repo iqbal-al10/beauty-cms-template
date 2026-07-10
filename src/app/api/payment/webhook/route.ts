@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendBookingNotification, sendOrderNotification } from '@/lib/push/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,24 +24,28 @@ export async function POST(request: NextRequest) {
     }
 
     let orderId = null
+    let customerName = 'Customer'
+    let serviceOrOrderName = ''
 
     if (isBooking) {
       const booking = await prisma.booking.findFirst({
         where: { midtransOrderId: order_id },
-        select: { id: true },
+        select: { id: true, customerName: true, bookingDate: true, bookingTime: true, service: { select: { name: true } } },
       })
       if (booking) {
         orderId = booking.id
-        console.log('🔍 Found booking:', orderId)
+        customerName = booking.customerName || 'Customer'
+        serviceOrOrderName = booking.service?.name || 'Layanan'
       }
     } else if (isOrder) {
       const order = await prisma.order.findFirst({
         where: { midtransOrderId: order_id },
-        select: { id: true },
+        select: { id: true, customerName: true, orderNumber: true },
       })
       if (order) {
         orderId = order.id
-        console.log('🔍 Found order:', orderId)
+        customerName = order.customerName || 'Customer'
+        serviceOrOrderName = order.orderNumber || ''
       }
     }
 
@@ -56,8 +61,6 @@ export async function POST(request: NextRequest) {
     if (transaction_status === 'settlement' || 
         (transaction_status === 'capture' && fraud_status === 'accept')) {
       paymentStatus = 'PAID'
-      // 🔥 UBAH: Status menjadi PENDING (bukan ON_PROGRESS)
-      // Admin akan mengubah ke ON_PROGRESS via tombol "Proses" di dashboard
       orderStatus = 'PENDING'
     } else if (transaction_status === 'deny' || 
                transaction_status === 'expire' || 
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
       orderStatus = 'PENDING'
     }
 
-    // 🔥 AMBIL NAMA METODE PEMBAYARAN YANG LEBIH SPESIFIK
+    // 🔥 AMBIL NAMA METODE PEMBAYARAN
     let methodName = payment_type || 'Midtrans'
 
     if (body.va_numbers && body.va_numbers.length > 0) {
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
         where: { id: orderId },
         data: {
           paymentStatus: paymentStatus,
-          status: orderStatus, // Akan menjadi 'PENDING' jika PAID
+          status: orderStatus,
           paymentMethodName: methodName,
         },
       })
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
         where: { id: orderId },
         data: {
           paymentStatus: paymentStatus,
-          status: orderStatus, // Akan menjadi 'PENDING' jika PAID
+          status: orderStatus,
           paidAt: paymentStatus === 'PAID' ? new Date() : undefined,
           paymentMethodName: methodName,
         },
@@ -119,21 +122,30 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Order ${orderId} updated: payment=${paymentStatus}, status=${orderStatus}, method=${methodName}`)
     }
 
-    // 🔥 KIRIM PUSH NOTIFICATION JIKA PEMBAYARAN BERHASIL
+    // 🔥 KIRIM PUSH NOTIFICATION JIKA PEMBAYARAN BERHASIL - PANGGIL LANGSUNG
     if (paymentStatus === 'PAID') {
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-        await fetch(`${appUrl}/api/push/send-order`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: orderId,
-            orderNumber: `#${orderId.slice(0, 8)}`,
-            customerName: 'Customer',
-            total: gross_amount || 0,
-          }),
-        })
-        console.log('✅ Push notification sent for order:', orderId)
+        if (isBooking) {
+          const booking = await prisma.booking.findUnique({
+            where: { id: orderId },
+            select: { bookingDate: true, bookingTime: true },
+          })
+          await sendBookingNotification(
+            orderId,
+            customerName,
+            serviceOrOrderName,
+            booking?.bookingDate ? new Date(booking.bookingDate).toLocaleDateString('id-ID') : '',
+            booking?.bookingTime || ''
+          )
+        } else {
+          await sendOrderNotification(
+            orderId,
+            serviceOrOrderName,
+            customerName,
+            parseFloat(gross_amount) || 0
+          )
+        }
+        console.log('✅ Push notification sent for:', orderId)
       } catch (pushError) {
         console.error('❌ Push notification error:', pushError)
       }

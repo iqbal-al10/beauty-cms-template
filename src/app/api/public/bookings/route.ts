@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { sendBookingNotification } from '@/lib/push/server'
 
 // Helper untuk generate slot waktu berdasarkan operating hours
 function generateTimeSlots(open: string, close: string, intervalMinutes: number = 60): string[] {
@@ -248,7 +247,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 🔥 CREATE BOOKING DENGAN VOUCHER
+    // 🔥 CREATE BOOKING
     const booking = await prisma.booking.create({
       data: {
         serviceId,
@@ -261,27 +260,11 @@ export async function POST(request: NextRequest) {
         notes: notes || null,
         status: 'PENDING',
         paymentStatus: 'PENDING',
-        // 🔥 TAMBAHKAN FIELD VOUCHER
         voucherCode: appliedVoucherCode,
         discountAmount: discountAmount,
         totalPaid: totalPrice,
       },
     })
-
-    // 🔥 KIRIM PUSH NOTIFICATION KE ADMIN - PANGGIL LANGSUNG FUNGSI
-    try {
-      await sendBookingNotification(
-        booking.id,
-        booking.customerName,
-        service.name,
-        new Date(booking.bookingDate).toLocaleDateString('id-ID'),
-        booking.bookingTime
-      )
-      console.log('✅ Push notification sent for booking:', booking.id)
-    } catch (pushError) {
-      // Jangan gagalkan booking jika notifikasi gagal
-      console.error('❌ Error sending push notification:', pushError)
-    }
 
     return NextResponse.json({
       success: true,
