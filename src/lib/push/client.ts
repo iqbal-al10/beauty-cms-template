@@ -84,10 +84,10 @@ export async function subscribeToPush(
 
     console.log('🔑 Converted key length:', applicationServerKey.length)
 
-    // 🔥 PERBAIKAN: Subscribe dengan error handling detail
+    // 🔥 PERBAIKAN: Subscribe dengan casting yang benar
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: applicationServerKey,
+      applicationServerKey: applicationServerKey as unknown as BufferSource,
     })
 
     console.log('✅ Subscribed to push notifications')
