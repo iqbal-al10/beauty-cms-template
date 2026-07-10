@@ -7,7 +7,7 @@ const DEFAULT_SHIPPING_ZONES = [
     id: 1,
     name: 'Mojokerto & Sekitarnya',
     cities: ['Mojokerto', 'Mojokerto Kota', 'Jombang', 'Gresik', 'Lamongan', 'Sidoarjo'],
-    cost: 10000,
+    cost: 12000,
     estimate: '1-2 hari'
   },
   {

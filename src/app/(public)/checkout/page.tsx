@@ -589,7 +589,7 @@ function CheckoutContent() {
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                     className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="Jl. Contoh No. 123, RT/RW, Kelurahan, Kecamatan"
+                    placeholder="Jl. Arwana No. 123, RT/RW, Kelurahan, Kecamatan"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -601,7 +601,7 @@ function CheckoutContent() {
                       value={form.city}
                       onChange={(e) => handleCityChange(e.target.value)}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Contoh: Mojokerto"
+                      placeholder="Surabaya"
                     />
                     {isShippingLoading && (
                       <p className="text-xs text-gray-400 mt-1">⏳ Mengecek ongkir...</p>
@@ -614,7 +614,7 @@ function CheckoutContent() {
                       value={form.province}
                       onChange={(e) => setForm({ ...form, province: e.target.value })}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Contoh: Jawa Timur"
+                      placeholder="Jawa Timur"
                     />
                   </div>
                   <div>
