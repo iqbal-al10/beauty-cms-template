@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation' // 🔥 TAMBAHKAN
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ShoppingCart } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -173,8 +173,23 @@ const DEFAULT_SETTINGS: Settings = {
   heroSlide2BgEnd: '#ec4899',
 }
 
+// 🔥 SKELETON CARD COMPONENT
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+      <div className="aspect-square bg-gray-200" />
+      <div className="p-4 space-y-3">
+        <div className="h-4 bg-gray-200 rounded w-3/4" />
+        <div className="h-3 bg-gray-200 rounded w-1/2" />
+        <div className="h-5 bg-gray-200 rounded w-1/3" />
+        <div className="h-9 bg-gray-200 rounded-full w-full mt-3" />
+      </div>
+    </div>
+  )
+}
+
 export default function HomePage() {
-  const router = useRouter() // 🔥 TAMBAHKAN
+  const router = useRouter()
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
   const [featuredServices, setFeaturedServices] = useState<Service[]>([])
@@ -185,7 +200,9 @@ export default function HomePage() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [navigatingId, setNavigatingId] = useState<string | null>(null) // 🔥 TAMBAHKAN
+  const [navigatingId, setNavigatingId] = useState<string | null>(null)
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [servicesLoading, setServicesLoading] = useState(true)
 
   const primaryColor = settings?.colorPrimary || '#c4367b'
   const secondaryColor = settings?.colorSecondary || '#f5dbe8'
@@ -226,15 +243,6 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const fetchWithTimeout = (url: string, timeout = 5000) => {
-          return Promise.race([
-            fetch(url),
-            new Promise<Response>((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), timeout)
-            )
-          ])
-        }
-
         const [
           settingsRes,
           productsRes,
@@ -244,54 +252,57 @@ export default function HomePage() {
           blogsRes,
           faqsRes
         ] = await Promise.all([
-          fetchWithTimeout('/api/public/settings', 3000).catch(() => null),
-          fetchWithTimeout('/api/public/products?featured=true&limit=4', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/services?featured=true&limit=4', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/promos?active=true&limit=1', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/testimonials?limit=3', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/blogs?limit=3', 5000).catch(() => null),
-          fetchWithTimeout('/api/public/faq', 5000).catch(() => null),
+          fetch('/api/public/settings'),
+          fetch('/api/public/products?featured=true&limit=4'),
+          fetch('/api/public/services?featured=true&limit=4'),
+          fetch('/api/public/promos?active=true&limit=1'),
+          fetch('/api/public/testimonials?limit=3'),
+          fetch('/api/public/blogs?limit=3'),
+          fetch('/api/public/faq'),
         ])
 
-        if (settingsRes && (settingsRes as Response).ok) {
-          const data = await (settingsRes as Response).json()
-          console.log('🔍 PUBLIC - Settings from API:', data)
+        if (settingsRes.ok) {
+          const data = await settingsRes.json()
           setSettings(prev => ({ ...prev, ...data }))
         } else {
           setSettings(DEFAULT_SETTINGS)
         }
 
-        if (productsRes && (productsRes as Response).ok) {
-          const data = await (productsRes as Response).json()
+        if (productsRes.ok) {
+          const data = await productsRes.json()
           setFeaturedProducts(data.data || [])
         }
+        setProductsLoading(false)
 
-        if (servicesRes && (servicesRes as Response).ok) {
-          const data = await (servicesRes as Response).json()
+        if (servicesRes.ok) {
+          const data = await servicesRes.json()
           setFeaturedServices(data || [])
         }
+        setServicesLoading(false)
 
-        if (promosRes && (promosRes as Response).ok) {
-          const data = await (promosRes as Response).json()
+        if (promosRes.ok) {
+          const data = await promosRes.json()
           setActivePromos(data || [])
         }
 
-        if (testimonialsRes && (testimonialsRes as Response).ok) {
-          const data = await (testimonialsRes as Response).json()
+        if (testimonialsRes.ok) {
+          const data = await testimonialsRes.json()
           setTestimonials(data || [])
         }
 
-        if (blogsRes && (blogsRes as Response).ok) {
-          const data = await (blogsRes as Response).json()
+        if (blogsRes.ok) {
+          const data = await blogsRes.json()
           setLatestBlogs(data || [])
         }
 
-        if (faqsRes && (faqsRes as Response).ok) {
-          const data = await (faqsRes as Response).json()
+        if (faqsRes.ok) {
+          const data = await faqsRes.json()
           setFaqs(data || [])
         }
       } catch (error) {
         console.error('Error fetching data:', error)
+        setProductsLoading(false)
+        setServicesLoading(false)
       } finally {
         setLoading(false)
       }
@@ -300,7 +311,6 @@ export default function HomePage() {
     fetchData()
   }, [])
 
-  // 🔥 HANDLE VIEW DETAILS DENGAN SPINNER
   const handleViewDetails = (slug: string, id: string, type: 'product' | 'service') => {
     setNavigatingId(id)
     const path = type === 'product' ? `/products/${slug}` : `/booking/${slug}`
@@ -501,7 +511,14 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.length > 0 ? (
+            {productsLoading ? (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            ) : featuredProducts.length > 0 ? (
               featuredProducts.map((product) => {
                 const productTags = product.tags || []
                 const hasComparePrice = product.compareAtPrice && product.compareAtPrice > product.price
@@ -580,7 +597,6 @@ export default function HomePage() {
                         )}
                       </div>
 
-                      {/* 🔥 TOMBOL VIEW DETAILS DENGAN SPINNER */}
                       <button
                         onClick={() => handleViewDetails(product.slug, product.id, 'product')}
                         disabled={navigatingId === product.id}
@@ -613,30 +629,37 @@ export default function HomePage() {
       </section>
 
       {/* ===== FEATURED SERVICES ===== */}
-      {featuredServices.length > 0 && (
-        <section className="py-16 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center mb-12">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
-                  Featured Services
-                </h2>
-                <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Our premium beauty services</p>
-              </div>
-              <Link
-                href="/booking"
-                className="flex items-center gap-1 font-medium transition-colors"
-                style={{ color: primaryColor, fontSize: bodyFontSize }}
-              >
-                View All 
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
-                </svg>
-              </Link>
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-12">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-800" style={{ fontSize: headingFontSize }}>
+                Featured Services
+              </h2>
+              <p className="text-gray-500 mt-1" style={{ fontSize: bodyFontSize }}>Our premium beauty services</p>
             </div>
+            <Link
+              href="/booking"
+              className="flex items-center gap-1 font-medium transition-colors"
+              style={{ color: primaryColor, fontSize: bodyFontSize }}
+            >
+              View All 
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </Link>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredServices.map((service) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {servicesLoading ? (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            ) : featuredServices.length > 0 ? (
+              featuredServices.map((service) => {
                 const serviceTags = service.tags || []
                 return (
                   <div
@@ -693,7 +716,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* 🔥 TOMBOL BOOK NOW DENGAN SPINNER */}
                       <button
                         onClick={() => handleViewDetails(service.slug, service.id, 'service')}
                         disabled={navigatingId === service.id}
@@ -715,11 +737,11 @@ export default function HomePage() {
                     </div>
                   </div>
                 )
-              })}
-            </div>
+              })
+            ) : null}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* ===== LATEST BLOG ===== */}
       {latestBlogs.length > 0 && (
