@@ -30,9 +30,10 @@ import {
   User,
   Contact,
   ExternalLink,
-  CreditCard
+  CreditCard,
+  Loader2
 } from 'lucide-react'
-import NotificationPrompt from '@/components/admin/NotificationPrompt' // 🔥 TAMBAHKAN
+import NotificationPrompt from '@/components/admin/NotificationPrompt'
 
 interface UserData {
   id: string
@@ -74,6 +75,7 @@ export default function AdminLayout({
   const [user, setUser] = useState<UserData | null>(null)
   const [settings, setSettings] = useState<SettingsData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const primaryColor = '#c4367b'
   const primaryHover = '#e20373'
@@ -107,6 +109,7 @@ export default function AdminLayout({
   }, [router])
 
   const handleLogout = async () => {
+    setLoggingOut(true)
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' })
       if (res.ok) {
@@ -116,6 +119,7 @@ export default function AdminLayout({
       }
     } catch (error) {
       console.error('Logout error:', error)
+      setLoggingOut(false)
     }
   }
 
@@ -272,13 +276,18 @@ export default function AdminLayout({
           <div className={`pt-4 mt-4 border-t border-gray-200 ${!sidebarOpen && 'flex justify-center'}`}>
             <button
               onClick={handleLogout}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm text-gray-600 hover:bg-gray-100 ${
+              disabled={loggingOut}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed ${
                 !sidebarOpen ? 'justify-center w-auto' : 'w-full'
               }`}
               title={!sidebarOpen ? 'Logout' : ''}
             >
-              <LogOut className="w-5 h-5 shrink-0" />
-              {sidebarOpen && <span>Logout</span>}
+              {loggingOut ? (
+                <Loader2 className="w-5 h-5 shrink-0 animate-spin" />
+              ) : (
+                <LogOut className="w-5 h-5 shrink-0" />
+              )}
+              {sidebarOpen && <span>{loggingOut ? 'Logging out...' : 'Logout'}</span>}
             </button>
           </div>
         </nav>
@@ -298,7 +307,6 @@ export default function AdminLayout({
           </div>
           
           <div className="flex items-center gap-4">
-            {/* 🔥 TAMBAHKAN NOTIFICATION PROMPT */}
             <NotificationPrompt />
             
             <Link

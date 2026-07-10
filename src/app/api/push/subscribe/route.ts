@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Simpan atau update subscription
-    await prisma.pushSubscription.upsert({
+    // 🔥 PERBAIKAN: Hapus dulu subscription lama (user ini saja)
+    await prisma.pushSubscription.deleteMany({
       where: { userId: session.userId },
-      update: {
-        subscription: JSON.stringify(subscription),
-        updatedAt: new Date(),
-      },
-      create: {
+    })
+
+    // Simpan subscription baru
+    await prisma.pushSubscription.create({
+      data: {
         userId: session.userId,
         subscription: JSON.stringify(subscription),
       },
@@ -59,7 +59,8 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await prisma.pushSubscription.delete({
+    // 🔥 PERBAIKAN: DeleteMany — tidak error kalau tidak ada
+    await prisma.pushSubscription.deleteMany({
       where: { userId: session.userId },
     })
 
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const subscription = await prisma.pushSubscription.findUnique({
+    const subscription = await prisma.pushSubscription.findFirst({
       where: { userId: session.userId },
     })
 
