@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useRef } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -47,6 +47,14 @@ interface ShippingCost {
   freeShippingThreshold: number
 }
 
+interface ShippingZone {
+  id: number
+  name: string
+  cities: string[]
+  cost: number
+  estimate: string
+}
+
 const CUSTOMER_STORAGE_KEY = 'beauty_customer'
 
 function CheckoutContent() {
@@ -68,6 +76,13 @@ function CheckoutContent() {
   const [errorMessage, setErrorMessage] = useState('')
   const [isShippingLoading, setIsShippingLoading] = useState(false)
   const [isConfirmed, setIsConfirmed] = useState(false)
+
+  // 🔥 AUTOCOMPLETE
+  const [allCities, setAllCities] = useState<string[]>([])
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const cityInputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState({
     customerName: '',
@@ -101,6 +116,48 @@ function CheckoutContent() {
         console.error('Error loading customer data:', e)
       }
     }
+  }, [])
+
+  // 🔥 FETCH SHIPPING ZONES UNTUK AUTOCOMPLETE
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await fetch('/api/shipping')
+        if (res.ok) {
+          const data = await res.json()
+          const zones: ShippingZone[] = data.zones || []
+          const cities: string[] = []
+          zones.forEach(zone => {
+            zone.cities.forEach(city => {
+              if (!cities.includes(city)) {
+                cities.push(city)
+              }
+            })
+          })
+          cities.sort()
+          setAllCities(cities)
+        }
+      } catch (error) {
+        console.error('Error fetching shipping zones:', error)
+      }
+    }
+    fetchCities()
+  }, [])
+
+  // 🔥 KLIK DI LUAR TUTUP SUGGESTIONS
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        cityInputRef.current &&
+        !cityInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   useEffect(() => {
@@ -220,6 +277,28 @@ function CheckoutContent() {
     }
   }
 
+  // 🔥 HANDLE CITY INPUT DENGAN AUTOCOMPLETE
+  const handleCityInputChange = (value: string) => {
+    setForm(prev => ({ ...prev, city: value }))
+    
+    if (value.trim().length > 0) {
+      const filtered = allCities.filter(city =>
+        city.toLowerCase().includes(value.toLowerCase())
+      )
+      setCitySuggestions(filtered.slice(0, 8))
+      setShowSuggestions(filtered.length > 0)
+    } else {
+      setCitySuggestions([])
+      setShowSuggestions(false)
+    }
+  }
+
+  const handleCitySelect = (city: string) => {
+    setForm(prev => ({ ...prev, city }))
+    setShowSuggestions(false)
+    fetchShippingCost(city)
+  }
+
   const updateQuantity = (id: string, newQuantity: number) => {
     if (newQuantity < 1) return
     
@@ -254,11 +333,6 @@ function CheckoutContent() {
       }
       return sum
     }, 0)
-  }
-
-  const handleCityChange = async (city: string) => {
-    setForm(prev => ({ ...prev, city }))
-    await fetchShippingCost(city)
   }
 
   const handleApplyVoucher = async () => {
@@ -593,18 +667,48 @@ function CheckoutContent() {
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700">Kota/Kabupaten *</label>
                     <input
+                      ref={cityInputRef}
                       type="text"
                       required
                       value={form.city}
-                      onChange={(e) => handleCityChange(e.target.value)}
+                      onChange={(e) => handleCityInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (form.city.trim().length > 0 && citySuggestions.length > 0) {
+                          setShowSuggestions(true)
+                        }
+                      }}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Surabaya"
+                      placeholder="Ketik kota..."
+                      autoComplete="off"
                     />
+                    {/* 🔥 AUTOCOMPLETE DROPDOWN */}
+                    {showSuggestions && citySuggestions.length > 0 && (
+                      <div
+                        ref={suggestionsRef}
+                        className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                      >
+                        {citySuggestions.map((city) => (
+                          <button
+                            key={city}
+                            type="button"
+                            onClick={() => handleCitySelect(city)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-pink-50 hover:text-pink-600 transition-colors"
+                          >
+                            📍 {city}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {isShippingLoading && (
                       <p className="text-xs text-gray-400 mt-1">⏳ Mengecek ongkir...</p>
+                    )}
+                    {shippingCost && !isShippingLoading && (
+                      <p className="text-xs text-green-600 mt-1">
+                        🚚 {shippingCost.zone} - Rp {shippingCost.cost.toLocaleString()} ({shippingCost.estimate})
+                      </p>
                     )}
                   </div>
                   <div>
@@ -624,7 +728,7 @@ function CheckoutContent() {
                       value={form.postalCode}
                       onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="61300"
+                      placeholder="61350"
                     />
                   </div>
                 </div>
