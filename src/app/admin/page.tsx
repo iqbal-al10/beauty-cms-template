@@ -85,6 +85,9 @@ interface DashboardStats {
     customerName: string
     customerWhatsapp: string
     address: string | null
+    city?: string | null
+  province?: string | null
+  postalCode?: string | null
     email: string | null
     status: string
     items: Array<{
@@ -106,6 +109,9 @@ interface DashboardStats {
     customerName: string
     customerWhatsapp: string
     address: string | null
+    city?: string | null
+    province?: string | null
+    postalCode?: string | null
     email: string | null
     status: string
     items: Array<{
