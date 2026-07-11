@@ -809,12 +809,12 @@ function BookingServiceContent() {
               </label>
               <textarea
                 rows={2}
-                placeholder="Masukkan alamat lengkap Anda (opsional)..."
+                placeholder="Jl. Arwana No. 123, RT/RW, Dusun, Desa, Kecamatan, Kota/Kab, Provinsi"
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
               />
-              <p className="text-xs text-gray-400 mt-1">Alamat akan digunakan untuk pengiriman jika diperlukan</p>
+              <p className="text-xs text-gray-400 mt-1">Alamat akan digunakan untuk tim kami melakukan penanganan langsung ke rumah anda</p>
             </div>
 
             <div>

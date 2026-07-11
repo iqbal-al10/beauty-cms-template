@@ -57,6 +57,48 @@ interface ShippingZone {
 
 const CUSTOMER_STORAGE_KEY = 'beauty_customer'
 
+// 🔥 DAFTAR PROVINSI DI INDONESIA
+const INDONESIA_PROVINCES = [
+  'Aceh',
+  'Bali',
+  'Banten',
+  'Bengkulu',
+  'DI Yogyakarta',
+  'DKI Jakarta',
+  'Gorontalo',
+  'Jambi',
+  'Jawa Barat',
+  'Jawa Tengah',
+  'Jawa Timur',
+  'Kalimantan Barat',
+  'Kalimantan Selatan',
+  'Kalimantan Tengah',
+  'Kalimantan Timur',
+  'Kalimantan Utara',
+  'Kepulauan Bangka Belitung',
+  'Kepulauan Riau',
+  'Lampung',
+  'Maluku',
+  'Maluku Utara',
+  'Nusa Tenggara Barat',
+  'Nusa Tenggara Timur',
+  'Papua',
+  'Papua Barat',
+  'Papua Barat Daya',
+  'Papua Pegunungan',
+  'Papua Selatan',
+  'Papua Tengah',
+  'Riau',
+  'Sulawesi Barat',
+  'Sulawesi Selatan',
+  'Sulawesi Tengah',
+  'Sulawesi Tenggara',
+  'Sulawesi Utara',
+  'Sumatera Barat',
+  'Sumatera Selatan',
+  'Sumatera Utara',
+]
+
 function CheckoutContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -77,12 +119,18 @@ function CheckoutContent() {
   const [isShippingLoading, setIsShippingLoading] = useState(false)
   const [isConfirmed, setIsConfirmed] = useState(false)
 
-  // 🔥 AUTOCOMPLETE
+  // 🔥 AUTOCOMPLETE KOTA
   const [allCities, setAllCities] = useState<string[]>([])
   const [citySuggestions, setCitySuggestions] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false)
   const cityInputRef = useRef<HTMLInputElement>(null)
-  const suggestionsRef = useRef<HTMLDivElement>(null)
+  const citySuggestionsRef = useRef<HTMLDivElement>(null)
+
+  // 🔥 AUTOCOMPLETE PROVINSI
+  const [provinceSuggestions, setProvinceSuggestions] = useState<string[]>([])
+  const [showProvinceSuggestions, setShowProvinceSuggestions] = useState(false)
+  const provinceInputRef = useRef<HTMLInputElement>(null)
+  const provinceSuggestionsRef = useRef<HTMLDivElement>(null)
 
   const [form, setForm] = useState({
     customerName: '',
@@ -118,7 +166,7 @@ function CheckoutContent() {
     }
   }, [])
 
-  // 🔥 FETCH SHIPPING ZONES UNTUK AUTOCOMPLETE
+  // 🔥 FETCH SHIPPING ZONES UNTUK AUTOCOMPLETE KOTA
   useEffect(() => {
     const fetchCities = async () => {
       try {
@@ -144,16 +192,26 @@ function CheckoutContent() {
     fetchCities()
   }, [])
 
-  // 🔥 KLIK DI LUAR TUTUP SUGGESTIONS
+  // 🔥 KLIK DI LUAR TUTUP SUGGESTIONS (KOTA & PROVINSI)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
+      // Tutup suggestions kota
       if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(e.target as Node) &&
+        citySuggestionsRef.current &&
+        !citySuggestionsRef.current.contains(e.target as Node) &&
         cityInputRef.current &&
         !cityInputRef.current.contains(e.target as Node)
       ) {
-        setShowSuggestions(false)
+        setShowCitySuggestions(false)
+      }
+      // Tutup suggestions provinsi
+      if (
+        provinceSuggestionsRef.current &&
+        !provinceSuggestionsRef.current.contains(e.target as Node) &&
+        provinceInputRef.current &&
+        !provinceInputRef.current.contains(e.target as Node)
+      ) {
+        setShowProvinceSuggestions(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -286,17 +344,38 @@ function CheckoutContent() {
         city.toLowerCase().includes(value.toLowerCase())
       )
       setCitySuggestions(filtered.slice(0, 8))
-      setShowSuggestions(filtered.length > 0)
+      setShowCitySuggestions(filtered.length > 0)
     } else {
       setCitySuggestions([])
-      setShowSuggestions(false)
+      setShowCitySuggestions(false)
     }
   }
 
   const handleCitySelect = (city: string) => {
     setForm(prev => ({ ...prev, city }))
-    setShowSuggestions(false)
+    setShowCitySuggestions(false)
     fetchShippingCost(city)
+  }
+
+  // 🔥 HANDLE PROVINCE INPUT DENGAN AUTOCOMPLETE
+  const handleProvinceInputChange = (value: string) => {
+    setForm(prev => ({ ...prev, province: value }))
+    
+    if (value.trim().length > 0) {
+      const filtered = INDONESIA_PROVINCES.filter(province =>
+        province.toLowerCase().includes(value.toLowerCase())
+      )
+      setProvinceSuggestions(filtered)
+      setShowProvinceSuggestions(filtered.length > 0)
+    } else {
+      setProvinceSuggestions([])
+      setShowProvinceSuggestions(false)
+    }
+  }
+
+  const handleProvinceSelect = (province: string) => {
+    setForm(prev => ({ ...prev, province }))
+    setShowProvinceSuggestions(false)
   }
 
   const updateQuantity = (id: string, newQuantity: number) => {
@@ -694,10 +773,11 @@ function CheckoutContent() {
                     value={form.address}
                     onChange={(e) => setForm({ ...form, address: e.target.value })}
                     className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                    placeholder="Jl. Arwana No. 123, RT/RW, Kelurahan, Kecamatan"
+                    placeholder="Jl. Arwana No. 123, RT/RW, Dusun, Desa, Kecamatan"
                   />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* KOTA - AUTOCOMPLETE */}
                   <div className="relative">
                     <label className="block text-sm font-medium text-gray-700">Kota/Kabupaten *</label>
                     <input
@@ -708,17 +788,17 @@ function CheckoutContent() {
                       onChange={(e) => handleCityInputChange(e.target.value)}
                       onFocus={() => {
                         if (form.city.trim().length > 0 && citySuggestions.length > 0) {
-                          setShowSuggestions(true)
+                          setShowCitySuggestions(true)
                         }
                       }}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
-                      placeholder="Ketik kota..."
+                      placeholder="Surabaya"
                       autoComplete="off"
                     />
-                    {/* 🔥 AUTOCOMPLETE DROPDOWN */}
-                    {showSuggestions && citySuggestions.length > 0 && (
+                    {/* 🔥 AUTOCOMPLETE DROPDOWN KOTA */}
+                    {showCitySuggestions && citySuggestions.length > 0 && (
                       <div
-                        ref={suggestionsRef}
+                        ref={citySuggestionsRef}
                         className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
                       >
                         {citySuggestions.map((city) => (
@@ -728,7 +808,7 @@ function CheckoutContent() {
                             onClick={() => handleCitySelect(city)}
                             className="w-full text-left px-4 py-2 text-sm hover:bg-pink-50 hover:text-pink-600 transition-colors"
                           >
-                            📍 {city}
+                            {city}
                           </button>
                         ))}
                       </div>
@@ -742,16 +822,44 @@ function CheckoutContent() {
                       </p>
                     )}
                   </div>
-                  <div>
+
+                  {/* 🔥 PROVINSI - AUTOCOMPLETE */}
+                  <div className="relative">
                     <label className="block text-sm font-medium text-gray-700">Provinsi</label>
                     <input
+                      ref={provinceInputRef}
                       type="text"
                       value={form.province}
-                      onChange={(e) => setForm({ ...form, province: e.target.value })}
+                      onChange={(e) => handleProvinceInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (form.province.trim().length > 0 && provinceSuggestions.length > 0) {
+                          setShowProvinceSuggestions(true)
+                        }
+                      }}
                       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400"
                       placeholder="Jawa Timur"
+                      autoComplete="off"
                     />
+                    {/* 🔥 AUTOCOMPLETE DROPDOWN PROVINSI */}
+                    {showProvinceSuggestions && provinceSuggestions.length > 0 && (
+                      <div
+                        ref={provinceSuggestionsRef}
+                        className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                      >
+                        {provinceSuggestions.map((province) => (
+                          <button
+                            key={province}
+                            type="button"
+                            onClick={() => handleProvinceSelect(province)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-pink-50 hover:text-pink-600 transition-colors"
+                          >
+                            {province}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Kode Pos</label>
                     <input

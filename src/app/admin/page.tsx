@@ -7,7 +7,7 @@ import {
   Clock, DollarSign, TrendingUp, TrendingDown, BarChart3,
   CreditCard, ArrowUpRight, ArrowDownRight, Box, Plus, History, RotateCcw,
   Check, Truck, User, MapPin, Phone, Mail, FileText as FileIcon, Download,
-  Tag, Ticket
+  Tag, Ticket, RotateCw
 } from 'lucide-react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -197,6 +197,9 @@ interface Order {
   customerWhatsapp: string
   email: string | null
   address: string | null
+  city?: string | null
+  province?: string | null
+  postalCode?: string | null
   productName: string
   quantity: number
   finalPrice: number
@@ -275,12 +278,14 @@ const CHART_COLORS = {
   booking: '#3b82f6',
 }
 
+// 🔥 KATEGORI EXPENSE (DITAMBAH REFUND)
 const CATEGORIES = [
   'OPERATIONAL',
   'MARKETING',
   'SALARY',
   'RENT',
   'UTILITIES',
+  'REFUND',
   'OTHER'
 ]
 
@@ -290,6 +295,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   SALARY: '👤 Salary',
   RENT: '🏢 Rent',
   UTILITIES: '💡 Utilities',
+  REFUND: '↩️ Refund/Return',
   OTHER: '📦 Other'
 }
 
@@ -402,6 +408,10 @@ export default function DashboardPage() {
       if (statsRes.ok) {
         const data = await statsRes.json()
         console.log('📊 Dashboard data:', data)
+        console.log('📊 orders.total:', data.orders?.total)
+        console.log('📊 orders.pending:', data.orders?.pending)
+        console.log('📊 totalOrders:', data.totalOrders)
+        console.log('📊 pieChartData:', data.pieChartData)
         setStats(data)
       } else {
         const error = await statsRes.json()
@@ -1238,15 +1248,36 @@ export default function DashboardPage() {
   const pendingOrders = orders.filter(o => o.status === 'PENDING')
   const pendingBookings = bookings.filter(b => b.status === 'PENDING')
   
+  // 🔥 PERBAIKAN PIE CHART - Normalisasi nama entry + console.log
   const pieData = stats.pieChartData && stats.pieChartData.length > 0 
-    ? stats.pieChartData 
+    ? stats.pieChartData.map(entry => {
+        const nameLower = entry.name?.toLowerCase() || ''
+        console.log('🔍 Pie entry:', entry.name, '→ lower:', nameLower)
+        if (nameLower.includes('product')) return { ...entry, name: 'Pendapatan Product' }
+        if (nameLower.includes('booking')) return { ...entry, name: 'Pendapatan Booking' }
+        return entry
+      })
     : [{ name: 'Pendapatan Product', value: stats.revenue?.product?.total || 0 },
        { name: 'Pendapatan Booking', value: stats.revenue?.booking?.total || 0 }]
 
+  console.log('🎨 Final pieData:', pieData)
+
   const validPieData = pieData.filter(d => d.value > 0)
-  const displayPieData = validPieData.length > 0 ? validPieData : [{ name: 'Belum ada data', value: 1 }]
+  const displayPieData = validPieData.length > 0 
+    ? validPieData.map(entry => {
+        const nameLower = entry.name?.toLowerCase() || ''
+        let fillColor = COLORS[0]
+        if (nameLower.includes('product')) fillColor = CHART_COLORS.product
+        else if (nameLower.includes('booking')) fillColor = CHART_COLORS.booking
+        return { ...entry, fill: fillColor }
+      })
+    : [{ name: 'Belum ada data', value: 1, fill: '#d1d5db' }]
 
   const totalExpense = stats.expense?.total || 0
+
+  // 🔥 FALLBACK UNTUK TOTAL ORDER & PENDING
+  const displayTotalOrders = stats.totalOrders || stats.orders?.total || 0
+  const displayPendingOrders = stats.orders?.pending || pendingOrders.length || 0
 
   return (
     <div>
@@ -1328,13 +1359,25 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ===== NOTIFIKASI BOOKING & PESANAN - RAPI ===== */}
+      {/* ===== 1. STATS CARDS ===== */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+        {cards.map((card) => (
+          <Link key={card.title} href={card.href} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div><p className="text-xs text-gray-500">{card.title}</p><p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p></div>
+              <div className={`${card.color} p-2 rounded-lg`}><card.icon className="w-4 h-4" /></div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* ===== 2. NOTIFIKASI PENDING ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Bookings */}
+        {/* Notifikasi Booking Pending */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <Calendar className="w-5 h-5" style={{ color: primaryColor }} />
-            Notifikasi Booking Layanan
+            Notifikasi Booking Pending
             {pendingBookings.length > 0 && (
               <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                 {pendingBookings.length} baru
@@ -1347,69 +1390,73 @@ export default function DashboardPage() {
               ✅ Tidak ada booking pending
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-1">
               {pendingBookings.map((booking) => (
                 <div key={booking.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex-1 min-w-[200px]">
+                  {/* Header: Nama, ID Booking, WA, Email */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800">{booking.customerName}</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
-                          <Clock className="w-3 h-3" /> Pending
+                        {/* 🔥 ID BOOKING - DITAMBAHKAN */}
+                        <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">
+                          {booking.id.slice(0, 12)}...
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">{booking.whatsapp}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><span>📱</span> {booking.whatsapp}</span>
+                        {booking.email && <span className="flex items-center gap-1"><span>📧</span> {booking.email}</span>}
+                      </div>
                     </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse shrink-0">
+                      <Clock className="w-3 h-3" /> Pending
+                    </span>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                  {/* Info: Layanan, Tanggal, Waktu, Harga */}
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 rounded-lg p-3">
                     <div>
                       <p className="text-xs text-gray-400">Layanan</p>
-                      <p className="font-medium">{booking.service?.name || '-'}</p>
+                      <p className="font-medium text-gray-700">{booking.service?.name || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Tanggal</p>
-                      <p className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      <p className="text-xs text-gray-400">Tanggal / Waktu</p>
+                      <p className="font-medium text-gray-700">
+                        {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} | {booking.bookingTime}
+                      </p>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Waktu</p>
-                      <p className="font-medium">{booking.bookingTime}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div>
+                    <div className="col-span-2">
                       <p className="text-xs text-gray-400">Harga</p>
-                      {booking.discountAmount > 0 ? (
-                        <div>
-                          <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                          <p className="font-medium text-green-600">
-                            Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {booking.voucherCode && (
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                <Ticket className="w-3 h-3" />
-                                {booking.voucherCode}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Catatan</p>
-                      <p className="font-medium text-gray-600">{booking.notes || '-'}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {booking.discountAmount > 0 && (
+                          <span className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</span>
+                        )}
+                        <span className="font-semibold text-green-600">Rp {(booking.totalPaid || booking.originalPrice || 0).toLocaleString()}</span>
+                        {booking.voucherCode && booking.discountAmount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                            <Ticket className="w-3 h-3" />
+                            {booking.voucherCode}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Alamat */}
                   {booking.address && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Alamat</p>
-                      <p className="font-medium text-gray-600">{booking.address}</p>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-2 flex items-start gap-1">
+                      <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {booking.address}
+                    </p>
                   )}
 
+                  {/* Catatan */}
+                  {booking.notes && (
+                    <p className="text-xs text-gray-400 mt-2 flex items-start gap-1">
+                      <span>📝</span> {booking.notes}
+                    </p>
+                  )}
+
+                  {/* Tombol */}
                   <div className="mt-3 flex gap-2">
                     <button 
                       onClick={() => handleBookingAction(booking.id, 'approve')} 
@@ -1435,11 +1482,11 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Pending Orders */}
+        {/* Notifikasi Order Pending */}
         <div>
           <h2 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" style={{ color: primaryColor }} />
-            Notifikasi Pemesanan Produk
+            Notifikasi Order Pending
             {pendingOrders.length > 0 && (
               <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">
                 {pendingOrders.length} baru
@@ -1452,73 +1499,82 @@ export default function DashboardPage() {
               ✅ Tidak ada pesanan pending
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-1">
               {pendingOrders.map((order) => (
                 <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex-1 min-w-[200px]">
+                  {/* Header: Nama, Order#, WA, Email */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800">{order.customerName}</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse">
-                          <Clock className="w-3 h-3" /> Pending
-                        </span>
+                        <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded text-gray-600">{order.orderNumber}</span>
                       </div>
-                      <p className="text-sm text-gray-500">{order.customerWhatsapp}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        <span className="flex items-center gap-1"><span>📱</span> {order.customerWhatsapp}</span>
+                        {order.email && <span className="flex items-center gap-1"><span>📧</span> {order.email}</span>}
+                      </div>
                     </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1 animate-pulse shrink-0">
+                      <Clock className="w-3 h-3" /> Pending
+                    </span>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">Order #</p>
-                      <p className="font-medium">{order.orderNumber}</p>
-                    </div>
+                  {/* Info: Produk, Harga */}
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 rounded-lg p-3">
                     <div>
                       <p className="text-xs text-gray-400">Produk</p>
-                      <p className="font-medium">{order.productName}</p>
+                      <div className="text-sm text-gray-700">
+                        {order.items && order.items.length > 0 ? (
+                          order.items.map((item, idx) => (
+                            <p key={idx} className="font-medium">{item.productName} x{item.quantity}</p>
+                          ))
+                        ) : (
+                          <p className="font-medium">{order.productName} x{order.quantity}</p>
+                        )}
+                      </div>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Jumlah</p>
-                      <p className="font-medium">{order.quantity} unit</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">Rincian Harga</p>
-                      {order.discountAmount > 0 ? (
-                        <div>
-                          <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
-                          <div className="flex items-center gap-1">
-                            <Ticket className="w-3 h-3 text-purple-500" />
-                            <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
-                          </div>
-                          {order.shippingCost > 0 && (
-                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                          )}
-                          <p className="font-bold" style={{ color: primaryColor }}>Rp {order.total.toLocaleString()}</p>
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="font-medium">Rp {order.total.toLocaleString()}</p>
-                          {order.shippingCost > 0 && (
-                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                          )}
-                        </div>
+                      <p className="text-xs text-gray-400">Harga</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {order.discountAmount > 0 && (
+                          <span className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</span>
+                        )}
+                        <span className="font-semibold text-green-600">Rp {order.total.toLocaleString()}</span>
+                        {order.voucherCode && order.discountAmount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                            <Ticket className="w-3 h-3" />
+                            {order.voucherCode}
+                          </span>
+                        )}
+                      </div>
+                      {order.shippingCost > 0 && (
+                        <p className="text-xs text-gray-400 mt-0.5">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
                       )}
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Catatan</p>
-                      <p className="font-medium text-gray-600">{order.note || '-'}</p>
-                    </div>
                   </div>
 
+                  {/* Alamat */}
                   {order.address && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Alamat</p>
-                      <p className="font-medium text-gray-600">{order.address}</p>
+                    <div className="text-xs text-gray-500 mt-2">
+                      <p className="flex items-start gap-1">
+                        <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {order.address}
+                      </p>
+                      {(order.city || order.province || order.postalCode) && (
+                        <p className="ml-4 text-gray-400">
+                          {[order.city, order.province, order.postalCode].filter(Boolean).join(', ')}
+                        </p>
+                      )}
                     </div>
                   )}
 
+                  {/* Catatan */}
+                  {order.note && (
+                    <p className="text-xs text-gray-400 mt-2 flex items-start gap-1">
+                      <span>📝</span> {order.note}
+                    </p>
+                  )}
+
+                  {/* Tombol */}
                   <div className="mt-3 flex gap-2">
                     <button 
                       onClick={() => handleOrderAction(order.id, 'approve')} 
@@ -1545,7 +1601,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ===== ON PROGRESS - RAPI ===== */}
+      {/* ===== 3. ON PROGRESS ===== */}
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* On Progress Bookings */}
         <div>
@@ -1567,78 +1623,76 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {stats.onProgressBookings.map((booking) => (
                 <div key={booking.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex-1 min-w-[200px]">
+                  {/* Header: Nama, ID Booking, WA, Email, Status */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800">{booking.customerName}</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> ON PROGRESS
+                        {/* 🔥 ID BOOKING - DI SEBELAH NAMA */}
+                        <span className="text-xs font-mono bg-white px-2 py-0.5 rounded text-gray-600">
+                          {booking.id.slice(0, 12)}...
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">{booking.whatsapp}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span className="flex items-center gap-1"><span>📱</span> {booking.whatsapp}</span>
+                        {booking.email && <span className="flex items-center gap-1"><span>📧</span> {booking.email}</span>}
+                      </div>
                     </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3" /> ON PROGRESS
+                    </span>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">ID Booking</p>
-                      <p className="font-mono text-xs font-medium">{booking.id.slice(0, 12)}...</p>
-                    </div>
+                  {/* Info: Layanan, Tanggal, Waktu, Harga */}
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-white rounded-lg p-3">
                     <div>
                       <p className="text-xs text-gray-400">Layanan</p>
-                      <p className="font-medium">{booking.service?.name || '-'}</p>
+                      <p className="font-medium text-gray-700">{booking.service?.name || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Tanggal</p>
-                      <p className="font-medium">{new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      <p className="text-xs text-gray-400">Tanggal / Waktu</p>
+                      <p className="font-medium text-gray-700">
+                        {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })} | {booking.bookingTime}
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div>
+                    <div className="col-span-2">
                       <p className="text-xs text-gray-400">Harga</p>
-                      {booking.discountAmount > 0 ? (
-                        <div>
-                          <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                          <p className="font-medium text-green-600">
-                            Rp {(booking.totalPaid || 0).toLocaleString()}
-                            {booking.voucherCode && (
-                              <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                <Ticket className="w-3 h-3" />
-                                {booking.voucherCode}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      ) : (
-                        <p className="font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Waktu</p>
-                      <p className="font-medium">{booking.bookingTime}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {booking.discountAmount > 0 && (
+                          <span className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</span>
+                        )}
+                        <span className="font-semibold text-green-600">Rp {(booking.totalPaid || booking.originalPrice || 0).toLocaleString()}</span>
+                        {booking.voucherCode && booking.discountAmount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                            <Ticket className="w-3 h-3" />
+                            {booking.voucherCode}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Alamat */}
                   {booking.address && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Alamat</p>
-                      <p className="font-medium text-gray-600">{booking.address}</p>
-                    </div>
-                  )}
-                  {booking.notes && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Catatan</p>
-                      <p className="font-medium text-gray-600">{booking.notes}</p>
-                    </div>
-                  )}
-                  {booking.approvedAt && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Disetujui</p>
-                      <p className="font-medium text-gray-600">{formatDate(booking.approvedAt)}</p>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-2 flex items-start gap-1">
+                      <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {booking.address}
+                    </p>
                   )}
 
+                  {/* Catatan */}
+                  {booking.notes && (
+                    <p className="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                      <span>📝</span> {booking.notes}
+                    </p>
+                  )}
+
+                  {/* Admin & Tanggal Approve */}
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
+                    {booking.approvedBy && <span>Admin: {booking.approvedBy.name}</span>}
+                    {booking.approvedAt && <span>Disetujui: {formatDate(booking.approvedAt)}</span>}
+                  </div>
+
+                  {/* Tombol */}
                   <div className="mt-3 flex gap-2">
                     <button 
                       onClick={() => handleBookingAction(booking.id, 'done')} 
@@ -1683,65 +1737,74 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-1">
               {stats.onProgressOrders.map((order) => (
                 <div key={order.id} className="bg-orange-50 border border-orange-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="flex-1 min-w-[200px]">
+                  {/* Header: Nama, Order#, WA, Email, Status */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-semibold text-gray-800">{order.customerName}</p>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> ON PROGRESS
-                        </span>
+                        <span className="text-xs font-mono bg-white px-2 py-0.5 rounded text-gray-600">{order.orderNumber}</span>
                       </div>
-                      <p className="text-sm text-gray-500">{order.customerWhatsapp}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                        <span className="flex items-center gap-1"><span>📱</span> {order.customerWhatsapp}</span>
+                        {order.email && <span className="flex items-center gap-1"><span>📧</span> {order.email}</span>}
+                      </div>
                     </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3" /> ON PROGRESS
+                    </span>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                  {/* Info: Produk, Harga */}
+                  <div className="grid grid-cols-2 gap-2 text-sm bg-white rounded-lg p-3">
                     <div>
-                      <p className="text-xs text-gray-400">Order #</p>
-                      <p className="font-medium">{order.orderNumber}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Items</p>
+                      <p className="text-xs text-gray-400">Produk</p>
                       <div className="text-sm text-gray-700">
                         {order.items.map((item, idx) => (
-                          <p key={idx}>- {item.productName} x{item.quantity}</p>
+                          <p key={idx} className="font-medium">{item.productName} x{item.quantity}</p>
                         ))}
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Total</p>
-                      <p className="font-bold" style={{ color: primaryColor }}>Rp {order.totalPaid.toLocaleString()}</p>
+                      <p className="text-xs text-gray-400">Harga</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {order.discountAmount > 0 && (
+                          <span className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</span>
+                        )}
+                        <span className="font-semibold text-green-600">Rp {order.totalPaid.toLocaleString()}</span>
+                        {order.voucherCode && order.discountAmount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                            <Ticket className="w-3 h-3" />
+                            {order.voucherCode}
+                          </span>
+                        )}
+                      </div>
+                      {order.shippingCost > 0 && (
+                        <p className="text-xs text-gray-400 mt-0.5">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-400">Rincian Harga</p>
-                      {order.discountAmount > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
-                          <div className="flex items-center gap-1">
-                            <Ticket className="w-3 h-3 text-purple-500" />
-                            <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
-                          </div>
-                          {order.shippingCost > 0 && (
-                            <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                          )}
-                        </div>
+                  {/* Alamat */}
+                  {order.address && (
+                    <div className="text-xs text-gray-500 mt-2">
+                      <p className="flex items-start gap-1">
+                        <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {order.address}
+                      </p>
+                      {(order.city || order.province || order.postalCode) && (
+                        <p className="ml-4 text-gray-400">
+                          {[order.city, order.province, order.postalCode].filter(Boolean).join(', ')}
+                        </p>
                       )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Alamat</p>
-                      <p className="font-medium text-gray-600">{order.address || '-'}</p>
-                    </div>
-                  </div>
-                  {order.approvedAt && (
-                    <div className="mt-1 text-sm">
-                      <p className="text-xs text-gray-400">Disetujui</p>
-                      <p className="font-medium text-gray-600">{formatDate(order.approvedAt)}</p>
                     </div>
                   )}
 
+                  {/* Admin & Tanggal Approve */}
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-2">
+                    {order.approvedBy && <span>Admin: {order.approvedBy.name}</span>}
+                    {order.approvedAt && <span>Disetujui: {formatDate(order.approvedAt)}</span>}
+                  </div>
+
+                  {/* Tombol */}
                   <div className="mt-3 flex gap-2">
                     <button 
                       onClick={() => handleOrderAction(order.id, 'done')} 
@@ -1767,7 +1830,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Statistik Keuangan */}
+      {/* ===== 4. KEUANGAN ===== */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
@@ -1803,15 +1866,33 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <div className="flex items-center justify-between">
-            <div><p className="text-sm text-gray-500">Total Order</p><p className="text-2xl font-bold text-gray-800">{stats.totalOrders || 0}</p></div>
-            <div className="p-3 bg-yellow-100 rounded-xl"><ShoppingBag className="w-6 h-6 text-yellow-600" /></div>
-          </div>
-          <div className="flex items-center gap-2 mt-2 text-sm">
-            <Clock className="w-4 h-4 text-yellow-500" />
-            <span className="text-yellow-500">{stats.orders?.pending || 0} pending</span>
-            <span className="text-gray-400">menunggu</span>
+        {/* 🔥 CARD TOTAL BOOKING & ORDER (KIRI-KANAN) */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="grid grid-cols-2 divide-x divide-gray-200 h-full">
+            {/* KIRI: BOOKING */}
+            <div className="pr-3 flex flex-col justify-center">
+              <div className="flex items-center gap-1 mb-2">
+                <Calendar className="w-4 h-4 text-blue-500" />
+                <p className="text-xs text-gray-500">Booking</p>
+              </div>
+              <p className="text-xl font-bold text-gray-800">{stats.totalBookings || 0}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Clock className="w-3 h-3 text-yellow-500" />
+                <span className="text-xs text-yellow-500">{pendingBookings.length} pending</span>
+              </div>
+            </div>
+            {/* KANAN: ORDER */}
+            <div className="pl-3 flex flex-col justify-center">
+              <div className="flex items-center gap-1 mb-2">
+                <ShoppingBag className="w-4 h-4 text-pink-500" />
+                <p className="text-xs text-gray-500">Order</p>
+              </div>
+              <p className="text-xl font-bold text-gray-800">{displayTotalOrders}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Clock className="w-3 h-3 text-yellow-500" />
+                <span className="text-xs text-yellow-500">{displayPendingOrders} pending</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1843,6 +1924,7 @@ export default function DashboardPage() {
               <select value={expenseForm.target} onChange={(e) => setExpenseForm({ ...expenseForm, target: e.target.value })} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-400">
                 <option value="PRODUCT">Product</option>
                 <option value="BOOKING">Booking</option>
+                <option value="RETURN">Refund/Return</option>
               </select>
             </div>
             <div>
@@ -1861,19 +1943,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-        {cards.map((card) => (
-          <Link key={card.title} href={card.href} className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div><p className="text-xs text-gray-500">{card.title}</p><p className="text-xl font-bold text-gray-800 mt-1">{card.value}</p></div>
-              <div className={`${card.color} p-2 rounded-lg`}><card.icon className="w-4 h-4" /></div>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Grafik Keuangan */}
+      {/* ===== 5. GRAFIK ===== */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -2003,7 +2073,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Bookings & History Order - RAPI */}
+      {/* ===== 6. RECENT BOOKINGS & HISTORY ORDER ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Recent Bookings */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -2019,55 +2089,84 @@ export default function DashboardPage() {
           {!stats.recentBookings || stats.recentBookings.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-8">Belum ada booking selesai</p>
           ) : (
-            <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-1">
               {stats.recentBookings.map((booking) => (
-                <div key={booking.id} className="py-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800">{booking.customerName}</p>
-                      <p className="text-sm text-gray-500">ID: <span className="font-mono text-xs">{booking.id.slice(0, 12)}...</span></p>
-                      <p className="text-sm text-gray-500">{booking.service?.name}</p>
-                      <p className="text-sm text-gray-500">
-                        📅 {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} 
-                        ⏰ {booking.bookingTime}
-                      </p>
-                      <div className="flex flex-col gap-0.5 mt-1">
-                        <p className="text-sm text-gray-500">Harga:</p>
-                        {booking.discountAmount > 0 ? (
-                          <>
-                            <p className="text-xs text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                            <p className="text-sm font-medium text-green-600">
-                              Rp {(booking.totalPaid || 0).toLocaleString()}
-                              {booking.voucherCode && (
-                                <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                                  <Ticket className="w-3 h-3" />
-                                  {booking.voucherCode}
-                                </span>
-                              )}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm font-medium">Rp {(booking.originalPrice || 0).toLocaleString()}</p>
-                        )}
+                <div key={booking.id} className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                  {/* Nama, ID Booking, WA, Email, Status */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800 text-sm">{booking.customerName}</p>
+                        {/* 🔥 ID BOOKING - DI SEBELAH NAMA */}
+                        <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">
+                          {booking.id.slice(0, 12)}...
+                        </span>
                       </div>
-                      {booking.address && (
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {booking.address}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                         <span>📱 {booking.whatsapp}</span>
                         {booking.email && <span>📧 {booking.email}</span>}
                       </div>
-                      {booking.notes && <p className="text-sm text-gray-400 mt-1">📝 {booking.notes}</p>}
-                      {booking.approvedBy && <p className="text-xs text-gray-400">Admin: {booking.approvedBy.name}</p>}
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded-full whitespace-nowrap ml-2 ${booking.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                      {booking.status === 'COMPLETED' ? '✅ Selesai' : booking.status}
-                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">✅ Selesai</span>
                   </div>
+
+                  {/* Layanan, Tanggal, Waktu */}
+                  <div className="grid grid-cols-2 gap-1 text-xs text-gray-600 bg-gray-50 rounded p-2">
+                    <div>
+                      <span className="text-gray-400">Layanan:</span>
+                      <span className="font-medium ml-1">{booking.service?.name || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Tgl:</span>
+                      <span className="font-medium ml-1">
+                        {new Date(booking.bookingDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Waktu:</span>
+                      <span className="font-medium ml-1">{booking.bookingTime}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Admin:</span>
+                      <span className="font-medium ml-1">{booking.approvedBy?.name || '-'}</span>
+                    </div>
+                  </div>
+
+                  {/* Harga + Voucher */}
+                  <div className="flex items-center gap-2 mt-2 text-xs">
+                    {booking.discountAmount > 0 && (
+                      <span className="text-gray-400 line-through">Rp {(booking.originalPrice || 0).toLocaleString()}</span>
+                    )}
+                    <span className="font-semibold text-green-600">Rp {(booking.totalPaid || booking.originalPrice || 0).toLocaleString()}</span>
+                    {booking.voucherCode && booking.discountAmount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                        <Ticket className="w-3 h-3" />
+                        {booking.voucherCode}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Alamat */}
+                  {booking.address && (
+                    <p className="text-xs text-gray-500 mt-1 flex items-start gap-1">
+                      <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {booking.address}
+                    </p>
+                  )}
+
+                  {/* Catatan */}
+                  {booking.notes && (
+                    <p className="text-xs text-gray-400 mt-1 flex items-start gap-1">
+                      <span>📝</span> {booking.notes}
+                    </p>
+                  )}
+
                   {booking.completedAt && (
                     <p className="text-xs text-gray-400 mt-1">Selesai: {formatDate(booking.completedAt)}</p>
+                  )}
+
+                  {/* Admin */}
+                  {booking.approvedBy && (
+                    <p className="text-xs text-gray-400 mt-1">Admin: {booking.approvedBy.name}</p>
                   )}
                 </div>
               ))}
@@ -2089,55 +2188,68 @@ export default function DashboardPage() {
           {!stats.historyOrders || stats.historyOrders.length === 0 ? (
             <p className="text-gray-500 text-sm text-center py-8">Belum ada order selesai</p>
           ) : (
-            <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
+            <div className="grid grid-cols-1 gap-3 max-h-[450px] overflow-y-auto pr-1">
               {stats.historyOrders.map((order) => (
-                <div key={order.id} className="py-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                <div key={order.id} className="border border-gray-100 rounded-lg p-3 hover:bg-gray-50 transition-colors">
+                  {/* Nama, WA, Email, Order#, Status */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-medium text-gray-800">{order.customerName}</p>
-                        <span className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded">{order.orderNumber}</span>
+                        <p className="font-semibold text-gray-800 text-sm">{order.customerName}</p>
+                        <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-500">{order.orderNumber}</span>
                       </div>
-                      <div className="mt-1 space-y-0.5">
-                        {order.items.map((item, idx) => (
-                          <p key={idx} className="text-sm text-gray-600">
-                            {item.productName} x{item.quantity} - Rp {item.price.toLocaleString()}
-                          </p>
-                        ))}
-                      </div>
-                      <div className="flex flex-col gap-0.5 mt-1">
-                        <p className="text-sm text-gray-500">Rincian Harga:</p>
-                        {order.discountAmount > 0 && (
-                          <>
-                            <p className="text-xs text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</p>
-                            <div className="flex items-center gap-1">
-                              <Ticket className="w-3 h-3 text-purple-500" />
-                              <span className="text-xs text-purple-600">Voucher: {order.voucherCode} (Rp {order.discountAmount.toLocaleString()})</span>
-                            </div>
-                            {order.shippingCost > 0 && (
-                              <p className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</p>
-                            )}
-                          </>
-                        )}
-                        <p className="text-sm font-bold" style={{ color: primaryColor }}>
-                          Total Dibayar: Rp {order.totalPaid.toLocaleString()}
-                        </p>
-                      </div>
-                      {order.address && (
-                        <p className="text-sm text-gray-500 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {order.address}
-                        </p>
-                      )}
-                      <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-400">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
                         <span>📱 {order.customerWhatsapp}</span>
                         {order.email && <span>📧 {order.email}</span>}
                       </div>
                     </div>
-                    <span className="px-2 py-1 text-xs rounded-full whitespace-nowrap ml-2 bg-green-100 text-green-700">
-                      ✅ Selesai
-                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">✅ Selesai</span>
                   </div>
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+
+                  {/* Produk */}
+                  <div className="text-xs text-gray-600 bg-gray-50 rounded p-2 mb-2">
+                    <span className="text-gray-400">Produk: </span>
+                    {order.items.map((item, idx) => (
+                      <span key={idx} className="font-medium">
+                        {item.productName} x{item.quantity}
+                        {idx < order.items.length - 1 ? ', ' : ''}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Harga + Voucher + Ongkir */}
+                  <div className="flex items-center gap-2 text-xs flex-wrap">
+                    {order.discountAmount > 0 && (
+                      <span className="text-gray-400 line-through">Rp {order.subtotal.toLocaleString()}</span>
+                    )}
+                    <span className="font-semibold text-green-600">Rp {order.totalPaid.toLocaleString()}</span>
+                    {order.voucherCode && order.discountAmount > 0 && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                        <Ticket className="w-3 h-3" />
+                        {order.voucherCode}
+                      </span>
+                    )}
+                    {order.shippingCost > 0 && (
+                      <span className="text-xs text-gray-400">+ Ongkir Rp {order.shippingCost.toLocaleString()}</span>
+                    )}
+                  </div>
+
+                  {/* Alamat */}
+                  {order.address && (
+                    <div className="text-xs text-gray-500 mt-2">
+                      <p className="flex items-start gap-1">
+                        <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {order.address}
+                      </p>
+                      {(order.city || order.province || order.postalCode) && (
+                        <p className="ml-4 text-gray-400">
+                          {[order.city, order.province, order.postalCode].filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tanggal & Admin */}
+                  <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
                     <span>Order: {formatDate(order.createdAt)}</span>
                     {order.completedAt && <span>Selesai: {formatDate(order.completedAt)}</span>}
                     {order.approvedBy && <span>Admin: {order.approvedBy.name}</span>}
@@ -2149,8 +2261,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Products & Pie Chart - WARNA SESUAI GRAFIK */}
+      {/* ===== 7. PIE CHART & TOP PRODUCTS ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Pie Chart - WARNA SESUAI GRAFIK */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><CreditCard className="w-5 h-5 text-pink-500" /> Kontribusi Pendapatan</h2>
           <div className="h-64">
@@ -2168,15 +2281,12 @@ export default function DashboardPage() {
                     labelLine={false}
                     label={renderPieLabel}
                     outerRadius={80}
-                    fill="#8884d8"
                     dataKey="value"
+                    nameKey="name"
                   >
-                    {displayPieData.map((entry, index) => {
-                      let color = COLORS[index % COLORS.length]
-                      if (entry.name === 'Pendapatan Product') color = CHART_COLORS.product
-                      if (entry.name === 'Pendapatan Booking') color = CHART_COLORS.booking
-                      return <Cell key={`cell-${index}`} fill={color} />
-                    })}
+                    {displayPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
+                    ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
@@ -2193,6 +2303,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Top Products */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2"><TrendingUp className="w-5 h-5 text-green-500" /> Top Products</h2>
           {stats.topProducts.length === 0 ? <p className="text-gray-500 text-sm text-center py-8">Belum ada data penjualan</p> : (

@@ -360,6 +360,9 @@ export async function GET(request: NextRequest) {
         customerName: o.customerName,
         customerWhatsapp: o.customerWhatsapp,
         address: o.address,
+        city: o.city || '',
+        province: o.province || '',
+        postalCode: o.postalCode || '',  
         email: o.email,
         status: o.status,
         items: o.items.map((item) => ({
@@ -389,6 +392,9 @@ export async function GET(request: NextRequest) {
         customerName: o.customerName,
         customerWhatsapp: o.customerWhatsapp,
         address: o.address,
+        city: o.city || '',
+        province: o.province || '',
+        postalCode: o.postalCode || '',
         email: o.email,
         status: o.status,
         items: o.items.map((item) => ({
